@@ -1,0 +1,22 @@
+{
+  "name": "Mineral Maps Kentucky Agate",
+  "short_name": "Mineral Maps",
+  "start_url": "../../states/kentucky/map/index.html",
+  "scope": "../../",
+  "display": "standalone",
+  "background_color": "#11130f",
+  "theme_color": "#11130f",
+  "description": "Kentucky agate prospecting map. Created by Nik Davis.",
+  "icons": [
+    {
+      "src": "mineral-maps-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "mineral-maps-icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ]
+}

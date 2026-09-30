@@ -1,0 +1,123 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Geology, GIS and prospecting audits</title><style>body{font:15px/1.55 -apple-system,Segoe UI,sans-serif;background:#11130f;color:#f0eee6;max-width:980px;margin:0 auto;padding:18px}a{color:#d2b46e}table{border-collapse:collapse;font-size:12.5px;display:block;overflow-x:auto}td,th{border:1px solid #3a3d35;padding:4px 6px;vertical-align:top}th{background:#23261f}h1{font-size:22px}h2{font-size:18px;margin-top:26px}code{background:#262922;padding:1px 4px;border-radius:4px}nav a{display:inline-block;margin:0 10px 6px 0}</style><nav><a href="FIELD_PLAN.html">Field plan — where to start</a><a href="WHY_THIS_BELT.html">Why this belt</a><a href="METHODOLOGY.html">Methodology</a><a href="QUADRANGLE_TABLE.html">Quadrangle interpretation table</a><a href="RANKING.html">Ranking methodology & calibration</a><a href="RANKED_TARGETS.html">Ranked target list</a><a href="AUDITS.html">Geology, GIS and prospecting audits</a><a href="SOURCES.html">Sources</a><a href="LIMITATIONS.html">Limitations</a><a href="../states/kentucky/map/index.html">← Map</a></nav><h1>Audits</h1>
+<p>Each audit asks a different question: the geology audit asks whether the horizon is right, the GIS audit whether the geometry is right, and the prospecting audit whether the ranking is useful.</p>
+<h2>GEOLOGY AUDIT — is every used line really the top of the Nada under the Renfro?</h2>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Legend verification per quadrangle</td>
+<td>19 quadrangles used. Each GQ legend was OCR'd; the Clay City and Leighton explanation boxes were also cropped at 300 dpi. Target symbol, unit below/above and edge meaning are in QUADRANGLE_TABLE.</td>
+</tr>
+<tr>
+<td>Symbol matching</td>
+<td>Rules are keyed on exact (quadrangle, line symbol, polygon pair). No substring or look-alike matching. Clay City's generic <code>Mb</code> line was accepted only after its legend showed Mbr/Mbna/Mbc mapped separately. Ezel's <code>Mbna</code>-coded line was <strong>rejected</strong> (AMBIGUOUS) because its explanation shows Borden undivided.</td>
+</tr>
+<tr>
+<td>Separate vs combined mapping</td>
+<td>855 crossings on separately mapped Nada/Renfro contacts (Alcorn, Berea, Bighill, Panola, Johnetta, Clay City, Levee). 3,976 on combined Mbrn tops (target one Renfro thickness lower, 0.95 weight). 590 probable Wildie crossings (0.85).</td>
+</tr>
+<tr>
+<td>Excluded horizons</td>
+<td>Halls Gap-top (Mbh), Shopville Mbl, Ezel: AMBIGUOUS. Bobtown Muldraugh (Mbm): NOT TARGET. 2,020 crossings excluded but kept in <code>crossings_complete.csv</code>.</td>
+</tr>
+<tr>
+<td>Elevation coherence</td>
+<td>Each valid crossing's elevation was compared with the median of crossings within 2 km. Median deviation 4.0 m, 95th percentile 14 m, only 11 of 5,413 crossings deviate by more than 40 m. That fits a single gently dipping horizon, with no mixing of different contacts. Top-120: median 4.7 m, none over 40 m. Rank 9 (Hardwick Creek, −30 m; mapped fault 384 m away) and rank 23 (Clay City, −26 m) sit lower than their neighbours, which is consistent with local fault offset. They are flagged, not removed.</td>
+</tr>
+<tr>
+<td>Contrast test</td>
+<td>Dever sections 74/75, where geodes are in the non-target Muldraugh/Salem-Warsaw interval, have <strong>zero</strong> valid crossings within 1.5 km.</td>
+</tr>
+<tr>
+<td>Residual risk</td>
+<td>On combined-unit quads the exact Nada/Renfro level is interpolated. Renfro thickness was taken from legends only for Stanton, Slade and Pomeroyton. Quadrangle-edge mismatches (Mbrn on one side, Mbna on the other) were not re-drawn.</td>
+</tr>
+</tbody>
+</table>
+<h2>GIS AUDIT — are the points, lines and numbers internally consistent?</h2>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Crossing on contact</td>
+<td>Every ranked crossing is within 11.8 m of a target contact line of the same class (median 2.4 m; 100% class match).</td>
+</tr>
+<tr>
+<td>Reach geometry</td>
+<td>All 120 primary reaches start at the crossing point and run downhill. None ends higher than it starts (checked against the DEM). Primary reaches are 570–1,230 m (shorter where drainage exceeds 60 km²); 108 have an extended reach.</td>
+</tr>
+<tr>
+<td>Completeness</td>
+<td>All 5,421 valid crossings have every scored metric (0 nulls) and unique coordinates. Non-valid crossings are retained with their class.</td>
+</tr>
+<tr>
+<td>De-duplication</td>
+<td>120 ranked targets, minimum spacing 281 m (median 1.4 km). Crossings sharing a reach name the ranked target they feed.</td>
+</tr>
+<tr>
+<td>CRS and precision</td>
+<td>Analysis in UTM 16N (EPSG:32616). Delivered in WGS84 at 4–5 decimals. The ±15–40 m positional limit is documented.</td>
+</tr>
+<tr>
+<td>Offline</td>
+<td>Tested in headless Chrome with mobile emulation. Top+Strong download of 1,926 topo tiles plus 14 data files; the verification pass re-read 1,926/1,926 tiles and 14/14 files. With the web server stopped, the app reloaded and drew targets and all 5,301 unranked valid crossings from device storage.</td>
+</tr>
+<tr>
+<td>App</td>
+<td>Mobile layout (390×844). GPS, tap coordinates (4 dp) and long-press copy kept from the shell. Popups, sortable list and all layer toggles load.</td>
+</tr>
+</tbody>
+</table>
+<h2>PROSPECTING AUDIT — does the ranking pick better places, and is it robust?</h2>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Separation from the rest</td>
+<td>Median upstream contact is 31 km (Top), 25 km (Strong) and 16 km (Moderate), against 17 km for unranked valid crossings. Median incision is 28–33 m against 21 m.</td>
+</tr>
+<tr>
+<td>Calibration (not used in scoring)</td>
+<td>The best crossing near each technical locality is in the top 0.3–8% of all valid crossings: KSPG 6B 0.3% (rank 4 is 1.5 km away), Drip Rock 1.6%, Bighill 2.7%, Rock Lick 4.0%, Owsley Fork 7.9%.</td>
+</tr>
+<tr>
+<td>Collector reports (not used)</td>
+<td>Middle Fork Station Camp Creek, a collector-reported stream, has a TOP target (rank 7) on geology alone. Station Camp Creek, South Fork and Rock Lick Creek have Strong/Moderate reaches. The Drowning Creek report is a roadcut, and no stream crossing was ranked there.</td>
+</tr>
+<tr>
+<td>Weight sensitivity</td>
+<td>1,000 runs with each weight randomly scaled ×0.5–1.5: the median run keeps 8 of the top 10 and 32 of the top 40. Every current top-10 target stays in the top 40 in at least 94% of runs.</td>
+</tr>
+<tr>
+<td>Collecting-history bias</td>
+<td>Removing R keeps 91/120 and 7/10. Menifee County (Frenchburg quad) is the main beneficiary, so it is flagged as an untested frontier rather than hidden.</td>
+</tr>
+<tr>
+<td>Famous-name bias</td>
+<td>No name, county or report entered the score. Irvine/Estill is well represented (55 of 120) because of terrain and supply, not reputation. The best two targets are in the Big Hill area.</td>
+</tr>
+<tr>
+<td>Field practicality</td>
+<td>Most top sources are ephemeral hollow heads (dry and walkable, but brushy), so the "start walking" point is on the larger channel downstream. Land access is not evaluated.</td>
+</tr>
+<tr>
+<td>Known weaknesses</td>
+<td>Depositional traps are not resolvable at 20 m. Clast dilution is estimated from the geology map, not counted. The combined-unit quads carry a small vertical offset.</td>
+</tr>
+</tbody>
+</table>

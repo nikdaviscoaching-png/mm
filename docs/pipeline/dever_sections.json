@@ -1,0 +1,218 @@
+[
+ {
+  "section": 82,
+  "name": "Morrill",
+  "county": "Rockcastle",
+  "quad": "Bighill",
+  "lat": 37.51703,
+  "lon": -84.18953,
+  "carter": "100 ft FSL x 1,800 ft FEL, 19-M-64"
+ },
+ {
+  "section": 83,
+  "name": "Bighill (US-421 roadcut)",
+  "county": "Madison",
+  "quad": "Bighill",
+  "lat": 37.52848,
+  "lon": -84.19424,
+  "carter": "1,800 ft FNL x 1,650 ft FWL, 19-M-64"
+ },
+ {
+  "section": 84,
+  "name": "Tilday Mountain",
+  "county": "Madison",
+  "quad": "Bighill",
+  "lat": 37.56813,
+  "lon": -84.16905,
+  "carter": "500 ft FSL x 700 ft FEL, 1-M-64"
+ },
+ {
+  "section": 85,
+  "name": "Wolf Gap Mountain",
+  "county": "Madison",
+  "quad": "Bighill",
+  "lat": 37.61565,
+  "lon": -84.16454,
+  "carter": "400 ft FNL x 600 ft FWL, 16-N-65"
+ },
+ {
+  "section": 86,
+  "name": "Little Clover Creek",
+  "county": "Jackson",
+  "quad": "Johnetta",
+  "lat": 37.4315,
+  "lon": -84.14073,
+  "carter": "700 ft FNL x 2,150 ft FEL, 24-L-65"
+ },
+ {
+  "section": 87,
+  "name": "Owsley Fork",
+  "county": "Jackson",
+  "quad": "Bighill",
+  "lat": 37.52348,
+  "lon": -84.13346,
+  "carter": "2,450 ft FSL x 50 ft FEL, 17-M-65"
+ },
+ {
+  "section": 88,
+  "name": "Cane Branch",
+  "county": "Jackson",
+  "quad": "Alcorn",
+  "lat": 37.54706,
+  "lon": -84.05238,
+  "carter": "1,100 ft FNL x 700 ft FEL, 14-M-66"
+ },
+ {
+  "section": 89,
+  "name": "Rock Lick Creek ('Platinum Mine' prospect)",
+  "county": "Jackson",
+  "quad": "Alcorn",
+  "lat": 37.54239,
+  "lon": -84.03537,
+  "carter": "2,800 ft FNL x 600 ft FEL, 13-M-66"
+ },
+ {
+  "section": 92,
+  "name": "Pond School",
+  "county": "Jackson",
+  "quad": "Leighton",
+  "lat": 37.55695,
+  "lon": -83.96281,
+  "carter": "2,500 ft FSL x 1,100 ft FWL, 8-M-67"
+ },
+ {
+  "section": 93,
+  "name": "Station Camp Creek (KY-1209 roadcut)",
+  "county": "Jackson",
+  "quad": "Leighton",
+  "lat": 37.54111,
+  "lon": -83.91506,
+  "carter": "2,800 ft FSL x 450 ft FWL, 15-M-68"
+ },
+ {
+  "section": 94,
+  "name": "War Fork",
+  "county": "Jackson",
+  "quad": "McKee",
+  "lat": 37.48864,
+  "lon": -83.91177,
+  "carter": "1,900 ft FSL x 1,400 ft FWL, 5-L-68"
+ },
+ {
+  "section": 95,
+  "name": "Drip Rock (KY-89 roadcut)",
+  "county": "Estill",
+  "quad": "Leighton",
+  "lat": 37.59761,
+  "lon": -83.96419,
+  "carter": "900 ft FNL x 700 ft FWL, 23-N-67"
+ },
+ {
+  "section": 96,
+  "name": "Zion Mountain",
+  "county": "Estill",
+  "quad": "Panola",
+  "lat": 37.62779,
+  "lon": -84.05584,
+  "carter": "2,050 ft FNL x 1,700 ft FEL, 14-N-66"
+ },
+ {
+  "section": 97,
+  "name": "Big Round Mountain",
+  "county": "Estill",
+  "quad": "Panola",
+  "lat": 37.64926,
+  "lon": -84.06679,
+  "carter": "300 ft FNL x 50 ft FEL, 6-N-66"
+ },
+ {
+  "section": 98,
+  "name": "Grindstone Hollow",
+  "county": "Estill",
+  "quad": "Irvine",
+  "lat": 37.725,
+  "lon": -83.9588,
+  "carter": "3,000 ft FSL x 2,250 ft FWL, 8-O-67"
+ },
+ {
+  "section": 99,
+  "name": "Sweet Lick Branch",
+  "county": "Estill",
+  "quad": "Irvine",
+  "lat": 37.72738,
+  "lon": -83.94786,
+  "carter": "2,200 ft FNL x 600 ft FWL, 9-O-67"
+ },
+ {
+  "section": 100,
+  "name": "Tipton Ridge",
+  "county": "Estill",
+  "quad": "Irvine",
+  "lat": 37.70778,
+  "lon": -83.89075,
+  "carter": "2,800 ft FSL x 2,150 ft FEL, 14-O-68"
+ },
+ {
+  "section": 101,
+  "name": "Furnace Fork",
+  "county": "Estill",
+  "quad": "Cobhill",
+  "lat": 37.70119,
+  "lon": -83.86905,
+  "carter": "400 ft FSL x 700 ft FEL, 13-O-68"
+ },
+ {
+  "section": 104,
+  "name": "Hatton Hollow",
+  "county": "Lee",
+  "quad": "Cobhill",
+  "lat": 37.63644,
+  "lon": -83.77981,
+  "carter": "1,100 ft FSL x 1,000 ft FWL, 9-N-69"
+ },
+ {
+  "section": 105,
+  "name": "Big Sinking Creek",
+  "county": "Lee",
+  "quad": "Cobhill",
+  "lat": 37.64844,
+  "lon": -83.7628,
+  "carter": "600 ft FNL x 1,100 ft FWL, 10-N-69"
+ },
+ {
+  "section": 113,
+  "name": "Mountain Parkway (Nada type area)",
+  "county": "Powell",
+  "quad": "Slade",
+  "lat": 37.79652,
+  "lon": -83.67702,
+  "carter": "1,300 ft FNL x 1,800 ft FWL, 11-P-70"
+ },
+ {
+  "section": 74,
+  "name": "Renfro Valley South",
+  "county": "Rockcastle",
+  "quad": "Wildie/Mount Vernon",
+  "lat": 37.376,
+  "lon": -84.32638,
+  "carter": "2,700 ft FNL x 2,000 ft FWL, 15-K-63"
+ },
+ {
+  "section": 75,
+  "name": "Lake Linville",
+  "county": "Rockcastle",
+  "quad": "Wildie",
+  "lat": 37.39487,
+  "lon": -84.33779,
+  "carter": "1,900 ft FNL x 1,300 ft FEL, 10-K-62"
+ },
+ {
+  "section": 77,
+  "name": "Sigmon Cemetery",
+  "county": "Rockcastle",
+  "quad": "Wildie",
+  "lat": 37.42958,
+  "lon": -84.33156,
+  "carter": "1,400 ft FNL x 500 ft FWL, 25-L-63"
+ }
+]
