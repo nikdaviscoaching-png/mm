@@ -109,7 +109,7 @@
     const ll = L.latLng(pos.coords.latitude, pos.coords.longitude);
     const acc = pos.coords.accuracy || 0;
     try { lastFix = ll; } catch (_) { /* app.js may not declare it */ }
-    fixTime = Number.isFinite(pos.timestamp) && pos.timestamp <= Date.now() + 5000 ? pos.timestamp : Date.now();
+    fixTime = pos._ffTime || Date.now();          // time of arrival on this phone (the fix's own timestamp can disagree with the clock)
     fixAcc = Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null;
     if (typeof locationLayer !== 'undefined') {
       if (!youRing) {
@@ -266,11 +266,11 @@
     const d = await db();
     if (!d) {
       const list = (await allEntries()).filter(x => x.id !== id);
-      localStorage.setItem(LS_KEY, JSON.stringify(list)); return;
+      localStorage.setItem(LS_KEY, JSON.stringify(list)); markChanged('log', true, { now: true }); return;
     }
     return new Promise(res => {
       const tx = d.transaction(STORE, 'readwrite'); tx.objectStore(STORE).delete(id);
-      tx.oncomplete = () => { markChanged('log', true); res(); }; tx.onerror = res;
+      tx.oncomplete = () => { markChanged('log', true, { now: true }); res(); }; tx.onerror = res;
     });
   }
 
@@ -1641,7 +1641,7 @@
   else if (actions) actions.appendChild(truckBtn);
 
   function saveTruck() { try { truck ? localStorage.setItem(TRUCK_KEY, JSON.stringify(truck)) : localStorage.removeItem(TRUCK_KEY); markChanged('truck', true); } catch (_) { markChanged('truck', false); } }
-  function saveTrail() { try { trail.length ? localStorage.setItem(TRAIL_KEY, JSON.stringify(trail)) : localStorage.removeItem(TRAIL_KEY); markChanged('trail', true); } catch (_) { markChanged('trail', false); } }
+  function saveTrail(dirty) { try { trail.length ? localStorage.setItem(TRAIL_KEY, JSON.stringify(trail)) : localStorage.removeItem(TRAIL_KEY); markChanged('trail', true, { dirty: dirty !== false }); } catch (_) { markChanged('trail', false); } }
   window.ffTruckRestore = (t, tr) => {                 // used by Restore backup / safety copy
     if (!truck && t && Number.isFinite(+t.lat) && Number.isFinite(+t.lng)) { truck = { lat: +t.lat, lng: +t.lng, ts: +t.ts || Date.now() }; saveTruck(); }
     if (trail.length < 2 && Array.isArray(tr) && tr.length) { trail = tr.filter(q => Array.isArray(q) && Number.isFinite(+q[0]) && Number.isFinite(+q[1])).slice(-6000); saveTrail(); }
@@ -1671,7 +1671,7 @@
     truck = { lat: +ll.lat.toFixed(6), lng: +ll.lng.toFixed(6), ts: Date.now() };
     trail = [[truck.lat, truck.lng]]; saveTruck(); saveTrail(); drawTruck();
     toast('Truck saved here — the GPS bar now points back to it', 2600);
-    if (typeof lastFix !== 'undefined' && lastFix) drawFix({ coords: { latitude: lastFix.lat, longitude: lastFix.lng, accuracy: lastAcc || 0 }, timestamp: fixTime });
+    if (typeof lastFix !== 'undefined' && lastFix) drawFix({ coords: { latitude: lastFix.lat, longitude: lastFix.lng, accuracy: lastAcc || 0 }, _ffTime: fixTime });
   }
   let lastAcc = null;
   window.ffTruck = action => {
@@ -1720,8 +1720,8 @@
       if (c) c.textContent = `${distWords(d)} ${bearingWord(here, tl)} of you`;
     }
   }
-  document.addEventListener('visibilitychange', () => { if (document.hidden) saveTrail(); });
-  window.addEventListener('pagehide', saveTrail);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) saveTrail(false); });
+  window.addEventListener('pagehide', () => saveTrail(false));
   drawTruck();
 
   /* ================================================ 17. SEARCH PIN (fine-tune + save) */
@@ -1803,15 +1803,37 @@
   let meta = {}; try { meta = JSON.parse(localStorage.getItem(META_KEY) || '{}') || {}; } catch (_) { meta = {}; }
   let saveOk = true, mirrorTimer = null, persisted = null;
   function saveMeta() { try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (_) {} }
-  function markChanged(kind, ok) {
+  // What triggers the on-phone safety copy (it holds every photo, so rewriting it is costly):
+  //   log entries  -> 1.2 s after the change
+  //   deletes      -> immediately, so a deleted entry can never be "restored" from a stale copy
+  //   truck, trail -> at most once every 5 minutes, plus when the app is hidden or closed
+  const MIRROR_EVERY_MS = 5 * 60 * 1000;
+  let mirrorDirty = false;
+  function markChanged(kind, ok, opts) {
     saveOk = ok !== false;
     if (!saveOk) { updateDataStatus(); return; }
+    if (kind === 'trail') {                                   // a breadcrumb every ~15 m: no status redraw, no mirror rewrite now
+      if (opts && opts.dirty === false) return;
+      mirrorDirty = true; scheduleMirror(MIRROR_EVERY_MS); return;
+    }
     meta.lastSave = Date.now();
-    if (kind !== 'trail') meta.pending = (meta.pending || 0) + 1;      // trail points are not "changes" to nag about
+    meta.pending = (meta.pending || 0) + 1;
     saveMeta();
-    clearTimeout(mirrorTimer); mirrorTimer = setTimeout(writeMirror, 1200);
+    mirrorDirty = true;
+    if (opts && opts.now) { clearTimeout(mirrorTimer); mirrorTimer = null; writeMirror(); }
+    else if (kind === 'truck') scheduleMirror(MIRROR_EVERY_MS);
+    else { clearTimeout(mirrorTimer); mirrorTimer = setTimeout(writeMirror, 1200); }
     updateDataStatus();
   }
+  // run the mirror write no sooner than `gap` ms after the previous one
+  function scheduleMirror(gap) {
+    if (mirrorTimer) return;                                  // one is already waiting (log changes use a shorter one)
+    const wait = Math.max(1200, (meta.lastMirror || 0) + gap - Date.now());
+    mirrorTimer = setTimeout(writeMirror, wait);
+  }
+  function flushMirror() { if (mirrorDirty) { clearTimeout(mirrorTimer); mirrorTimer = null; writeMirror(); } }
+  document.addEventListener('visibilitychange', () => { if (document.hidden) flushMirror(); });
+  window.addEventListener('pagehide', flushMirror);
   const MIRROR_DB = 'mineral_maps_field_mirror_v1';
   function mirrorDB() {
     return new Promise((res, rej) => {
@@ -1826,6 +1848,7 @@
     return { format: 'mineral-maps-field-backup', version: 2, exported_at: new Date().toISOString(), entries: await allEntries(), truck: t, trail: tr };
   }
   async function writeMirror() {
+    mirrorTimer = null; mirrorDirty = false;
     try {
       const snap = await snapshot(), d = await mirrorDB();
       await new Promise((res, rej) => { const tx = d.transaction('snap', 'readwrite'); tx.objectStore('snap').put(snap, 'latest');
