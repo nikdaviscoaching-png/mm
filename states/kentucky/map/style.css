@@ -28,6 +28,7 @@ html, body { overflow: hidden; background: #11130f; font-family: -apple-system,B
 }
 .icon-btn { pointer-events: auto; width: 43px; height: 43px; border-radius: 13px; font-size: 20px; }
 .icon-btn.dark { background: rgba(255,255,255,.08); box-shadow: none; }
+.icon-btn.layers-btn { width: auto; padding: 0 11px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 650; }
 .map-actions {
   position: fixed; z-index: 650; right: 10px; bottom: max(24px, calc(env(safe-area-inset-bottom) + 14px));
   display: flex; flex-direction: column; gap: 8px;
