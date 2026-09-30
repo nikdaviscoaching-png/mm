@@ -717,70 +717,285 @@
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
     return { lat, lng, note };
   }
-  // Online place/address search (OpenStreetMap Nominatim), results cached per query
-  const placeCache = {}; let placeTimer = null;
-  function lookupPlaces(q) {
-    if (placeCache[q] || navigator.onLine === false) return;
-    placeCache[q] = { pending: true, hits: [] };
-    const u = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({ format: 'jsonv2', q, limit: '6', countrycodes: 'us',
-      viewbox: '-85.6,38.7,-82.4,36.9', bounded: '0' }).toString();
+  /* ---- Places: type-ahead like Google Maps ------------------------------------------
+     Online: Photon (OpenStreetMap search built for type-ahead), biased to where you are.
+     Category words ("gas", "ice cream", "campground"...) become OpenStreetMap tags and
+     are looked up in the offline places list first, then online.
+     Offline: the saved places list (name + category) and the saved roads (street addresses).
+     Nominatim is used only when Enter is pressed and Photon found nothing (its rules
+     forbid using it for as-you-type search). */
+  const STUDY_BBOX = '-84.65,37.20,-83.15,38.10';                    // west,south,east,north (Photon order)
+  const PHOTON = 'https://photon.komoot.io/api/';
+  const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
+  const CATS = [
+    { re: /^(ice ?creams?|icecream)$/,                                   label: 'Ice cream',  tags: ['amenity=ice_cream', 'cuisine=ice_cream'] },
+    { re: /^(camp ?grounds?|camping|camp ?sites?)$/,                     label: 'Campground', tags: ['tourism=camp_site', 'tourism=caravan_site'] },
+    { re: /^(gas|gas stations?|fuel|gasoline)$/,                         label: 'Gas',        tags: ['amenity=fuel'] },
+    { re: /^(food|restaurants?|eat|diners?|cafes?|coffee)$/,             label: 'Food',       tags: ['amenity=restaurant', 'amenity=fast_food', 'amenity=cafe'] },
+    { re: /^(grocery|groceries|supermarkets?)$/,                         label: 'Grocery',    tags: ['shop=supermarket', 'shop=convenience'] },
+    { re: /^(motels?|hotels?|lodging|inns?|guest ?houses?)$/,            label: 'Lodging',    tags: ['tourism=hotel', 'tourism=motel', 'tourism=guest_house'] },
+    { re: /^(rest ?rooms?|toilets?|bath ?rooms?)$/,                      label: 'Restroom',   tags: ['amenity=toilets'] },
+    { re: /^parking( lots?)?$/,                                          label: 'Parking',    tags: ['amenity=parking'] },
+    { re: /^(hardware|hardware stores?)$/,                               label: 'Hardware',   tags: ['shop=hardware'] },
+  ];
+  const categoryOf = q => CATS.find(c => c.re.test(String(q).trim().toLowerCase())) || null;
+  function biasPoint() { return (typeof lastFix !== 'undefined' && lastFix) ? lastFix : map.getCenter(); }   // GPS fix, else the map centre
+  const dedupeHits = list => { const seen = new Set(); return list.filter(h => { const k = h.name.toLowerCase() + '|' + h.lat.toFixed(3) + ',' + h.lng.toFixed(3); if (seen.has(k)) return false; seen.add(k); return true; }); };
+  const humanTag = v => String(v || '').replace(/_/g, ' ');
+
+  // ---- the offline places list: [name, category, lat, lon, town] for the study box, from Overpass
+  const PLACES_URL = new URL('data/places_ky.json', location.href).href;          // cache key only
+  const PLACES_META = 'ff_places_meta';
+  let placesMem = null, placesLoading = null, placesBusy = null;
+  async function placesLoad() {
+    if (placesMem) return placesMem;
+    if (placesLoading) return placesLoading;
+    placesLoading = (async () => {
+      try {
+        const hit = await (await userCache()).match(PLACES_URL); if (!hit) return null;
+        const obj = await hit.json();
+        placesMem = (obj.items || []).map(a => ({ n: a[0], l: String(a[0]).toLowerCase(), tags: String(a[1]).split(';'), lat: a[2], lon: a[3], t: a[4] || '' }));
+        return placesMem;
+      } catch (_) { return null; }
+      finally { placesLoading = null; }
+    })();
+    return placesLoading;
+  }
+  function overpassText(box) {
+    const [w, s, e, n] = box.split(',');
+    return `[out:csv("name","amenity","shop","tourism","leisure","place","cuisine","addr:city",::lat,::lon;false)][timeout:180][bbox:${s},${w},${n},${e}];` +
+      '(nwr["name"]["amenity"];nwr["name"]["shop"];nwr["name"]["tourism"];nwr["name"]["leisure"~"^(park|nature_reserve)$"];nwr["name"]["place"~"^(town|village|hamlet)$"];);out center;';
+  }
+  async function overpass(query, ms, signal) {
+    let lastErr = null;
+    for (const url of OVERPASS) {
+      const ctl = new AbortController(); let timedOut = false;
+      const tm = setTimeout(() => { timedOut = true; ctl.abort(); }, ms);
+      if (signal) signal.addEventListener('abort', () => ctl.abort(), { once: true });
+      try {
+        const r = await fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(query), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal });
+        const t = await r.text();
+        if (!r.ok || /^\s*</.test(t)) throw new Error(`Overpass ${r.status}`);
+        return t;
+      } catch (e) { if (e && e.name === 'AbortError' && !timedOut) throw e; lastErr = e; }
+      finally { clearTimeout(tm); }
+    }
+    throw lastErr || new Error('Overpass unavailable');
+  }
+  function parsePlaces(csv) {
+    const rows = [], settle = [];
+    for (const line of csv.split('\n')) {
+      const c = line.split('\t'); if (c.length < 10) continue;
+      const [name, amenity, shop, tourism, leisure, place, cuisine, city] = c, lat = +c[8], lon = +c[9];
+      if (!name.trim() || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const tags = [];
+      if (amenity) tags.push('amenity=' + amenity); if (shop) tags.push('shop=' + shop); if (tourism) tags.push('tourism=' + tourism);
+      if (leisure) tags.push('leisure=' + leisure); if (place) tags.push('place=' + place);
+      if (/(^|;)\s*ice_cream\s*(;|$)/.test(cuisine)) tags.push('cuisine=ice_cream');
+      if (!tags.length) continue;
+      rows.push([name.trim().slice(0, 80), tags.join(';'), +lat.toFixed(5), +lon.toFixed(5), city.trim()]);
+      if (/^(town|village|hamlet)$/.test(place)) settle.push([name.trim(), lat, lon]);
+    }
+    for (const r of rows) {                                  // town = addr:city, else the nearest named town/village/hamlet
+      if (r[4] || !settle.length) continue;
+      const kx = Math.cos(r[2] * Math.PI / 180); let best = '', bd = Infinity;
+      for (const s of settle) { const d = ((s[2] - r[3]) * kx) ** 2 + (s[1] - r[2]) ** 2; if (d < bd) { bd = d; best = s[0]; } }
+      r[4] = best.slice(0, 40);
+    }
+    return rows;
+  }
+  function placesFetch() {
+    if (placesBusy) return placesBusy;
+    placesBusy = (async () => {
+      if (navigator.onLine === false) throw new Error('no signal');
+      const rows = parsePlaces(await overpass(overpassText(STUDY_BBOX), 170000));
+      if (rows.length < 50) throw new Error('the places server returned too little');
+      const obj = { version: 1, fetched: new Date().toISOString(), box: STUDY_BBOX, items: rows };
+      await (await userCache()).put(PLACES_URL, new Response(JSON.stringify(obj), { headers: { 'Content-Type': 'application/json' } }));
+      try { localStorage.setItem(PLACES_META, JSON.stringify({ fetched: obj.fetched, count: rows.length })); } catch (_) {}
+      placesMem = null;
+      if (typeof window.ffUpdateOfflineDates === 'function') window.ffUpdateOfflineDates();
+      return rows.length;
+    })().finally(() => { placesBusy = null; });
+    return placesBusy;
+  }
+  window.ffPlacesFetch = placesFetch;
+  window.ffPlacesAutoRefresh = async maxAge => {            // saved before and older than 30 days: refresh quietly when online
+    try {
+      const m = JSON.parse(localStorage.getItem(PLACES_META) || 'null'); if (!m || !m.fetched) return;
+      if (navigator.onLine === false || !(Date.now() - Date.parse(m.fetched) > maxAge)) return;
+      const n = await placesFetch(); toast(`Places list refreshed (${n.toLocaleString()} places)`, 2200);
+    } catch (_) { /* keeps the saved list */ }
+  };
+  async function placesSearch(q, cat, bias) {
+    const list = await placesLoad(); if (!list) return [];
+    let hits;
+    if (cat) hits = list.filter(p => cat.tags.some(t => p.tags.includes(t)));
+    else {
+      const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+      hits = list.filter(p => words.every(w => p.l.includes(w)));
+      hits.sort((a, b) => (b.l.startsWith(words[0]) ? 1 : 0) - (a.l.startsWith(words[0]) ? 1 : 0));
+    }
+    return hits.map(p => ({ kind: 'place', name: p.n, town: p.t, what: humanTag(p.tags[0].split('=')[1]), lat: p.lat, lng: p.lon }))
+      .sort((a, b) => map.distance(bias, [a.lat, a.lng]) - map.distance(bias, [b.lat, b.lng])).slice(0, 15);
+  }
+
+  // ---- online lookups
+  async function photonSearch(q, bias, cat, signal) {
+    const one = async tag => {
+      const params = new URLSearchParams({ q, limit: '8', lat: bias.lat.toFixed(5), lon: bias.lng.toFixed(5), bbox: STUDY_BBOX });
+      if (tag) params.append('osm_tag', tag.replace('=', ':'));
+      const ctl = new AbortController(); let timedOut = false;
+      const tm = setTimeout(() => { timedOut = true; ctl.abort(); }, 9000);
+      signal.addEventListener('abort', () => ctl.abort(), { once: true });
+      try {
+        const r = await fetch(PHOTON + '?' + params.toString(), { signal: ctl.signal, headers: { Accept: 'application/json' } });
+        if (!r.ok) throw new Error('Photon ' + r.status);
+        return (await r.json()).features || [];
+      } catch (e) { if (timedOut) throw new Error('Photon timed out'); throw e; }
+      finally { clearTimeout(tm); }
+    };
+    const lists = await Promise.all(cat ? cat.tags.slice(0, 3).map(t => one(t).catch(e => { if (e.name === 'AbortError') throw e; return []; })) : [one(null)]);
+    return dedupeHits(lists.flat().map(f => {
+      const p = f.properties || {}, [lon, lat] = (f.geometry || {}).coordinates || [];
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      const street = [p.housenumber, p.street].filter(Boolean).join(' ');
+      const name = p.name || street || p.city || ''; if (!name) return null;
+      return { kind: p.housenumber ? 'address' : 'place', name: String(name).slice(0, 80), town: p.city || p.district || p.county || '', what: p.name ? humanTag(p.osm_value) : '', lat, lng: lon };
+    }).filter(Boolean));
+  }
+  async function overpassNear(cat, bias, signal) {          // Photon only matches names; this finds the actual campgrounds, gas stations...
+    const parts = cat.tags.map(t => { const [k, v] = t.split('='); return `nwr["${k}"="${v}"](around:40000,${bias.lat.toFixed(4)},${bias.lng.toFixed(4)});`; }).join('');
+    const csv = await overpass(`[out:csv("name",::lat,::lon,"addr:city";false)][timeout:25];(${parts});out center 40;`, 27000, signal);
+    return csv.split('\n').map(l => l.split('\t')).filter(c => c.length >= 3 && Number.isFinite(+c[1]) && Number.isFinite(+c[2]))
+      .map(c => ({ kind: 'place', name: (c[0] || cat.label).slice(0, 80), town: (c[3] || '').trim(), what: cat.label.toLowerCase(), lat: +c[1], lng: +c[2] }));
+  }
+  async function nominatimSearch(q) {                       // Enter-key fallback only
+    const u = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({ format: 'jsonv2', q, limit: '6', countrycodes: 'us', viewbox: '-84.65,38.10,-83.15,37.20', bounded: '0' }).toString();
     const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 9000);
-    fetch(u, { signal: ctl.signal, headers: { 'Accept': 'application/json' } }).then(r => r.ok ? r.json() : Promise.reject(new Error(r.status)))
-      .then(list => { placeCache[q] = { hits: (list || []).map(x => ({ lat: +x.lat, lng: +x.lon, name: String(x.name || x.display_name || '').slice(0, 80) || 'Place', sub: String(x.display_name || '') })) }; })
-      .catch(() => { placeCache[q] = { failed: true, hits: [] }; })
-      .finally(() => { clearTimeout(tm); if (qEl.value.trim() === q) runSearch(); });
+    try {
+      const r = await fetch(u, { signal: ctl.signal, headers: { Accept: 'application/json' } }); if (!r.ok) throw new Error(r.status);
+      return (await r.json()).map(x => ({ kind: 'place', name: String(x.name || x.display_name || 'Place').slice(0, 80), town: '', what: String(x.display_name || '').split(',').slice(1, 3).join(',').trim(), lat: +x.lat, lng: +x.lon }));
+    } finally { clearTimeout(tm); }
+  }
+  // Street addresses and street names from the saved roads (no signal needed)
+  async function roadHits(q, bias) {
+    if (!window.FFRoads) return [];
+    let g; try { g = await window.FFRoads.geocode(q, { near: bias, limit: 6 }); } catch (_) { return []; }
+    const rows = g.addresses.map(a => ({ kind: 'address', name: a.name, town: a.town, what: 'address', lat: a.lat, lng: a.lng }));
+    g.streets.forEach(st => rows.push({ kind: 'street', name: st.num ? `${st.num} ${st.name}` : st.name, town: st.town, what: st.num ? 'type the rest' : 'street',
+      lat: st.lat, lng: st.lng, bounds: st.bounds, street: st.name, num: st.num }));
+    return rows;
+  }
+
+  // ---- the lookup itself: debounced 250 ms, older requests aborted as typing continues
+  const placeCache = {}; let placeTimer = null, scheduledQ = null, lookupCtl = null;
+  function abortLookup() { if (lookupCtl) { lookupCtl.abort(); lookupCtl = null; } clearTimeout(placeTimer); scheduledQ = null; }
+  function lookupPlaces(q) {
+    if (placeCache[q]) return placeCache[q].promise;
+    const pc = placeCache[q] = { pending: true, hits: [], photonN: 0, failed: false };
+    const ctl = new AbortController(); lookupCtl = ctl;
+    pc.promise = (async () => {
+      const bias = biasPoint(), cat = categoryOf(q), online = navigator.onLine !== false, hits = [];
+      try {
+        if (cat) hits.push(...await placesSearch(q, cat, bias));                 // saved list first: instant, and works offline
+        if (online) {
+          try {
+            const ph = await photonSearch(q, bias, cat, ctl.signal);
+            pc.photonN = ph.length; hits.push(...ph);
+            if (cat && ph.length < 5) { try { hits.push(...await overpassNear(cat, bias, ctl.signal)); } catch (e) { if (e && e.name === 'AbortError') throw e; } }
+          } catch (e) { if (e && e.name === 'AbortError') throw e; pc.failed = true; }
+        }
+        if (!online || pc.photonN === 0) {                                        // offline, or Photon found nothing
+          if (!cat) hits.push(...await placesSearch(q, null, bias));
+          hits.push(...await roadHits(q, bias));
+        }
+        pc.hits = dedupeHits(hits);
+      } catch (e) { if (e && e.name === 'AbortError') { delete placeCache[q]; return; } pc.failed = true; }
+      pc.pending = false;
+      if (qEl.value.trim() === q) runSearch();
+    })();
+    return pc.promise;
   }
   function runSearch() {
     const rawQ = qEl.value.trim(), q = rawQ.toLowerCase();
     if (q.length < 2) { resEl.hidden = true; return; }
-    const extra = [], coord = parseCoords(rawQ);
-    if (coord) extra.push({ kind: 'coords', name: `Go to ${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}`, sub: 'Drops a pin you can fine-tune and save' + coord.note,
-      go: () => window.ffDropPin(coord.lat, coord.lng, `${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}`) });
-    logCache.filter(e => (String(e.label || '') + ' ' + String(e.note || '')).toLowerCase().includes(q)).slice(0, 8).forEach(e => {
-      const t = TYPES[e.type] || TYPES.check;
-      extra.push({ kind: 'saved', name: e.label || t.label, sub: `${t.label} · ${new Date(e.ts).toLocaleDateString()}${e.note ? ' · ' + String(e.note).slice(0, 60) : ''}`,
+    const coord = parseCoords(rawQ), online = navigator.onLine !== false;
+    const score = e => { const n = e.name.toLowerCase();
+      return n === q ? 0 : n.startsWith(q) ? 1 : n.replace(/^#\d+\s*/, '').startsWith(q) ? 1 : n.includes(q) ? 2 : e.sub.toLowerCase().includes(q) ? 3 : 9; };
+    const coordRows = coord ? [{ kind: 'coords', name: `Go to ${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}`, sub: 'Drops a pin you can fine-tune and save' + coord.note,
+      go: () => window.ffDropPin(coord.lat, coord.lng, `${coord.lat.toFixed(5)}, ${coord.lng.toFixed(5)}`) }] : [];
+    const saved = logCache.filter(e => (String(e.label || '') + ' ' + String(e.note || '')).toLowerCase().includes(q)).slice(0, 8).map(e => {
+      const t = TYPES[e.type] || TYPES.check, name = e.label || t.label;
+      return { kind: 'saved', name, s: score({ name, sub: '' }), sub: `${t.label} · ${new Date(e.ts).toLocaleDateString()}${e.note ? ' · ' + String(e.note).slice(0, 60) : ''}`,
         go: () => {
           if (e.target_status && resolveTid(e) !== null && typeof openTarget === 'function') return openTarget(resolveTid(e));
           map.setView([e.lat, e.lon], Math.max(map.getZoom(), 16));
           const mk = logMarkers[e.id]; if (mk) setTimeout(() => mk.openPopup(), 350);
-        } });
+        } };
     });
-    const places = [];
-    if (!coord && q.length >= 3) {
-      const pc = placeCache[rawQ];
-      if (pc && pc.hits) pc.hits.forEach(h => places.push({ kind: 'place', name: h.name, sub: h.sub, go: () => window.ffDropPin(h.lat, h.lng, h.name) }));
-      if (!pc) { clearTimeout(placeTimer); if (navigator.onLine !== false) placeTimer = setTimeout(() => lookupPlaces(rawQ), 650); }
-    }
-    const score = e => { const n = e.name.toLowerCase();
-      return n === q ? 0 : n.startsWith(q) ? 1 : n.replace(/^#\d+\s*/, '').startsWith(q) ? 1 : n.includes(q) ? 2 : e.sub.toLowerCase().includes(q) ? 3 : 9; };
     const local = idx.map(e => [score(e), e]).filter(([s]) => s < 9)
       .sort((a, b) => a[0] - b[0] || ORDER[a[1].kind] - ORDER[b[1].kind] || a[1].name.localeCompare(b[1].name))
-      .slice(0, 30).map(([, e]) => e);
-    const hits = [...extra.filter(e => e.kind === 'coords'), ...extra.filter(e => e.kind === 'saved'), ...local, ...places];
+      .slice(0, 30).map(([s, e]) => ({ ...e, s }));
+    // places and addresses, nearest first, each with its distance and town
+    let places = [], pc = null;
+    if (!coord) {
+      pc = placeCache[rawQ];
+      if (!pc && scheduledQ !== rawQ) {
+        clearTimeout(placeTimer); scheduledQ = rawQ;
+        placeTimer = setTimeout(() => { scheduledQ = null; if (qEl.value.trim() === rawQ) lookupPlaces(rawQ); }, 250);
+      }
+      const me = biasPoint();
+      places = ((pc && pc.hits) || []).map(h => ({ h, d: map.distance(me, [h.lat, h.lng]) })).sort((a, b) => a.d - b.d).map(({ h, d }) => ({
+        kind: h.kind, name: h.name, keepOpen: h.kind === 'street' && !!h.num,
+        sub: [distWords(d), h.what, h.town].filter(Boolean).join(' · '),
+        go: h.kind === 'street'
+          ? (h.num ? () => { qEl.value = `${h.num} ${h.street} `; qEl.focus(); runSearch(); }
+                   : () => { if (h.bounds) map.fitBounds(h.bounds, { padding: [30, 30], maxZoom: 16 }); else window.ffDropPin(h.lat, h.lng, h.name); })
+          : () => window.ffDropPin(h.lat, h.lng, h.name) }));
+    }
+    const exact = [...saved, ...local.filter(e => e.kind === 'target')].filter(e => e.s <= 1).sort((a, b) => a.s - b.s || a.name.localeCompare(b.name));
+    const rest = [...saved, ...local].filter(e => !exact.includes(e));
+    const hits = [...coordRows, ...exact, ...places, ...rest];
     let tail = '';
-    if (!coord && q.length >= 3) {
-      const pc = placeCache[rawQ];
-      tail = navigator.onLine === false ? '<li class="ff-none">Address / place search needs internet. Coordinates and saved points work offline.</li>'
-        : (!pc || pc.pending) ? '<li class="ff-none">Searching addresses and places…</li>'
-        : pc.failed ? '<li class="ff-none">Address / place search unavailable (no signal?). Coordinates and saved points still work offline.</li>'
-        : !pc.hits.length ? '<li class="ff-none">No addresses or places found.</li>' : '';
+    if (!coord) {
+      tail = (!pc || pc.pending) ? '<li class="ff-none">Searching places and addresses…</li>'
+        : (!places.length && !exact.length) ? (online ? (pc.failed ? '<li class="ff-none">Place search is unavailable right now. Coordinates and saved points still work.</li>'
+              : '<li class="ff-none">No places or addresses found. Press Enter to try a wider search.</li>')
+            : '<li class="ff-none">No saved places match. Download the offline map on Wi-Fi to search places with no signal.</li>')
+        : '';
     }
     resEl.innerHTML = (hits.length ? hits.map((e, i) =>
-      `<li data-i="${i}" role="button" tabindex="0"><span class="ff-kind">${e.kind}</span><b>${html(e.name)}</b><small>${html(e.sub)}</small></li>`).join('')
-      : (tail ? '' : `<li class="ff-none">${idxReady ? 'No match' : 'Loading names…'}</li>`)) + tail;
+      `<li data-i="${i}" role="button" tabindex="0"${hits.length === 1 ? ' class="ff-one"' : ''}><span class="ff-kind">${e.kind}</span><b>${html(e.name)}</b><small>${html(e.sub || '')}</small></li>`).join('')
+      : (tail ? '' : `<li class="ff-none">${idxReady ? 'No match' : 'Loading names…'}</li>`)) + (hits.length === 1 && !tail ? '' : tail);
     resEl.hidden = false;
-    const choose = li => { const e = hits[+li.dataset.i]; if (!e) return; resEl.hidden = true; qEl.blur(); stopFollow(true); e.go(); };
+    const choose = li => { const e = hits[+li.dataset.i]; if (!e) return; if (!e.keepOpen) { resEl.hidden = true; qEl.blur(); } stopFollow(true); e.go(); };
     resEl.querySelectorAll('li[data-i]').forEach(li => {
       li.onclick = () => choose(li);
       li.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); choose(li); } };
     });
   }
   qEl.addEventListener('focus', () => { buildIndex().then(runSearch); });
-  qEl.addEventListener('input', () => { if (!idxReady) buildIndex().then(runSearch); runSearch(); });
-  qEl.addEventListener('keydown', ev => {
+  qEl.addEventListener('input', () => { abortLookup(); if (!idxReady) buildIndex().then(runSearch); runSearch(); });
+  qEl.addEventListener('keydown', async ev => {
     if (ev.key === 'Escape') { resEl.hidden = true; qEl.blur(); }
-    if (ev.key === 'Enter' && !resEl.hidden) { const first = resEl.querySelector('li[data-i]'); if (first) { ev.preventDefault(); first.click(); } }
+    if (ev.key !== 'Enter' || resEl.hidden) return;
+    ev.preventDefault();
+    const raw = qEl.value.trim();
+    const top = resEl.querySelector('li[data-i] .ff-kind'), topKind = top ? top.textContent : '';
+    if (raw.length >= 3 && !parseCoords(raw) && navigator.onLine !== false && !['coords', 'saved', 'target'].includes(topKind)) {           // Photon found nothing: only now ask Nominatim
+      clearTimeout(placeTimer); scheduledQ = null;
+      const pc = placeCache[raw]; try { await (pc ? pc.promise : lookupPlaces(raw)); } catch (_) {}
+      const cur = placeCache[raw];
+      if (cur && !cur.pending && cur.photonN === 0 && !cur.nominatimTried && !cur.hits.some(h => h.kind === 'place' || h.kind === 'address')) {
+        cur.nominatimTried = true;
+        try { cur.hits = dedupeHits([...cur.hits, ...await nominatimSearch(raw)]); } catch (_) {}
+        if (qEl.value.trim() === raw) runSearch();
+      }
+    }
+    const first = resEl.querySelector('li[data-i]'); if (first) first.click();
   });
+
   document.addEventListener('click', ev => { if (!ev.target.closest('#ff-search')) resEl.hidden = true; });
 
   /* ======================================================== 5. DOWNLOAD SAFETY */
@@ -1141,7 +1356,13 @@
     let busy = false;
     new MutationObserver(() => {
       if (dlBtn.disabled) { busy = true; return; }
-      if (busy) { busy = false; fsLoad(true).then(g => toast(`Forest Service land saved for offline (${g.features.length} parcels)`, 2400)).catch(() => {}); }
+      if (busy) {
+        busy = false;
+        fsLoad(true).then(g => toast(`Forest Service land saved for offline (${g.features.length} parcels)`, 2400)).catch(() => {})
+          .then(() => (typeof window.ffPlacesFetch === 'function' ? window.ffPlacesFetch() : null))
+          .then(n => { if (n) toast(`Places list saved for offline search (${n.toLocaleString()} places)`, 2600); })
+          .catch(e => toast('Places list not saved: ' + e.message + ' — it will retry the next time you download', 3200));
+      }
     }).observe(dlBtn, { attributes: true, attributeFilter: ['disabled'] });
   }
 
@@ -2010,14 +2231,14 @@
     const om = lsJSON('kyOffline'), fm = lsJSON(FS_META), pm = lsJSON('ff_places_meta');
     let st = null; try { st = window.FFRoads ? await window.FFRoads.status() : null; } catch (_) {}
     const roadsReady = !!(st && st.ready);
-    const roadsOld = roadsReady && (Date.now() - st.savedAt > ROADS_MAX_AGE || (st.version || 1) < 2);
+    const roadsOld = roadsReady && (Date.now() - st.savedAt > ROADS_MAX_AGE || (st.version || 1) < 3);
     const row = (k, v, warn) => `<div class="ff-dates-row"><span>${k}</span><b${warn ? ' class="ff-old"' : ''}>${v}</b></div>`;
     datesBox.innerHTML = '<b>Saved on this phone</b>' +
       row('Topo tiles', dstr(om && om.date) || 'not saved') +
       row('Roads', roadsReady ? (dstr(st.savedAt) || 'saved') + (roadsOld ? ' — refresh advised' : '') : 'not saved', roadsOld) +
       row('Forest Service land', dstr(fm && fm.fetched) || 'not saved') +
       row('Places list', dstr(pm && pm.fetched) ? `${dstr(pm.fetched)} · ${(+pm.count || 0).toLocaleString()} places` : 'not saved') +
-      (roadsOld ? `<small class="ff-sub">${(st.version || 1) < 2 ? 'Roads were saved in an older format without one-way streets or street addresses. ' : 'Roads are more than 6 months old. '}Refreshing downloads them again (about a minute on Wi-Fi).</small><button type="button" id="ff-refresh-roads" class="wide-btn">Refresh roads</button>` : '');
+      (roadsOld ? `<small class="ff-sub">${(st.version || 1) < 3 ? 'Roads were saved in an older format without one-way streets or street addresses. ' : 'Roads are more than 6 months old. '}Refreshing downloads them again (about a minute on Wi-Fi).</small><button type="button" id="ff-refresh-roads" class="wide-btn">Refresh roads</button>` : '');
     const rb = document.getElementById('ff-refresh-roads');
     if (rb) rb.onclick = () => downloadRoads();
   }

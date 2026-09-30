@@ -274,3 +274,6 @@ body.ff-covered #ff-banner{ opacity:0; pointer-events:none; }
 #ff-offline-dates .ff-dates-row b{ text-align:right; font-weight:650; }
 #ff-offline-dates .ff-old{ color:#f5df85; }
 #ff-offline-dates .wide-btn{ margin-top:6px; }
+
+/* a single search result is highlighted; Enter picks it */
+#ff-res li.ff-one{ background:rgba(59,140,255,.22); outline:2px solid rgba(59,140,255,.7); outline-offset:-2px; }

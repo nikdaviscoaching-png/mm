@@ -112,9 +112,24 @@
       const id = nodes.length; nodes.push(p); bucket(key(p[0], p[1])).push(id); return id;
     }
 
-    let seen = 0;
+    // Property names come back in whatever case the server uses, so look them up case-insensitively.
+    let keyMap = {};
+    const gp = (props, name) => {
+      if (props[name] !== undefined) return props[name];                       // exact name (the normal case)
+      const lk = name.toLowerCase();
+      if (keyMap[lk] === undefined || props[keyMap[lk]] === undefined) {       // otherwise find it ignoring case
+        keyMap[lk] = undefined;
+        for (const k of Object.keys(props)) if (k.toLowerCase() === lk) { keyMap[lk] = k; break; }
+      }
+      return keyMap[lk] === undefined ? undefined : props[keyMap[lk]];
+    };
+    const text = v => (v == null ? '' : String(v).trim());
+    const posNum = v => { const x = Number(v); return Number.isFinite(x) && x > 0 ? Math.round(x) : 0; };
+    const parity = v => { const c = text(v).charAt(0).toUpperCase(); return c === 'E' ? 'E' : c === 'O' ? 'O' : 'B'; };   // even / odd / both (or unknown)
+    let seen = 0, addrEdges = 0;
     for (const f of features || []) {
-      const props = f.properties || {};
+      const props0 = f.properties || {};
+      const props = new Proxy(props0, { get: (t, k) => (typeof k === 'string' ? gp(t, k) : undefined) });
       for (const raw of linesOf(f.geometry)) {
         const c = cleanLine(raw); if (c.length < 2) continue;
         const d = lineLength(c); if (!(d > 1)) continue;
@@ -132,6 +147,17 @@
           c,
         };
         if (ow === 'FT' || ow === 'TF') e.o = ow;
+        // street name (full, as written on a mailing label) and the house-number ranges on each side
+        const full = [props.St_PreDir, props.St_Name, props.St_PosTyp, props.St_PosDir].map(text).filter(Boolean).join(' ');
+        const lname = text(props.LSt_Name);
+        if (full) e.sn = full.slice(0, 80);
+        if (lname && lname.toLowerCase() !== full.toLowerCase()) e.ln = lname.slice(0, 80);
+        const fl = posNum(props.FromAddr_L), tl = posNum(props.ToAddr_L), fr = posNum(props.FromAddr_R), tr = posNum(props.ToAddr_R);
+        if (fl || tl) { e.fl = fl; e.tl = tl; e.pl = parity(props.Parity_L); }
+        if (fr || tr) { e.fr = fr; e.tr = tr; e.pr = parity(props.Parity_R); }
+        if (fl || tl || fr || tr) addrEdges++;
+        const cl = text(props.PostComm_L), cr = text(props.PostComm_R), zl = text(props.PostCode_L).slice(0, 5), zr = text(props.PostCode_R).slice(0, 5);
+        if (cl) e.cl = cl.slice(0, 40); if (cr) e.cr = cr.slice(0, 40); if (zl) e.zl = zl; if (zr) e.zr = zr;
         edges.push(e);
       }
       seen++;
@@ -153,28 +179,33 @@
     const connectedPct = nodes.length ? +(100 * largest / nodes.length).toFixed(1) : 0;
 
     return {
-      id: GRAPH_ID, version: 2, savedAt: Date.now(), source: 'Kentucky 911 Road Centerlines',
-      box: BOX, featureCount: features.length, nodes, edges, connectedPct,
+      id: GRAPH_ID, version: 3, savedAt: Date.now(), source: 'Kentucky 911 Road Centerlines',
+      box: BOX, featureCount: features.length, nodes, edges, connectedPct, addrEdges,
     };
   }
 
+  const FIELDS_BASE = 'OBJECTID,LSt_Name,St_Name,RoadClass,SpeedLimit,OneWay';
+  const FIELDS_ADDR = FIELDS_BASE + ',St_PreDir,St_PosTyp,St_PosDir,FromAddr_L,ToAddr_L,FromAddr_R,ToAddr_R,Parity_L,Parity_R,PostComm_L,PostComm_R,PostCode_L,PostCode_R';
   async function fetchRoads(progress) {
     if (navigator.onLine === false) throw new Error('Connect to the internet once to download the road network');
-    const features = []; let complete = false;
+    const features = []; let complete = false, fields = FIELDS_ADDR;
     for (let offset = 0, page = 0; page < 100; page++, offset += PAGE) {
       const q = new URLSearchParams({
         where: '1=1', geometry: BOX.join(','), geometryType: 'esriGeometryEnvelope', inSR: '4326',
         spatialRel: 'esriSpatialRelIntersects',
-        outFields: 'OBJECTID,LSt_Name,St_Name,RoadClass,SpeedLimit,OneWay',
+        outFields: fields,
         returnGeometry: 'true', outSR: '4326', geometryPrecision: '5', maxAllowableOffset: '0.00002',
         orderByFields: 'OBJECTID', resultOffset: String(offset), resultRecordCount: String(PAGE), f: 'geojson'
       });
       const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 20000);
-      let r;
+      let r, j;
       try { r = await fetch(API + '?' + q.toString(), { mode: 'cors', cache: 'no-store', signal: ctl.signal }); }
       finally { clearTimeout(timer); }
+      if (r.ok) j = await r.json();
+      if ((!r.ok || j.error) && fields !== FIELDS_BASE && page === 0) {     // a field name the server does not know: keep the roads, drop the addresses
+        fields = FIELDS_BASE; page = -1; offset = -PAGE; continue;
+      }
       if (!r.ok) throw new Error(`road server returned ${r.status}`);
-      const j = await r.json();
       if (j.error) throw new Error(j.error.message || 'road server error');
       const got = Array.isArray(j.features) ? j.features : [];
       features.push(...got);
@@ -375,9 +406,122 @@
     };
   }
 
+  /* ------------------------------------------------------------------ offline addresses
+     Street names and house-number ranges come from the same Kentucky 911 download. An
+     address like "412 Main St Irvine" is found by matching the street, choosing the
+     road segment whose range (on the side with the right odd/even parity) holds the
+     number, interpolating along that segment, and stepping ~12 m to that side. */
+  const ABBR = { st: 'street', str: 'street', rd: 'road', ave: 'avenue', av: 'avenue', dr: 'drive', ln: 'lane', ct: 'court', cir: 'circle',
+    blvd: 'boulevard', hwy: 'highway', pkwy: 'parkway', pl: 'place', trl: 'trail', ter: 'terrace', terr: 'terrace', n: 'north', s: 'south',
+    e: 'east', w: 'west', ne: 'northeast', nw: 'northwest', se: 'southeast', sw: 'southwest' };
+  const DIRW = new Set(['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest']);
+  const tokensOf = str => String(str || '').toLowerCase().replace(/[.,'#]/g, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).map(t => ABBR[t] || t);
+  function coreKey(tokens) {                              // "N Main St" and "Main Street" are the same street
+    const t = tokens.slice();
+    while (t.length > 1 && DIRW.has(t[0])) t.shift();
+    while (t.length > 1 && DIRW.has(t[t.length - 1])) t.pop();
+    return t.join(' ');
+  }
+  function addrIndex(P) {
+    if (P.addr) return P.addr;
+    const map = new Map();
+    P.graph.edges.forEach((e, i) => {
+      const seenKeys = new Set();
+      for (const nm of [e.sn, e.ln, e.n]) {
+        if (!nm) continue;
+        const k = coreKey(tokensOf(nm)); if (!k || seenKeys.has(k)) continue; seenKeys.add(k);
+        let ent = map.get(k); if (!ent) map.set(k, ent = { key: k, display: e.sn || e.ln || e.n, edges: [] });
+        ent.edges.push(i);
+      }
+    });
+    return (P.addr = { map, keys: [...map.keys()].sort() });
+  }
+  function pointAlong(c, dist) {                         // [lon, lat] and the direction of travel there, in local metres (east, north)
+    let acc = 0;
+    for (let k = 1; k < c.length; k++) {
+      const seg = hav(c[k - 1][0], c[k - 1][1], c[k][0], c[k][1]);
+      if (acc + seg >= dist || k === c.length - 1) {
+        const t = seg ? Math.max(0, Math.min(1, (dist - acc) / seg)) : 0;
+        const kx = 111320 * Math.cos(rad(c[k - 1][1])), ky = 110540;
+        const ux = (c[k][0] - c[k - 1][0]) * kx, uy = (c[k][1] - c[k - 1][1]) * ky, ul = Math.hypot(ux, uy) || 1;
+        return { lon: c[k - 1][0] + t * (c[k][0] - c[k - 1][0]), lat: c[k - 1][1] + t * (c[k][1] - c[k - 1][1]), ux: ux / ul, uy: uy / ul, kx, ky };
+      }
+      acc += seg;
+    }
+    return { lon: c[0][0], lat: c[0][1], ux: 1, uy: 0, kx: 111320 * Math.cos(rad(c[0][1])), ky: 110540 };
+  }
+  function edgeMid(e) { const m = e.c[e.c.length >> 1]; return m; }
+  function nearestOf(P, ids, near) {                       // the edge in `ids` closest to `near` ([lat, lon])
+    if (!near) return ids[0];
+    let best = ids[0], bd = Infinity;
+    for (const i of ids) { const m = edgeMid(P.graph.edges[i]), d = hav(near[1], near[0], m[0], m[1]); if (d < bd) { bd = d; best = i; } }
+    return best;
+  }
+  function streetRow(P, ent, near, num) {
+    const e = P.graph.edges[nearestOf(P, ent.edges, near)], m = edgeMid(e);
+    const town = e.cl || e.cr || '';
+    const same = ent.edges.map(i => P.graph.edges[i]).filter(x => (x.cl || x.cr || '') === town);
+    let w = 180, s = 90, ea = -180, n = -90;
+    same.forEach(x => x.c.forEach(q => { if (q[0] < w) w = q[0]; if (q[0] > ea) ea = q[0]; if (q[1] < s) s = q[1]; if (q[1] > n) n = q[1]; }));
+    return { name: ent.display, town, lat: m[1], lng: m[0], bounds: [[s, w], [n, ea]], num: num || null };
+  }
+  // Returns { addresses: [{name, town, lat, lng}], streets: [{name, town, lat, lng, bounds, num}] }
+  async function geocode(query, opts) {
+    const out = { addresses: [], streets: [] };
+    const g = await stored(); if (!g || !g.edges.length) return out;
+    const P = prep(g), idx = addrIndex(P), near = opts && opts.near ? [opts.near.lat, opts.near.lng] : null, limit = (opts && opts.limit) || 6;
+    const mm = String(query || '').trim().match(/^(\d{1,6})\s+(.+)$/);
+    const num = mm ? +mm[1] : null, rest = mm ? mm[2] : String(query || '').trim();
+    const comma = rest.indexOf(','), streetText = comma >= 0 ? rest.slice(0, comma) : rest, townText = comma >= 0 ? rest.slice(comma + 1) : '';
+    const tokens = tokensOf(streetText); if (!tokens.length) return out;
+    let key = null, townTokens = tokensOf(townText);
+    for (let k = tokens.length; k >= 1; k--) {              // longest run of words that is a known street; the rest is town / ZIP
+      const cand = coreKey(tokens.slice(0, k));
+      if (idx.map.has(cand)) { key = cand; if (!townTokens.length) townTokens = tokens.slice(k); break; }
+    }
+    if (key && num !== null) {
+      let ids = idx.map.get(key).edges;
+      const tt = townTokens.join(' '), zip = /^\d{5}$/.test(tt) ? tt : '';
+      if (tt) {
+        const ok = i => { const e = g.edges[i]; return zip ? (e.zl === zip || e.zr === zip)
+          : [e.cl, e.cr].some(c => c && tokensOf(c).join(' ').startsWith(tt)); };
+        const f = ids.filter(ok); if (f.length) ids = f;
+      }
+      const found = [];
+      for (const i of ids) {
+        const e = g.edges[i];
+        for (const side of ['l', 'r']) {
+          const f = e['f' + side], t = e['t' + side], par = e['p' + side];
+          if (!(f > 0 || t > 0)) continue;
+          const lo = Math.min(...[f, t].filter(x => x > 0)), hi = Math.max(f, t);
+          if (num < lo || num > hi) continue;
+          if ((par === 'E' && num % 2) || (par === 'O' && !(num % 2))) continue;
+          const frac = f > 0 && t > 0 && f !== t ? Math.max(0, Math.min(1, (num - f) / (t - f))) : 0.5;
+          const at = pointAlong(e.c, frac * lineLength(e.c));
+          const sign = side === 'l' ? 1 : -1;                                           // left of the direction of travel, or right
+          const lat = at.lat + sign * at.ux * 12 / at.ky, lon = at.lon + sign * -at.uy * 12 / at.kx;
+          found.push({ name: `${num} ${idx.map.get(key).display}`, town: (side === 'l' ? e.cl || e.cr : e.cr || e.cl) || '',
+            lat: +lat.toFixed(6), lng: +lon.toFixed(6) });
+        }
+      }
+      if (near) found.sort((a, b) => hav(near[1], near[0], a.lng, a.lat) - hav(near[1], near[0], b.lng, b.lat));
+      const seenPt = new Set();
+      out.addresses = found.filter(x => { const k = x.lat.toFixed(4) + ',' + x.lng.toFixed(4); if (seenPt.has(k)) return false; seenPt.add(k); return true; }).slice(0, limit);
+    }
+    // street-name suggestions while typing (words that START a street name or one of its words)
+    const prefix = coreKey(tokens);
+    if (prefix.length >= 2 || key) {
+      const keys = idx.keys.filter(k => k.startsWith(prefix) || k.split(' ').some(w => w.startsWith(prefix)));
+      const rows = keys.slice(0, 60).map(k => streetRow(P, idx.map.get(k), near, num));
+      if (near) rows.sort((a, b) => hav(near[1], near[0], a.lng, a.lat) - hav(near[1], near[0], b.lng, b.lat));
+      out.streets = rows.slice(0, limit);
+    }
+    return out;
+  }
+
   async function status() {
     const g = await stored();
-    return g ? { ready: true, version: g.version || 1, savedAt: g.savedAt, featureCount: g.featureCount, nodes: g.nodes.length, edges: g.edges.length, connectedPct: g.connectedPct, source: g.source }
+    return g ? { ready: true, version: g.version || 1, hasAddresses: !!(g.addrEdges > 0), savedAt: g.savedAt, featureCount: g.featureCount, nodes: g.nodes.length, edges: g.edges.length, connectedPct: g.connectedPct, source: g.source }
       : { ready: false };
   }
 
@@ -392,5 +536,5 @@
   }
 
   // read-only access to the saved graph (used by the offline road highlighter)
-  root.FFRoads = { graph: stored, download, route, status, clear, buildGraph, _hav: hav, source: API, box: BOX };
+  root.FFRoads = { graph: stored, download, route, geocode, status, clear, buildGraph, _hav: hav, source: API, box: BOX };
 })(typeof window !== 'undefined' ? window : globalThis);
