@@ -89,13 +89,7 @@ window.copyText = copyText;
 let suppressMapClick = false;
 let lastLongPress = 0;                       // time a long-press pin was dropped (its release must not open the coordinate popup)
 window.ffJustLongPressed = () => Date.now() - lastLongPress < 900;
-map.on('click', e => {
-  if (window.ffJustLongPressed()) return;
-  if (suppressMapClick) { suppressMapClick = false; return; }
-  L.popup().setLatLng(e.latlng)
-    .setContent(`<strong>${coordText(e.latlng)}</strong><br><span style="opacity:.7">Long-press to drop a pin</span>`)
-    .openOn(map);
-});
+// A plain tap on empty map does nothing (no popup): most taps are just navigating. Long-press drops a pin.
 
 let pressTimer = null, pressLatLng = null;
 map.on('mousedown touchstart', e => {
