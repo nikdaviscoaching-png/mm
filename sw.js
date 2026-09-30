@@ -1,4 +1,4 @@
-const CACHE = 'mineral-maps-ky-agate-v3';
+const CACHE = 'mineral-maps-ky-agate-v4';
 const TILE_CACHE = 'mm-ky-topo-tiles-v1';
 // Things the user downloaded (Forest Service land, offline places list). Deliberately
 // NOT versioned, so an app update never deletes them. Keep the name in sync with app.js.
