@@ -266,3 +266,11 @@ body.ff-covered #ff-banner{ opacity:0; pointer-events:none; }
 .ff-spin i{ position:absolute; left:11px; top:10px; width:8px; height:8px; border-radius:50%; background:#fff; }
 .ff-spin::after{ content:""; position:absolute; left:13px; bottom:0; width:4px; height:4px; border-radius:50%; background:rgba(0,0,0,.45); }
 .ff-pin-pop .btns{ margin-top:6px; }
+
+/* saved-on dates in the offline section */
+#ff-offline-dates{ display:flex; flex-direction:column; gap:3px; }
+#ff-offline-dates .ff-dates-row{ display:flex; justify-content:space-between; gap:10px; font-size:12.5px; }
+#ff-offline-dates .ff-dates-row span{ opacity:.8; }
+#ff-offline-dates .ff-dates-row b{ text-align:right; font-weight:650; }
+#ff-offline-dates .ff-old{ color:#f5df85; }
+#ff-offline-dates .wide-btn{ margin-top:6px; }

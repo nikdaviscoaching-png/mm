@@ -311,7 +311,7 @@
 
   async function status() {
     const g = await stored();
-    return g ? { ready: true, savedAt: g.savedAt, featureCount: g.featureCount, nodes: g.nodes.length, edges: g.edges.length, connectedPct: g.connectedPct, source: g.source }
+    return g ? { ready: true, version: g.version || 1, savedAt: g.savedAt, featureCount: g.featureCount, nodes: g.nodes.length, edges: g.edges.length, connectedPct: g.connectedPct, source: g.source }
       : { ready: false };
   }
 

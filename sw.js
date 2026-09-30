@@ -1,5 +1,9 @@
 const CACHE = 'mineral-maps-ky-agate-v3';
 const TILE_CACHE = 'mm-ky-topo-tiles-v1';
+// Things the user downloaded (Forest Service land, offline places list). Deliberately
+// NOT versioned, so an app update never deletes them. Keep the name in sync with app.js.
+const USER_CACHE = 'mm-ky-user-data';
+const USER_FILES = /land_fs_ownership\.geojson|places_ky\.json/;
 const SHELL = [
   './index.html',
   './states/kentucky/map/index.html',
@@ -37,9 +41,22 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(
-    keys.filter(k => k !== CACHE && k !== TILE_CACHE).map(k => caches.delete(k))
-  )).then(() => self.clients.claim()));
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    const user = await caches.open(USER_CACHE);
+    for (const k of keys) {
+      if (k === CACHE || k === TILE_CACHE || k === USER_CACHE) continue;
+      // before an old app cache is deleted, rescue user downloads that older versions kept inside it
+      try {
+        const old = await caches.open(k);
+        for (const req of await old.keys()) {
+          if (USER_FILES.test(req.url) && !(await user.match(req))) { const r = await old.match(req); if (r) await user.put(req, r); }
+        }
+      } catch (_) {}
+      await caches.delete(k);
+    }
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', event => {

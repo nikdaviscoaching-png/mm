@@ -1027,12 +1027,12 @@
   const FS_KEY = new URL('data/land_fs_ownership.geojson', (window.location && window.location.href) || document.baseURI).href;   // cache key only
   const FS_BOX = [-84.65, 37.20, -83.15, 38.10];                                   // study area w,s,e,n
   let fsGeo = null, fsLayer = null;
+  const FS_META = 'ff_fs_meta';                        // {fetched} - so the "saved on" date needs no big file read
+  const userCache = () => caches.open(typeof USER_CACHE !== 'undefined' ? USER_CACHE : 'mm-ky-user-data');
+  function fsNote(g) { try { localStorage.setItem(FS_META, JSON.stringify({ fetched: g.properties && g.properties.fetched })); } catch (_) {} }
 
-  async function fsLoad(allowNetwork) {
-    if (fsGeo) return fsGeo;
-    try { const c = await caches.open(typeof DATA_CACHE !== 'undefined' ? DATA_CACHE : 'mineral-maps-ky-agate-v3');
-          const hit = await c.match(FS_KEY); if (hit) { fsGeo = await hit.json(); return fsGeo; } } catch (_) {}
-    if (!allowNetwork || navigator.onLine === false) throw new Error('not saved yet');
+  // Fetch the parcels from the Forest Service and save them. Nothing is replaced unless the whole download worked.
+  async function fsFetch() {
     const feats = []; let offset = 0;
     for (let page = 0; page < 20; page++) {
       const q = new URLSearchParams({
@@ -1048,11 +1048,32 @@
       if (got.length < 2000 && !(gj.properties && gj.properties.exceededTransferLimit) && !gj.exceededTransferLimit) break;
       offset += got.length;
     }
-    fsGeo = { type: 'FeatureCollection', properties: { source: 'USDA Forest Service Basic Ownership (EDW)', fetched: new Date().toISOString(),
+    if (!feats.length) throw new Error('the server returned no parcels');
+    const g = { type: 'FeatureCollection', properties: { source: 'USDA Forest Service Basic Ownership (EDW)', fetched: new Date().toISOString(),
       note: 'Forest Service owned parcels only. Not a legal survey. State land, WMAs and parks are not included.' }, features: feats };
-    try { const c = await caches.open(typeof DATA_CACHE !== 'undefined' ? DATA_CACHE : 'mineral-maps-ky-agate-v3');
-          await c.put(FS_KEY, new Response(JSON.stringify(fsGeo), { headers: { 'Content-Type': 'application/geo+json' } })); } catch (_) {}
-    return fsGeo;
+    try { const c = await userCache();
+          await c.put(FS_KEY, new Response(JSON.stringify(g), { headers: { 'Content-Type': 'application/geo+json' } })); } catch (_) {}
+    fsGeo = g; fsNote(g);
+    return g;
+  }
+  async function fsLoad(allowNetwork) {
+    if (fsGeo) return fsGeo;
+    try {
+      const c = await userCache(); let hit = await c.match(FS_KEY);
+      if (!hit && typeof DATA_CACHE !== 'undefined') {                    // saved by an older version inside the versioned cache
+        const legacy = await (await caches.open(DATA_CACHE)).match(FS_KEY);
+        if (legacy) { hit = legacy; c.put(FS_KEY, legacy.clone()).catch(() => {}); }
+      }
+      if (hit) { fsGeo = await hit.json(); fsNote(fsGeo); return fsGeo; }
+    } catch (_) {}
+    if (!allowNetwork || navigator.onLine === false) throw new Error('not saved yet');
+    return fsFetch();
+  }
+  async function fsRefresh() {                       // replaces the saved copy; keeps the old one on any failure
+    const old = fsGeo; let g;
+    try { g = await fsFetch(); } catch (e) { fsGeo = old; throw e; }
+    if (fsLayer) { fsLayer.clearLayers(); fsLayer.addData(g); }
+    return g;
   }
   function pointInFS(lat, lon) {
     if (!fsGeo) return null;
@@ -1937,6 +1958,7 @@
       `<br>Storage protection: ${persisted === true ? 'on' : persisted === false ? 'not granted by the browser (on iPhone, use the Home Screen app)' : 'checking'}` +
       `<br>Off-phone backup: ${meta.lastBackup ? ago(meta.lastBackup) : 'never'}${pending ? ` · ${pending} change${pending === 1 ? '' : 's'} since` : ' · up to date'}` +
       `<br>Offline map: ${mapReady ? 'ready' : 'not fully saved — use Download above'}${roads ? ' · roads saved' : ' · roads not saved'}`;
+    if (typeof window.ffUpdateOfflineDates === 'function') window.ffUpdateOfflineDates();
     // online with un-backed-up changes: one gentle reminder per session
     if (online && saveOk && pending >= 3 && !nagged && (!meta.lastBackup || Date.now() - meta.lastBackup > 6 * 3600 * 1000)) {
       nagged = true; setTimeout(() => toast('You have signal — tap “Data saved” at the top to back up field data off the phone', 4200), 1500);
@@ -1952,6 +1974,47 @@
   }
   setInterval(updateDataStatus, 60000);
   updateDataStatus();
+
+  /* =================================== 19. SAVED-ON DATES + AUTOMATIC REFRESH */
+  // The offline section says when each piece was saved. Land and the places list are
+  // refreshed by themselves when online and older than 30 days. Roads are big, so they
+  // only get a "Refresh roads" button (never an automatic download) once they are over
+  // 6 months old or were saved in an older format.
+  const DAY_MS = 86400000, EXTRAS_MAX_AGE = 30 * DAY_MS, ROADS_MAX_AGE = 183 * DAY_MS;
+  const datesBox = document.createElement('div'); datesBox.id = 'ff-offline-dates'; datesBox.className = 'status-box';
+  if (dlBtn) dlBtn.insertAdjacentElement('afterend', datesBox);
+  const dmy = t => (t && Number.isFinite(+t) ? new Date(+t) : (t ? new Date(t) : null));
+  const dstr = t => { const d = dmy(t); return d && !isNaN(d) ? d.toLocaleDateString() : null; };
+  function lsJSON(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (_) { return null; } }
+  async function updateOfflineDates() {
+    if (!datesBox) return;
+    const om = lsJSON('kyOffline'), fm = lsJSON(FS_META), pm = lsJSON('ff_places_meta');
+    let st = null; try { st = window.FFRoads ? await window.FFRoads.status() : null; } catch (_) {}
+    const roadsReady = !!(st && st.ready);
+    const roadsOld = roadsReady && (Date.now() - st.savedAt > ROADS_MAX_AGE || (st.version || 1) < 2);
+    const row = (k, v, warn) => `<div class="ff-dates-row"><span>${k}</span><b${warn ? ' class="ff-old"' : ''}>${v}</b></div>`;
+    datesBox.innerHTML = '<b>Saved on this phone</b>' +
+      row('Topo tiles', dstr(om && om.date) || 'not saved') +
+      row('Roads', roadsReady ? (dstr(st.savedAt) || 'saved') + (roadsOld ? ' — refresh advised' : '') : 'not saved', roadsOld) +
+      row('Forest Service land', dstr(fm && fm.fetched) || 'not saved') +
+      row('Places list', dstr(pm && pm.fetched) ? `${dstr(pm.fetched)} · ${(+pm.count || 0).toLocaleString()} places` : 'not saved') +
+      (roadsOld ? `<small class="ff-sub">${(st.version || 1) < 2 ? 'Roads were saved in an older format without one-way streets or street addresses. ' : 'Roads are more than 6 months old. '}Refreshing downloads them again (about a minute on Wi-Fi).</small><button type="button" id="ff-refresh-roads" class="wide-btn">Refresh roads</button>` : '');
+    const rb = document.getElementById('ff-refresh-roads');
+    if (rb) rb.onclick = () => downloadRoads();
+  }
+  window.ffUpdateOfflineDates = updateOfflineDates;
+  async function autoRefreshExtras() {
+    if (navigator.onLine === false) return;
+    try {                                                    // Forest Service land: only if it was saved before
+      let fetched = (lsJSON(FS_META) || {}).fetched;
+      if (!fetched) { try { await fsLoad(false); fetched = fsGeo.properties.fetched; } catch (_) {} }   // saved by an older version
+      if (fetched && Date.now() - Date.parse(fetched) > EXTRAS_MAX_AGE) { await fsRefresh(); toast('Forest Service land refreshed', 1800); updateOfflineDates(); }
+    } catch (_) { /* keeps the saved copy */ }
+    if (typeof window.ffPlacesAutoRefresh === 'function') window.ffPlacesAutoRefresh(EXTRAS_MAX_AGE);
+  }
+  setTimeout(autoRefreshExtras, 6000);
+  window.addEventListener('online', () => setTimeout(autoRefreshExtras, 2000));
+  updateOfflineDates();
 
   // restore a saved route when the app opens
   try { const saved = JSON.parse(localStorage.getItem(ROUTE_KEY) || 'null'); if (saved) { route = { ...saved, offline: !!saved.coords }; drawRoute(); } } catch (_) {}

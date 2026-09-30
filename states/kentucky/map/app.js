@@ -8,7 +8,8 @@ const STUDY_BOUNDS = L.latLngBounds([37.20, -84.65], [38.10, -83.15]);
 const TARGET_BOUNDS = L.latLngBounds([37.45, -84.30], [37.85, -83.70]);
 const DATA = 'data/';
 const TILE_CACHE = 'mm-ky-topo-tiles-v1';
-const DATA_CACHE = 'mineral-maps-ky-agate-v3';
+const DATA_CACHE = 'mineral-maps-ky-agate-v3';        // app shell + core data; must equal CACHE in sw.js (its version changes with each release)
+const USER_CACHE = 'mm-ky-user-data';                  // Forest Service land, places list: never versioned, never deleted by an update (same name in sw.js)
 const TOPO_URL = 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}';
 const COLORS = { 'TOP PRIORITY': '#e3342f', 'STRONG TARGET': '#f28c28', 'MODERATE TARGET': '#f5d327' };
 
@@ -37,8 +38,11 @@ L.control.scale({ position: 'bottomleft', metric: true, imperial: true }).addTo(
 const canvasLines = L.canvas({ pane: 'lines', padding: 0.3 });
 const canvasPts = L.canvas({ pane: 'pts', padding: 0.3 });
 
+// Zoom-12 topo stretched underneath the main topo layer. The saved tile cache always has
+// the low zooms, so an area with no close-up tiles saved shows a blurry map, not grey.
+const topoBackdrop = L.tileLayer(TOPO_URL, { maxZoom: 19, maxNativeZoom: 12, attribution: '', crossOrigin: 'anonymous', zIndex: 1 });
 const basemaps = {
-  topo: L.tileLayer(TOPO_URL, { maxZoom: 19, maxNativeZoom: 16, attribution: 'USGS National Map', crossOrigin: 'anonymous' }),
+  topo: L.tileLayer(TOPO_URL, { maxZoom: 19, maxNativeZoom: 16, attribution: 'USGS National Map', crossOrigin: 'anonymous', zIndex: 2 }),
   imagery: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 19, attribution: 'Esri World Imagery'
   }),
@@ -46,11 +50,14 @@ const basemaps = {
     maxZoom: 19, attribution: 'Esri, HERE, Garmin, FAO, NOAA, USGS'
   })
 };
+topoBackdrop.addTo(map);
 let currentBase = basemaps.topo.addTo(map);
 function setBasemap(name) {
   const next = basemaps[name];
   if (!next || next === currentBase) return;
   map.removeLayer(currentBase); next.addTo(map); currentBase = next;
+  if (next === basemaps.topo) { if (!map.hasLayer(topoBackdrop)) topoBackdrop.addTo(map); }
+  else if (map.hasLayer(topoBackdrop)) map.removeLayer(topoBackdrop);
 }
 document.querySelectorAll('input[name="basemap"]').forEach(input => input.addEventListener('change', () => setBasemap(input.value)));
 
@@ -513,7 +520,10 @@ function showStatus() {
   let m = null;
   try { m = JSON.parse(localStorage.getItem('kyOffline') || 'null'); } catch (_) { try { localStorage.removeItem('kyOffline'); } catch (_) {} }
   if (!('caches' in window)) { statusEl.className = 'status-box warn'; statusEl.textContent = 'This browser cannot store offline maps.'; return; }
-  if (m && m.verified && m.app === undefined) {
+  if (m && m.needsRecheck) {
+    statusEl.className = 'status-box';
+    statusEl.innerHTML = '<b>Offline map: re-checking after an app update…</b><br>Verifying what is stored on this phone' + (navigator.onLine === false ? '. No signal, so the data refresh waits until you are online.' : ' and refreshing the data files.');
+  } else if (m && m.verified && m.app === undefined) {
     // saved by an older version that did not check the app code or the offline worker
     statusEl.className = 'status-box warn';
     statusEl.innerHTML = `<b>Offline map data verified — app code not checked</b><br>${m.tilesOk}/${m.tiles} topo tiles and ${m.dataOk}/${m.data} data files on ${new Date(m.date).toLocaleString()}. Press download again on Wi-Fi to also save and check the app itself.`;
@@ -583,7 +593,7 @@ document.getElementById('dl-btn').addEventListener('click', async () => {
     statusEl.textContent = 'Verifying stored app code…';
     let appOk = 0;
     for (const f of APP_FILES) { if (await storedFileOk(dc, APP_ROOT + f, f)) appOk++; else appMissing.push(f.split('/').pop()); }
-    const m = { date: Date.now(), mode, tiles: tiles.length, tilesOk, data: DATA_FILES.length, dataOk, dataMissing,
+    const m = { date: Date.now(), cache: DATA_CACHE, mode, tiles: tiles.length, tilesOk, data: DATA_FILES.length, dataOk, dataMissing,
       app: APP_FILES.length, appOk, appMissing, swOk: sw.ok, swMsg: sw.msg,
       verified: tilesOk === tiles.length && dataOk === DATA_FILES.length && appOk === APP_FILES.length && sw.ok };
     try { localStorage.setItem('kyOffline', JSON.stringify(m)); } catch (_) {}
@@ -593,6 +603,70 @@ document.getElementById('dl-btn').addEventListener('click', async () => {
   btn.disabled = false;
 });
 showStatus();
+
+// ---------- app update: re-check the offline copy, then refresh it when online ----------
+// The offline worker's cache name changes with each release (DATA_CACHE / CACHE in sw.js).
+// A download made under an older name is re-verified against what is really stored, and
+// the data files are re-fetched (cache:'reload' skips the browser's HTTP cache).
+function readOffline() { try { return JSON.parse(localStorage.getItem('kyOffline') || 'null'); } catch (_) { return null; } }
+function writeOffline(m) { try { localStorage.setItem('kyOffline', JSON.stringify(m)); } catch (_) {} }
+async function refreshCoreFiles() {
+  const dc = await caches.open(DATA_CACHE), base = new URL(DATA, location.href).href;
+  const jobs = [...DATA_FILES.map(f => [base + f, f]), ...APP_FILES.map(f => [APP_ROOT + f, f])];
+  let i = 0, got = 0;
+  async function worker() {
+    while (i < jobs.length) {
+      const [u, name] = jobs[i++];
+      try {
+        const r = await fetch(u, { cache: 'reload' });
+        if (!r.ok) continue;
+        if (/\.json$/i.test(name) || /\.geojson$/i.test(name)) JSON.parse(await r.clone().text());   // never replace good data with a broken download
+        await dc.put(u, r); got++;
+      } catch (_) { /* keep the copy already stored */ }
+    }
+  }
+  await Promise.all(Array.from({ length: 4 }, worker));
+  return got;
+}
+let rechecking = null;
+function recheckOffline() {
+  if (rechecking) return rechecking;
+  rechecking = (async () => {
+    let m = readOffline(); if (!m || !('caches' in window)) return;
+    const was = m.cache || 'mineral-maps-ky-agate-v3';      // downloads made before this field existed came from v3
+    if (was === DATA_CACHE && !m.needsRecheck && !m.refreshPending) return;
+    m.needsRecheck = true; writeOffline(m); showStatus();
+    try {
+      const sw = await swCheck(true);
+      let refreshed = false;
+      if (navigator.onLine !== false) { try { await refreshCoreFiles(); refreshed = true; } catch (_) {} }
+      const dc = await caches.open(DATA_CACHE), tc = await caches.open(TILE_CACHE), base = new URL(DATA, location.href).href;
+      const tiles = await tileList(m.mode || 'top');
+      let tilesOk = 0;
+      for (let k = 0; k < tiles.length; k += 60) {
+        const hits = await Promise.all(tiles.slice(k, k + 60).map(t => tc.match(tileURL(t))));
+        tilesOk += hits.filter(r => r && r.ok).length;
+      }
+      const dataMissing = [], appMissing = []; let dataOk = 0, appOk = 0;
+      for (const f of DATA_FILES) {
+        const r = await dc.match(base + f); let ok = false;
+        if (r && r.ok) { try { await r.clone().json(); ok = true; } catch (_) {} }
+        if (ok) dataOk++; else dataMissing.push(f);
+      }
+      for (const f of APP_FILES) { if (await storedFileOk(dc, APP_ROOT + f, f)) appOk++; else appMissing.push(f.split('/').pop()); }
+      m = { ...m, cache: DATA_CACHE, needsRecheck: false, refreshPending: !refreshed, checked: Date.now(),
+        tiles: tiles.length, tilesOk, data: DATA_FILES.length, dataOk, dataMissing, app: APP_FILES.length, appOk, appMissing, swOk: sw.ok, swMsg: sw.msg,
+        verified: tilesOk === tiles.length && dataOk === DATA_FILES.length && appOk === APP_FILES.length && sw.ok };
+      writeOffline(m); showStatus();
+      showToast(m.verified ? 'Offline map re-checked after the update' : 'Offline map needs a fresh download — see Layers', 3200);
+    } catch (e) {
+      const cur = readOffline() || m; cur.needsRecheck = false; writeOffline(cur); showStatus();
+    }
+  })().finally(() => { rechecking = null; });
+  return rechecking;
+}
+window.addEventListener('online', () => { const m = readOffline(); if (m && m.refreshPending) recheckOffline(); });
+setTimeout(recheckOffline, 3000);
 
 // ---------- start ----------
 (async () => {
