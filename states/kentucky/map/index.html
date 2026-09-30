@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#11130f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mineral Maps">
+<title>Mineral Maps Kentucky · Agate prospecting</title>
+<link rel="manifest" href="../../../shared/brand/manifest.json">
+<link rel="apple-touch-icon" href="../../../shared/brand/apple-touch-icon-180.png">
+<link rel="icon" type="image/png" href="../../../shared/brand/favicon-32.png">
+<meta name="author" content="Nik Davis">
+<link rel="stylesheet" href="../../../vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="field.css">
+</head>
+<body>
+<div id="app">
+  <div id="map"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <img src="../../../shared/brand/mineral-maps-icon-192.png" alt="" class="brand-icon">
+      <div>
+        <div class="brand-title">Mineral Maps</div>
+        <div class="brand-subtitle">Kentucky agate · Nada/Renfro targets</div>
+      </div>
+    </div>
+    <button id="menu-btn" class="icon-btn" type="button" aria-label="Map settings">☰</button>
+  </header>
+
+  <div class="map-actions">
+    <button id="list-btn" class="action-btn" type="button">≡ Targets</button>
+    <button id="locate-btn" class="action-btn" type="button">◎ Locate</button>
+    <button id="center-btn" class="action-btn" type="button">⌖ Area</button>
+  </div>
+
+  <aside id="panel" class="panel" aria-hidden="true">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Map settings</div>
+        <div class="panel-subtitle">Layers, legend, offline</div>
+      </div>
+      <button id="close-btn" class="icon-btn dark" type="button" aria-label="Close">×</button>
+    </div>
+
+    <section class="panel-section">
+      <h2>Basemap</h2>
+      <label><input type="radio" name="basemap" value="topo" checked> USGS Topo</label>
+      <label><input type="radio" name="basemap" value="imagery"> Satellite imagery</label>
+      <label><input type="radio" name="basemap" value="streets"> Street map</label>
+    </section>
+
+    <section class="panel-section">
+      <h2>Offline</h2>
+      <div id="offline-status" class="status-box">Checking offline status…</div>
+      <label class="inline"><input type="radio" name="dlset" value="top" checked> Top + Strong reaches (zoom 16)</label>
+      <label class="inline"><input type="radio" name="dlset" value="all"> All 120 ranked reaches (zoom 15; Top+Strong 16)</label>
+      <button id="dl-btn" class="wide-btn" type="button">Download topo + all map data for offline</button>
+      <div id="ff-road-status" class="status-box">Checking offline roads…</div>
+      <button id="ff-road-dl" class="wide-btn" type="button">Download roads for true offline routing</button>
+      <p class="muted small">All geology, crossing and target data are stored on the device. USGS Topo tiles are downloaded only when you press the first button. The road download saves Kentucky 911 road centerlines for this map area so “Route here” can calculate a blue road-following line with no signal. Routing is a navigation aid and may include private or restricted roads, so verify access. Satellite imagery and hillshade stay online-only.</p>
+    </section>
+
+    <section class="panel-section" id="research-layer-slot">
+      <h2>Prospecting</h2>
+      <label><input type="checkbox" data-layer="top" checked><span class="sw dot red"></span>Top priority targets</label>
+      <label><input type="checkbox" data-layer="strong" checked><span class="sw dot orange"></span>Strong targets</label>
+      <label><input type="checkbox" data-layer="moderate" checked><span class="sw dot yellow"></span>Moderate targets</label>
+      <label><input type="checkbox" data-layer="valid"><span class="sw dot grey"></span>All valid crossings (unranked)</label>
+      <h2 class="sub">Field interpretation</h2>
+      <label><input type="checkbox" data-layer="source" checked><span class="sw thick"></span>Source crossing zone</label>
+      <label><input type="checkbox" data-layer="primary" checked><span class="sw solid"></span>Primary search reach</label>
+      <label><input type="checkbox" data-layer="extended" checked><span class="sw dotted"></span>Optional extended reach</label>
+      <label><input type="checkbox" data-layer="contact" checked><span class="sw cyan"></span>Target contact (top of Nada / base of Renfro)</label>
+      <h2 class="sub">Evidence</h2>
+      <label><input type="checkbox" data-layer="documented"><span class="sw star">★</span>Documented occurrences (technical)</label>
+      <label><input type="checkbox" data-layer="reports"><span class="sw star hollow">☆</span>Collector / secondary reports</label>
+      <label><input type="checkbox" data-layer="kgsarea"><span class="sw area"></span>KGS general agate area</label>
+      <h2 class="sub">Geology</h2>
+      <label><input type="checkbox" data-layer="targetunits"><span class="sw fillgreen"></span>Target-bearing Borden polygons</label>
+      <label><input type="checkbox" data-layer="units"><span class="sw fillmulti"></span>Formations (simplified)</label>
+      <label><input type="checkbox" data-layer="othercontacts"><span class="sw greydash"></span>Other Borden-top contacts (not used)</label>
+      <label><input type="checkbox" data-layer="faults"><span class="sw fault"></span>Faults</label>
+      <label><input type="checkbox" data-layer="quads"><span class="sw quad"></span>7.5′ quadrangle boundaries</label>
+      <h2 class="sub">Terrain &amp; drainage</h2>
+      <label><input type="checkbox" data-layer="streams" checked><span class="sw blue"></span>Streams (NHD)</label>
+      <label><input type="checkbox" data-layer="named"><span class="sw bluebold"></span>Named streams only (labels on tap)</label>
+      <label><input type="checkbox" data-layer="hillshade"><span class="sw hs"></span>Hillshade (online only)</label>
+      <label><input type="checkbox" data-layer="counties"><span class="sw county"></span>County boundaries</label>
+    </section>
+
+    <section class="panel-section">
+      <h2>Legend</h2>
+      <div class="legend">
+        <div><span class="sw dot red"></span>Top priority · <span class="sw dot orange"></span>Strong · <span class="sw dot yellow"></span>Moderate</div>
+        <div><span class="sw thick"></span>Source zone: where the stream crosses the target horizon</div>
+        <div><span class="sw solid"></span>Primary reach: walk this first (solid)</div>
+        <div><span class="sw dotted"></span>Extended reach: optional, farther downstream (dotted)</div>
+        <div><span class="sw cyan"></span>Verified contact · <span class="sw cyandash"></span>Probable equivalent (dashed)</div>
+        <div><span class="sw star">★</span>Documented technical occurrence · <span class="sw star hollow">☆</span>Collector report</div>
+        <div class="muted small">Scores (0–100) rank crossings relative to each other. They are not probabilities. Colored reach and dot share the target's priority color.</div>
+      </div>
+    </section>
+
+    <section class="panel-section">
+      <h2>Field use</h2>
+      <p class="muted">Tap the map for coordinates (4 decimals ≈ 10 m; the 1:24,000 contacts themselves are only good to roughly ±15–40 m). Long-press to copy. Tap a target for its evidence. Locate uses device GPS.</p>
+      <p class="muted small"><a href="../../../docs/index.html" target="_blank">Methodology, quadrangle table, sources and limitations</a></p>
+    </section>
+
+    <section class="panel-section ff-credit">
+      <img src="../../../shared/brand/mineral-maps-icon-192.png" alt="Mineral Maps logo" width="56" height="56">
+      <div><div class="ff-credit-name">Mineral Maps</div><div class="ff-credit-by">Created by Nik Davis</div></div>
+    </section>
+  </aside>
+  <div id="scrim" class="scrim"></div>
+
+  <aside id="sheet" class="sheet" aria-hidden="true">
+    <div class="sheet-head">
+      <div class="panel-title">Ranked targets</div>
+      <button id="sheet-close" class="icon-btn dark" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="sheet-controls">
+      <select id="sort-sel" aria-label="Sort">
+        <option value="rank">Sort: rank</option>
+        <option value="county">County</option>
+        <option value="quad">Quadrangle</option>
+        <option value="priority">Priority</option>
+        <option value="conf">Geological confidence</option>
+        <option value="L_prim_km">Upstream contact exposure</option>
+        <option value="relief_1km_m">Relief</option>
+        <option value="DA_prim_km2">Drainage size (small first)</option>
+        <option value="prim_len_m">Distance source → walk start</option>
+        <option value="near">Distance from me (GPS)</option>
+      </select>
+      <select id="filter-sel" aria-label="Filter">
+        <option value="all">All 120</option>
+        <option value="TOP PRIORITY">Top only</option>
+        <option value="STRONG TARGET">Strong only</option>
+        <option value="MODERATE TARGET">Moderate only</option>
+        <option value="unchecked">Not checked yet</option>
+        <option value="checked">Checked / marked</option>
+      </select>
+    </div>
+    <div id="target-list" class="target-list"></div>
+  </aside>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</div>
+<script src="../../../vendor/leaflet/leaflet.js"></script>
+<script src="app.js"></script>
+<script src="road_router.js"></script>
+<script src="field.js"></script>
+</body>
+</html>

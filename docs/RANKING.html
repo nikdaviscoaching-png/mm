@@ -1,0 +1,119 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ranking methodology & calibration</title><style>body{font:15px/1.55 -apple-system,Segoe UI,sans-serif;background:#11130f;color:#f0eee6;max-width:980px;margin:0 auto;padding:18px}a{color:#d2b46e}table{border-collapse:collapse;font-size:12.5px;display:block;overflow-x:auto}td,th{border:1px solid #3a3d35;padding:4px 6px;vertical-align:top}th{background:#23261f}h1{font-size:22px}h2{font-size:18px;margin-top:26px}code{background:#262922;padding:1px 4px;border-radius:4px}nav a{display:inline-block;margin:0 10px 6px 0}</style><nav><a href="FIELD_PLAN.html">Field plan — where to start</a><a href="WHY_THIS_BELT.html">Why this belt</a><a href="METHODOLOGY.html">Methodology</a><a href="QUADRANGLE_TABLE.html">Quadrangle interpretation table</a><a href="RANKING.html">Ranking methodology & calibration</a><a href="RANKED_TARGETS.html">Ranked target list</a><a href="AUDITS.html">Geology, GIS and prospecting audits</a><a href="SOURCES.html">Sources</a><a href="LIMITATIONS.html">Limitations</a><a href="../states/kentucky/map/index.html">← Map</a></nav><h1>Ranking methodology</h1>
+<p>Scores rank valid crossings <strong>relative to each other</strong>. They are not probabilities of finding agate.</p>
+<pre>\text{score} = 100 \times G \times (0.25S + 0.20D + 0.10E + 0.15I + 0.10T + 0.20R)</pre>
+
+<table>
+<thead>
+<tr>
+<th>Input</th>
+<th>Weight</th>
+<th>Formula (clipped 0–1)</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>G, geology gate</td>
+<td>multiplier</td>
+<td>VERIFIED 1.00; VERIFIED combined-top 0.95; PROBABLE 0.85; others excluded</td>
+<td>Correct geology is mandatory</td>
+</tr>
+<tr>
+<td>S, source supply</td>
+<td>0.25</td>
+<td>ln(1+L)/ln(41), L = km of target contact upstream of the primary-reach end</td>
+<td>More exposed horizon means more float; log scale for diminishing returns</td>
+</tr>
+<tr>
+<td>D, concentration</td>
+<td>0.20</td>
+<td>min(1, (L/A)/6) × (1 − 0.35 × Pennsylvanian share) × size penalty (A &gt; 25 km²: down to 0.4 at 200 km²)</td>
+<td>Dilution by non-target sediment and big-river transport</td>
+</tr>
+<tr>
+<td>E, erosion</td>
+<td>0.10</td>
+<td>(mean slope on upstream contact − 12°)/20°</td>
+<td>Steep contact slopes shed fresh nodules</td>
+</tr>
+<tr>
+<td>I, incision/relief</td>
+<td>0.15</td>
+<td>0.5 × (relief₁ₖₘ − 80)/140 + 0.5 × incision/40</td>
+<td>Deep hollows keep the horizon exposed</td>
+</tr>
+<tr>
+<td>T, transport/gradient</td>
+<td>0.10</td>
+<td>1.0 for 0.3–4%; tapering to 0.4 above 12%; 0.5 below 0.3%</td>
+<td>Moderate gradients hold gravel bars</td>
+</tr>
+<tr>
+<td>R, regional evidence</td>
+<td>0.20</td>
+<td>Inside KGS agate outline 1.0; ≤5 km 0.75; ≤15 km 0.5; else 0.3</td>
+<td>Facies belt with documented silica. Partly encodes collecting history, so it is tested in WHY_THIS_BELT.md</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Not scored:</strong> fault proximity (no source links agate to faults), crossing angle, collector reports, access, famous names.</p>
+<p><strong>Tiers:</strong> after de-duplication, ranks 1–10 are TOP PRIORITY (red), 11–40 STRONG TARGET (orange) and 41–120 MODERATE TARGET (yellow). All other valid crossings are VALID LOWER-PRIORITY CROSSING (grey).</p>
+<p>Every input and every raw metric is stored with each point (<code>datasets/ranked_targets.csv</code>, <code>datasets/valid_crossings_scored.csv</code>), so any score can be recomputed by hand.</p>
+<h2>Calibration against documented localities (not used in scoring)</h2>
+<p>For valid crossings within 1.5 km of each technical locality:</p>
+<table>
+<thead>
+<tr>
+<th>Locality</th>
+<th>Crossings within 1.5 km</th>
+<th>Best percentile</th>
+<th>Median percentile</th>
+<th>Best rank</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>KSPG Stop 6B (silica geodes, Big Hill)</td>
+<td>41</td>
+<td>top 0.3%</td>
+<td>8.1%</td>
+<td>4</td>
+</tr>
+<tr>
+<td>Dever 95 Drip Rock (quartz bodies)</td>
+<td>25</td>
+<td>1.6%</td>
+<td>6.5%</td>
+<td>14</td>
+</tr>
+<tr>
+<td>Dever 83 Bighill (geodiferous basal Renfro)</td>
+<td>28</td>
+<td>2.7%</td>
+<td>15.7%</td>
+<td>18</td>
+</tr>
+<tr>
+<td>Dever 89 Rock Lick Creek (mineralized Renfro)</td>
+<td>30</td>
+<td>4.0%</td>
+<td>9.4%</td>
+<td>33</td>
+</tr>
+<tr>
+<td>Dever 87 Owsley Fork</td>
+<td>17</td>
+<td>7.9%</td>
+<td>17.8%</td>
+<td>none ranked separately (reaches shared with nearby ranked targets)</td>
+</tr>
+<tr>
+<td>Dever 74 / 75 (non-target geodes, contrast)</td>
+<td>0</td>
+<td>—</td>
+<td>—</td>
+<td>correctly no valid crossings</td>
+</tr>
+</tbody>
+</table>
+<p>Percentile = the share of the 5,421 valid crossings that score higher. The best crossing near each documented locality falls in the top 0.3–8% of the population, and the medians are well above the population median. The contrast localities in the non-target Muldraugh/Salem-Warsaw interval have no valid crossings, as they should. This is partly circular for localities inside the KGS outline (they receive R = 1), but without R the best crossing near each locality is still in the top 0.4–13% (KSPG 6B 0.4%, Drip Rock 1.6%, Bighill 4.6%, Rock Lick 7.0%, Owsley Fork 13.0%), with medians of 8–30%. S, D, E and I carry most of the signal.</p>

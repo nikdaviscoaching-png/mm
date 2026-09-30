@@ -1,0 +1,268 @@
+/* Field tools (added Sept 2026) — styled to match the dark research shell */
+#ff-readout{
+  /* sits under the search box, clear of the right-hand action buttons */
+  position:fixed; z-index:870; left:12px; top:calc(env(safe-area-inset-top, 0px) + 122px);
+  max-width:calc(100vw - 24px); padding:7px 12px; border-radius:999px; box-sizing:border-box;
+  background:rgba(20,22,18,.86); color:var(--ink,#eee); border:1px solid var(--line,#444);
+  font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); pointer-events:none;
+}
+#locate-btn.ff-on{ background:#2586ff; color:#fff; }
+#locate-btn.ff-wait{ opacity:.7; }
+#ff-sheet{ z-index:885; }
+.ff-body{ padding:8px 14px 18px; overflow-y:auto; height:calc(100% - 52px); -webkit-overflow-scrolling:touch; }
+.ff-form{ display:grid; gap:8px; }
+.ff-form select, .ff-form input[type=text], .ff-form textarea{
+  width:100%; box-sizing:border-box; padding:9px 10px; border-radius:9px; font-size:15px;
+  background:#262922; color:var(--ink,#eee); border:1px solid var(--line,#444); font-family:inherit;
+}
+.ff-photo-btn{ display:inline-block; padding:9px 12px; border-radius:9px; border:1px dashed var(--line,#555); text-align:center; cursor:pointer; }
+.ff-photo{ max-width:100%; max-height:190px; border-radius:8px; display:block; margin:6px 0; object-fit:cover; }
+.ff-where{ font-size:11.5px; opacity:.75; }
+.ff-tools{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0 4px; }
+.ff-tools button, .ff-act button{
+  flex:1; padding:8px; border-radius:9px; border:1px solid var(--line,#444); background:#262922; color:var(--ink,#eee); font-size:12.5px;
+}
+.ff-meter{ font-size:11px; opacity:.7; margin:6px 0 10px; }
+.ff-empty{ font-size:12.5px; opacity:.75; }
+.ff-item{ display:flex; gap:10px; align-items:flex-start; padding:9px 0; border-top:1px solid var(--line,#333); }
+.ff-item img{ width:54px; height:54px; object-fit:cover; border-radius:7px; flex:none; }
+.ff-dot{ width:14px; height:14px; border-radius:50%; flex:none; margin:4px 20px; box-shadow:0 0 0 2px #fff; }
+.ff-txt{ flex:1; min-width:0; font-size:13px; }
+.ff-txt small{ opacity:.75; }
+.ff-note{ display:block; margin-top:2px; opacity:.85; }
+.ff-act{ display:flex; gap:6px; flex:none; }
+.ff-act button{ flex:none; padding:6px 9px; }
+.ff-pin{ width:18px; height:18px; border-radius:50%; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.5);
+  font-size:9px; line-height:14px; text-align:center; }
+.ff-pop p{ margin:6px 0; }
+
+/* search */
+#ff-search{ position:fixed; z-index:890; left:12px; right:12px; top:calc(env(safe-area-inset-top,0px) + 74px); }
+@media (min-width:760px){ #ff-search{ left:16px; right:auto; width:360px; } }
+#ff-q{ width:100%; box-sizing:border-box; padding:10px 12px; border-radius:12px; font-size:15px;
+  background:rgba(17,19,15,.90); color:var(--ink,#eee); border:1px solid rgba(255,255,255,.13);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); -webkit-appearance:none; }
+#ff-res{ list-style:none; margin:6px 0 0; padding:4px; max-height:52vh; overflow-y:auto; border-radius:12px;
+  background:var(--panel,rgba(20,22,18,.97)); border:1px solid var(--line,#444); box-shadow:0 10px 30px rgba(0,0,0,.4); }
+#ff-res li{ padding:9px 10px; border-radius:8px; cursor:pointer; display:grid; gap:1px; }
+#ff-res li:hover{ background:rgba(255,255,255,.06); }
+#ff-res li b{ font-size:14px; } #ff-res li small{ font-size:11.5px; opacity:.7; }
+.ff-kind{ float:right; font-size:10px; text-transform:uppercase; letter-spacing:.05em; opacity:.55; }
+.ff-none{ opacity:.7; cursor:default; }
+
+
+/* secondary text inside injected layer labels should sit below the label text */
+.panel-section label{ flex-wrap:wrap; }
+.panel-section label .ff-sub{ flex-basis:100%; margin:3px 0 0 28px; font-size:11px; opacity:.7; line-height:1.35; }
+
+/* Menifee (?) layer */
+.ff-men-top{ width:22px; height:22px; border-radius:50%; background:#a855f7; color:#fff; border:2px solid #fff;
+  font:700 10px/18px system-ui,sans-serif; text-align:center; box-shadow:0 1px 5px rgba(0,0,0,.5); box-sizing:border-box; }
+#ff-men-label .ff-sub{ margin-top:2px; }
+.ff-tab{ width:100%; font-size:11.5px; margin:6px 0; border-collapse:collapse; }
+.ff-tab td{ padding:2px 4px 2px 0; vertical-align:top; } .ff-tab td:first-child{ opacity:.7; white-space:nowrap; }
+.ff-warn{ font-size:11px; opacity:.8; border-left:3px solid #a855f7; padding-left:7px; margin:6px 0; }
+/* step aside while a panel or sheet is open */
+body.ff-covered #ff-search, body.ff-covered #ff-readout{ opacity:0; pointer-events:none; }
+#ff-search, #ff-readout{ transition:opacity .15s ease; }
+
+/* =====================================================================
+   Layers you can watch change (phones)
+   The ☰ panel was a full-height drawer 91% of the screen wide with the rest
+   dimmed, so toggling a layer showed nothing until you closed it. On phones it
+   is now a bottom sheet over the lower half, the map stays bright and pannable
+   above it, and the handle expands it when you want to read the legend.
+   ===================================================================== */
+@media (max-width: 759px) {
+  .panel{
+    top:auto; left:0; right:0; bottom:0; width:auto; height:52vh; max-height:52vh;
+    border-radius:18px 18px 0 0; transform:translateY(104%);
+    padding:0 16px max(16px, env(safe-area-inset-bottom));
+    box-shadow:0 -14px 36px rgba(0,0,0,.35); transition:transform .22s ease, height .22s ease, max-height .22s ease;
+  }
+  .panel.open{ transform:translateY(0); }
+  .panel.ff-tall{ height:88vh; max-height:88vh; }
+  .scrim.show{ background:transparent; pointer-events:none; }       /* map stays visible and usable */
+  .ff-grip{ position:sticky; top:0; z-index:2; margin:0 -16px 6px; padding:8px 0 6px; background:var(--panel);
+    display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; }
+  .ff-grip i{ width:40px; height:5px; border-radius:3px; background:rgba(255,255,255,.28); }
+  .ff-grip span{ font-size:10.5px; opacity:.55; letter-spacing:.03em; }
+  /* keep the zoom buttons and actions above the sheet while it is open */
+  body.ff-panel-open .map-actions{ bottom:calc(52vh + 12px); transition:bottom .22s ease; }
+  body.ff-panel-open .leaflet-bottom{ bottom:52vh; }
+  body.ff-panel-open.ff-panel-tall .map-actions, body.ff-panel-open.ff-panel-tall .leaflet-bottom{ opacity:0; pointer-events:none; }
+}
+@media (min-width: 760px) {
+  .scrim.show{ background:rgba(0,0,0,.06); }                         /* barely dim, so changes are visible */
+}
+
+/* install / offline helpers */
+#ff-banner{
+  position:fixed; z-index:960; left:12px; right:12px; bottom:max(16px, calc(env(safe-area-inset-bottom) + 10px));
+  padding:12px 40px 12px 14px; border-radius:14px; font-size:13px; line-height:1.4;
+  background:rgba(20,22,18,.97); color:var(--ink,#eee); border:1px solid var(--line,#444); box-shadow:0 10px 30px rgba(0,0,0,.45);
+}
+#ff-banner b{ display:block; margin-bottom:2px; }
+#ff-banner button.x{ position:absolute; top:6px; right:6px; width:32px; height:32px; border:0; background:none; color:inherit; font-size:20px; }
+#ff-banner button.go{ margin-top:8px; padding:8px 12px; border-radius:10px; border:0; background:var(--accent,#4fb3a9); color:#111; font-weight:700; }
+@media (min-width:760px){ #ff-banner{ left:auto; width:360px; right:16px; } }
+#ff-net{ position:fixed; z-index:895; right:22px; top:calc(env(safe-area-inset-top,0px) + 81px);
+  padding:5px 10px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:.03em;
+  background:#6b4f12; color:#ffe7a8; border:1px solid rgba(255,231,168,.3); pointer-events:none; }
+body.ff-covered #ff-net{ opacity:0; }
+
+/* land status in popups */
+.ff-land{ margin-top:8px; padding-top:7px; border-top:1px solid rgba(255,255,255,.12); }
+.ff-land-tag{ display:inline-block; font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px; margin-bottom:5px; }
+.ff-land-tag.pub{ background:rgba(56,193,114,.2); color:#8ee6b0; border:1px solid rgba(56,193,114,.45); }
+.ff-land-tag.priv{ background:rgba(227,52,47,.15); color:#ffb4b1; border:1px solid rgba(227,52,47,.4); }
+.ff-land-tag.unk{ background:rgba(245,211,39,.12); color:#f5df85; border:1px solid rgba(245,211,39,.35); }
+.ff-land .btns{ display:flex; gap:6px; flex-wrap:wrap; }
+.ff-land .btns button{ min-height:44px; padding:8px 11px; border-radius:9px; border:1px solid rgba(255,255,255,.15); background:#262922; color:#f2f0e8; font-size:11.5px; }
+
+/* you-are-here dot with a heading cone (which way the phone points) */
+.ff-you{ position:relative; width:64px; height:64px; pointer-events:none; }
+.ff-you-dot{ position:absolute; left:50%; top:50%; width:16px; height:16px; margin:-8px 0 0 -8px; border-radius:50%;
+  background:#2586ff; border:3px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.25), 0 2px 6px rgba(0,0,0,.4); box-sizing:border-box; }
+.ff-cone{ position:absolute; left:0; top:0; width:64px; height:64px; opacity:0; transform-origin:50% 50%;
+  transition:opacity .3s ease; will-change:transform; }
+.ff-cone::before{ /* a soft wedge pointing up (north) before rotation */
+  content:""; position:absolute; left:50%; top:2px; width:0; height:0; margin-left:-15px;
+  border-left:15px solid transparent; border-right:15px solid transparent; border-bottom:30px solid rgba(37,134,255,.55);
+  filter:drop-shadow(0 0 2px rgba(255,255,255,.6)); }
+
+body.ff-offline #ff-q{ padding-right:150px; }
+@media (min-width:760px){ #ff-net{ right:auto; left:236px; } body.ff-offline #ff-q{ padding-right:150px; } }
+
+/* route bar */
+#ff-route{ position:fixed; z-index:872; left:12px; right:12px; top:calc(env(safe-area-inset-top,0px) + 162px);
+  display:flex; align-items:center; gap:8px; padding:8px 8px 8px 12px; border-radius:12px; box-sizing:border-box;
+  background:rgba(11,61,145,.92); color:#fff; border:1px solid rgba(255,255,255,.2); font-size:12.5px; line-height:1.35;
+  box-shadow:0 6px 20px rgba(0,0,0,.35); }
+#ff-route .ff-rtxt{ flex:1; min-width:0; }
+#ff-route button{ flex:none; width:42px; height:42px; border-radius:10px; border:0; background:rgba(255,255,255,.15); color:#fff; font-size:16px; }
+#ff-route .ff-saved{ background:rgba(255,255,255,.2); padding:1px 6px; border-radius:6px; font-size:11px; }
+@media (min-width:760px){ #ff-route{ right:auto; width:360px; } }
+body.ff-covered #ff-route{ opacity:0; pointer-events:none; }
+
+.ff-land .btns{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+
+/* ===================== production pass (Sept 25, 2026) ===================== */
+/* Author display rules (e.g. #ff-route{display:flex}) beat the browser's own
+   [hidden] rule, which left an empty blue route bar on screen. */
+[hidden]{ display:none !important; }
+
+/* While a popup is open, the floating search / GPS / route / offline bars and the
+   hint step aside so they never cover the popup's top. */
+body.ff-popup #ff-search, body.ff-popup #ff-readout, body.ff-popup #ff-route,
+body.ff-popup #ff-net, body.ff-popup #ff-banner{ opacity:0; pointer-events:none; }
+#ff-route, #ff-net, #ff-banner{ transition:opacity .15s ease; }
+body.ff-covered #ff-banner{ opacity:0; pointer-events:none; }
+/* keep the popup's own scroll area inside the space under the top bar */
+.leaflet-popup-content{ max-height:min(58vh, calc(100vh - 190px)); }
+
+/* first-run hint: bottom offset is set in JS to sit above both button stacks */
+#ff-banner{ overflow-y:auto; }
+
+/* location-permission help */
+#ff-lochelp{ position:fixed; z-index:1001; left:12px; right:12px; top:calc(env(safe-area-inset-top,0px) + 70px);
+  max-height:calc(100vh - env(safe-area-inset-top,0px) - 100px); overflow-y:auto;
+  padding:14px 14px 12px; border-radius:14px; font-size:13px; line-height:1.45;
+  background:rgba(20,22,18,.98); color:var(--ink,#eee); border:1px solid rgba(255,255,255,.18); box-shadow:0 12px 34px rgba(0,0,0,.5); }
+#ff-lochelp > b{ display:block; font-size:14.5px; margin-bottom:4px; }
+#ff-lochelp p{ margin:7px 0; }
+.ff-lh-btns{ display:flex; gap:8px; margin-top:10px; }
+.ff-lh-btns button{ flex:1; min-height:44px; border-radius:10px; font-weight:700; font-size:14px; border:1px solid rgba(255,255,255,.18); background:#262922; color:#f2f0e8; }
+.ff-lh-btns .go{ background:#2586ff; border-color:#2586ff; color:#fff; }
+@media (min-width:760px){ #ff-lochelp{ left:16px; right:auto; width:400px; } }
+
+/* ===================== follow-up (Sept 25, 2026) ===================== */
+/* Search: the results list inherited the page's default black text on the dark
+   panel. Light input with dark text; light text in the results. */
+#ff-search{ color:var(--ink,#f6f4ec); }
+#ff-q{ background:rgba(246,244,236,.97); color:#11130f; border-color:rgba(0,0,0,.25); caret-color:#11130f; }
+#ff-q::placeholder{ color:#5c5a52; opacity:1; }
+#ff-res, #ff-res li, #ff-res li b{ color:var(--ink,#f6f4ec); }
+#ff-res li small, .ff-kind{ color:#cfcdc2; opacity:1; }
+
+/* Map stays movable while the layer panel is open on tablets/desktop too
+   (phones already had this). Close the panel with its × button. */
+@media (min-width:760px){ .scrim.show{ background:transparent; pointer-events:none; } }
+
+/* Menifee (?) tiers */
+.ff-men-top.ff-men-best{ width:24px; height:24px; line-height:20px; background:#f0abfc; color:#3b0764; border:2px solid #fff; font-size:10.5px; }
+.ff-men-top.ff-men-good{ width:19px; height:19px; line-height:15px; background:#a855f7; color:#fff; border:2px solid #f3e8ff; font-size:9px; }
+.ff-men-tier{ margin:5px 0 4px; padding:5px 8px; border-radius:8px; font-size:11.5px; line-height:1.35; }
+.ff-men-tier span{ opacity:.9; }
+.ff-men-tier-best{ background:rgba(240,171,252,.18); border:1px solid rgba(240,171,252,.6); }
+.ff-men-tier-good{ background:rgba(168,85,247,.18); border:1px solid rgba(168,85,247,.55); }
+.ff-men-tier-maybe{ background:rgba(124,92,168,.16); border:1px solid rgba(124,92,168,.5); }
+.ff-men-tier-weak{ background:rgba(120,114,140,.14); border:1px dashed rgba(157,147,179,.5); }
+.panel-section label .ff-men-key{ display:grid; gap:4px; opacity:.9; }
+.ff-men-key span{ display:flex; align-items:center; gap:6px; }
+.ff-mk{ flex:none; display:inline-grid; place-items:center; border-radius:50%; font:700 8.5px/1 system-ui,sans-serif; font-style:normal; box-sizing:border-box; }
+.ff-mk.best{ width:18px; height:18px; background:#f0abfc; color:#3b0764; border:2px solid #fff; }
+.ff-mk.good{ width:16px; height:16px; background:#a855f7; color:#fff; border:1.5px solid #f3e8ff; font-size:7px; }
+.ff-mk.maybe{ width:9px; height:9px; margin:0 4.5px; background:#7c5ca8; border:1px solid #e9d5ff; }
+.ff-mk.weak{ width:6px; height:6px; margin:0 6px; background:#57506a; border:1px solid #9d93b3; opacity:.7; }
+
+/* ===================== final additions (Sept 25, 2026) ===================== */
+/* target marks on the map dot */
+.ff-tstat{ position:relative; width:100%; height:100%; }
+.ff-tstat .ff-tbadge{ position:absolute; right:-7px; top:-7px; width:15px; height:15px; border-radius:50%;
+  display:grid; place-items:center; font:800 9.5px/1 system-ui,sans-serif; border:1.5px solid #111; box-shadow:0 1px 3px rgba(0,0,0,.5); }
+.ff-tstat-tried .rank-icon{ opacity:.45; filter:grayscale(.6); }
+.ff-tstat-tried .ff-tbadge{ background:#e5e7eb; color:#111; }
+.ff-tstat-skip .rank-icon{ opacity:.3; filter:grayscale(1); }
+.ff-tstat-skip .ff-tbadge{ background:#4b5563; color:#fff; border-color:#e5e7eb; }
+.ff-tstat-found .rank-icon{ box-shadow:0 0 0 3px #ffe14d, 0 1px 6px rgba(0,0,0,.6); }
+.ff-tstat-found .ff-tbadge{ background:#ffe14d; color:#111; }
+/* notes block in target popups */
+.ff-tnotes{ margin-top:8px; padding-top:7px; border-top:1px solid rgba(255,255,255,.12); display:grid; gap:6px; }
+.ff-tnotes > b{ font-size:12px; color:#ded8c6; }
+.ff-tn-hist{ display:grid; gap:4px; font-size:11.5px; }
+.ff-tn-none{ opacity:.7; }
+.ff-tn-row{ position:relative; padding:5px 30px 5px 8px; border-radius:8px; background:rgba(255,255,255,.06); border-left:3px solid #e5e7eb; }
+.ff-tn-found{ border-left-color:#ffe14d; } .ff-tn-skip{ border-left-color:#6b7280; }
+.ff-tn-row span{ font-weight:700; }
+.ff-tn-note{ margin-top:2px; opacity:.9; white-space:pre-wrap; }
+.ff-tn-del{ position:absolute; right:4px; top:4px; width:24px; height:24px; border:0; border-radius:6px; background:rgba(255,255,255,.08); color:#ddd; font-size:11px; }
+.ff-tnotes textarea{ width:100%; box-sizing:border-box; padding:7px 8px; border-radius:8px; font:13px/1.35 inherit; font-family:inherit;
+  background:#262922; color:#f2f0e8; border:1px solid rgba(255,255,255,.15); resize:vertical; }
+.ff-tn-btns{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; }
+.ff-tn-btns button{ min-height:40px; padding:5px 4px; border-radius:8px; border:1px solid rgba(255,255,255,.15); background:#262922; color:#f2f0e8; font-size:11px; line-height:1.2; }
+.ff-tn-btns [data-s="find"]{ border-color:rgba(255,225,77,.5); }
+/* target list badges */
+.ff-tl{ display:inline-block; margin-left:4px; padding:1px 6px; border-radius:6px; font-size:10px; font-weight:700; vertical-align:1px; background:#e5e7eb; color:#111; }
+.ff-tl-find{ background:#ffe14d; } .ff-tl-skip{ background:#4b5563; color:#fff; }
+/* truck */
+#ff-truck-btn.ff-on{ background:#1f5130; border-color:rgba(142,230,176,.45); }
+.ff-truck{ width:30px; height:30px; border-radius:50%; background:#f6f4ec; border:2px solid #1f5130; display:grid; place-items:center;
+  font-size:16px; line-height:1; box-shadow:0 1px 6px rgba(0,0,0,.55); box-sizing:border-box; }
+.ff-rt-truck{ font-weight:800; color:#8ee6b0; }
+/* credit */
+.ff-credit{ display:flex; align-items:center; gap:12px; border-bottom:0; }
+.ff-credit img{ width:56px; height:56px; border-radius:12px; flex:none; }
+.ff-credit-name{ font-weight:760; font-size:14px; }
+.ff-credit-by{ margin-top:2px; font-size:12.5px; color:var(--muted,#b9b8ae); letter-spacing:.02em; }
+.ff-tn-top{ margin:6px 0 2px; padding:6px 8px; border-radius:8px; font-size:11.5px; line-height:1.35; background:rgba(229,231,235,.12); border-left:3px solid #e5e7eb; }
+.ff-tn-top.ff-tn-found{ background:rgba(255,225,77,.14); border-left-color:#ffe14d; }
+.ff-tn-top.ff-tn-skip{ background:rgba(107,114,128,.22); border-left-color:#9ca3af; }
+
+/* ===================== data safety + location search (Sept 25, 2026) ===================== */
+#ff-status{ pointer-events:auto; position:relative; margin-left:auto; margin-right:8px; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; gap:3px;
+  height:43px; padding:4px 10px; border-radius:13px; border:1px solid rgba(255,255,255,.13); background:rgba(17,19,15,.90); color:var(--ink,#f6f4ec);
+  font:700 10.5px/1.1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; text-align:left; white-space:nowrap;
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); box-shadow:0 4px 18px rgba(0,0,0,.2); -webkit-appearance:none; appearance:none; }
+#ff-status span{ display:block; }
+#ff-status .ok{ color:#8ee6b0; } #ff-status .warn{ color:#f5df85; } #ff-status .bad{ color:#ffb4b1; }
+#ff-status .ff-status-dot{ position:absolute; top:-3px; right:-3px; width:10px; height:10px; border-radius:50%; background:#3b8cff; border:2px solid #11130f; }
+@media (max-width:370px){ #ff-status{ padding:4px 7px; font-size:9.5px; } .brand-subtitle{ display:none; } }
+/* temporary search pin */
+.ff-spin{ position:relative; width:30px; height:40px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.55)); }
+.ff-spin::before{ content:""; position:absolute; left:3px; top:2px; width:24px; height:24px; border-radius:50% 50% 50% 0; transform:rotate(-45deg);
+  background:#ff3b30; border:3px solid #fff; box-sizing:border-box; }
+.ff-spin i{ position:absolute; left:11px; top:10px; width:8px; height:8px; border-radius:50%; background:#fff; }
+.ff-spin::after{ content:""; position:absolute; left:13px; bottom:0; width:4px; height:4px; border-radius:50%; background:rgba(0,0,0,.45); }
+.ff-pin-pop .btns{ margin-top:6px; }

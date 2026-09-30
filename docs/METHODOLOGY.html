@@ -1,0 +1,97 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Methodology</title><style>body{font:15px/1.55 -apple-system,Segoe UI,sans-serif;background:#11130f;color:#f0eee6;max-width:980px;margin:0 auto;padding:18px}a{color:#d2b46e}table{border-collapse:collapse;font-size:12.5px;display:block;overflow-x:auto}td,th{border:1px solid #3a3d35;padding:4px 6px;vertical-align:top}th{background:#23261f}h1{font-size:22px}h2{font-size:18px;margin-top:26px}code{background:#262922;padding:1px 4px;border-radius:4px}nav a{display:inline-block;margin:0 10px 6px 0}</style><nav><a href="FIELD_PLAN.html">Field plan — where to start</a><a href="WHY_THIS_BELT.html">Why this belt</a><a href="METHODOLOGY.html">Methodology</a><a href="QUADRANGLE_TABLE.html">Quadrangle interpretation table</a><a href="RANKING.html">Ranking methodology & calibration</a><a href="RANKED_TARGETS.html">Ranked target list</a><a href="AUDITS.html">Geology, GIS and prospecting audits</a><a href="SOURCES.html">Sources</a><a href="LIMITATIONS.html">Limitations</a><a href="../states/kentucky/map/index.html">← Map</a></nav><h1>Methodology</h1>
+<h2>1. Target horizon</h2>
+<p>Target: the <strong>top of the Nada Member</strong> of the Borden Formation where it lies directly beneath the <strong>Renfro Member</strong> (the dolostone at the base of the Slade/Newman carbonate sequence). South of the Berea quadrangle the upper-Nada lithosome is called the <strong>Wildie Member</strong>. In the Big Hill area the silica (chalcedony and quartz) geodes replace dolostone in the uppermost Nada/Wildie and lower Renfro (KSPG 2013, Stop 6B).</p>
+<h2>2. Geology source and per-quadrangle verification</h2>
+<ul>
+<li>Digital geology: KGS 1:24,000 digital geologic quadrangles (formations and contacts services, <code>KY24KGeologicFormations_WGS84</code>, <code>KY24KContacts_WGS84</code>, and faults), harmonized statewide. In that harmonization the Renfro was merged into the Slade Formation polygon (Msla) on many older maps. The Borden/Msla polygon boundary therefore represents the base of the Renfro.</li>
+<li>For each quadrangle, the original USGS GQ map (scanned PDF from KGS) was downloaded and its legend/explanation OCR'd. For Clay City and Leighton the explanation box was cropped at 300 dpi. The target symbol, the unit above and below, and what the line's upper or lower edge means were read from the legend itself. <strong>No unit was identified from a symbol that merely looks similar.</strong> For example, the Clay City line is coded generically <code>Mb</code>, and its legend was confirmed to map Mbr, Mbna and Mbc separately.</li>
+<li>A crossing is used only if its contact line matches a quadrangle-specific rule (<code>work/rules.csv</code>, reproduced in QUADRANGLE_TABLE.csv). Classes:</li>
+<li><strong>VERIFIED TARGET CONTACT</strong>: the Nada (or Nada+Cowbell) is mapped separately under the Renfro, so the line is the target contact.</li>
+<li><strong>VERIFIED TARGET CONTACT (combined-unit top)</strong>: Renfro and Nada are mapped together as <code>Mbrn</code>. The line is the top of that unit and the target lies one Renfro thickness below it, a few feet to about 10 m. Weighted 0.95.</li>
+<li><strong>PROBABLE STRATIGRAPHIC EQUIVALENT</strong>: the Wildie Member (Mbw) under the Renfro. Weighted 0.85 and shown dashed or less opaque.</li>
+<li><strong>AMBIGUOUS / NOT TARGET GEOLOGY</strong>: not used. Kept visible in "Other Borden-top contacts".</li>
+</ul>
+<h2>3. Terrain and drainage</h2>
+<ul>
+<li>DEM: USGS 3DEP 1/3 arc-second, exported at 10 m in UTM 16N and resampled to 20 m (110 × 100 km window).</li>
+<li>NHDPlus HR flowlines (23,643) burned 5 m into the DEM, then pits filled and D8 flow directions computed (pysheds).</li>
+<li>Channels are defined as ≥ 1 ha (25 cells) accumulated area. This deliberately includes the unnamed hollows, ravines and headwater channels that NHD omits. In many quadrangles NHD streams begin below the Renfro, so NHD alone would miss the most important source hollows.</li>
+</ul>
+<h2>4. Complete crossing population</h2>
+<p>Every D8 channel cell step that passes from a cell above the target contact (Renfro/Slade side) to a cell below it (Borden side) is a <strong>crossing</strong>. The step's position is snapped to the nearest mapped contact segment, and its quadrangle, line symbol and polygon pair are recorded. Alluvium (Qal) is treated as neutral, so a channel that crosses the contact under a thin alluvial strip is still found.</p>
+<ul>
+<li>7,441 downstream crossings (Renfro → Borden) plus 251 reverse-order steps (D8 artifacts, discarded).</li>
+<li>5,421 valid crossings (VERIFIED 855, VERIFIED combined-top 3,976, PROBABLE 590). All are in <code>datasets/crossings_complete.csv</code> with their class and <code>used_for_ranking</code> flag. Every valid crossing is scored and visible in the app ("All valid crossings").</li>
+</ul>
+<h2>5. Search reaches</h2>
+<p>From each crossing the D8 path is followed downstream:</p>
+<ul>
+<li><strong>Source zone</strong>: the first 15 m of vertical drop or 600 m, whichever comes first.</li>
+<li><strong>Primary search reach</strong>: 1.2 km, or until drainage area exceeds 60 km².</li>
+<li><strong>Optional extended reach</strong>: continues to 4 km total.</li>
+</ul>
+<p>The geometry is the DEM channel, prefixed with the crossing point. Positions are good to about one 20 m cell, plus the contact uncertainty.</p>
+<h2>6. Metrics (all measured; see RANKING.md for the formula)</h2>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Upstream target contact</td>
+<td>Length of target contact (km) whose cells drain to the primary-reach end</td>
+</tr>
+<tr>
+<td>Drainage area</td>
+<td>D8 accumulated area at the crossing and at the primary-reach end</td>
+</tr>
+<tr>
+<td>Concentration / dilution</td>
+<td>Contact km per km² of drainage; share of drainage underlain by Pennsylvanian clastics</td>
+</tr>
+<tr>
+<td>Erosion / replenishment</td>
+<td>Mean hillslope angle on the upstream contact cells</td>
+</tr>
+<tr>
+<td>Relief</td>
+<td>Max − min elevation in a 1 km window</td>
+</tr>
+<tr>
+<td>Incision</td>
+<td>Mean elevation within ±200 m minus channel elevation at the crossing</td>
+</tr>
+<tr>
+<td>Gradient</td>
+<td>Channel drop over the first 300 m and over the primary reach</td>
+</tr>
+<tr>
+<td>Hillslope</td>
+<td>Mean slope within ±200 m</td>
+</tr>
+<tr>
+<td>Transport distance</td>
+<td>Primary- and extended-reach lengths</td>
+</tr>
+<tr>
+<td>Documented relation</td>
+<td>Distance to the nearest technical locality; whether one lies within 500 m of the reach</td>
+</tr>
+<tr>
+<td>Fault distance</td>
+<td>Nearest mapped fault (reported only)</td>
+</tr>
+</tbody>
+</table>
+<p>Not measured, and stated as such in the app: depositional traps (bar/pool positions cannot be resolved from a 20 m DEM), clast content, land access.</p>
+<h2>7. Diversity (de-duplication)</h2>
+<p>Many hollows feed the same trunk reach. A crossing is <strong>not</strong> given its own rank if at least 40% of its primary reach overlaps an already-ranked target's reaches, or if it shares reach cells with a ranked target whose crossing is within 2 km. It stays a valid crossing and its popup names the ranked target whose reach it shares.</p>
+<h2>8. Evidence layers</h2>
+<ul>
+<li><strong>Documented (technical)</strong>: Dever (1999) measured sections 83, 87, 89 and 95 (plus 74 and 75 as contrast, non-target geodes), located from Carter coordinates with the KGS section grid; KSPG 2013 Stop 6B. Used only for calibration and popups, not for scoring.</li>
+<li><strong>Collector / secondary</strong>: Mindat list and a collector blog. Named streams are shown whole because no point locations are given. Not scored.</li>
+<li><strong>KGS general agate area</strong> (T.N. Sparks, KGS): used as the regional input R.</li>
+</ul>
