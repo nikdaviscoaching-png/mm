@@ -50,6 +50,8 @@
   document.body.appendChild(readout);
 
   let watchId = null, follow = false, lastListRefresh = 0;
+  let fixTime = 0, fixAcc = null;              // when the newest GPS fix arrived, and its accuracy in metres
+  const FIX_MAX_AGE = 60000;                   // an older fix is stale: never used as "where I am"
 
   /* ---- heading arrow: which way the phone is pointing ---------------------
      iPhone gives a true compass heading (webkitCompassHeading) once the user
@@ -107,6 +109,8 @@
     const ll = L.latLng(pos.coords.latitude, pos.coords.longitude);
     const acc = pos.coords.accuracy || 0;
     try { lastFix = ll; } catch (_) { /* app.js may not declare it */ }
+    fixTime = Number.isFinite(pos.timestamp) && pos.timestamp <= Date.now() + 5000 ? pos.timestamp : Date.now();
+    fixAcc = Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null;
     if (typeof locationLayer !== 'undefined') {
       if (!youRing) {
         locationLayer.clearLayers();
@@ -126,6 +130,7 @@
       (n ? ` · #${n.t.rank} ${html(n.t.stream || '')} ${distWords(n.d)} ${bearingWord(ll, L.latLng(n.t.lat, n.t.lon))}` : '');
     if (follow) map.setView(ll, Math.max(map.getZoom(), 15), { animate: true });
     if (locBtn) { locBtn.classList.remove('ff-wait'); locBtn.classList.toggle('ff-on', follow); }
+    if (typeof sheet !== 'undefined' && sheet.classList.contains('open')) refreshWhere();
     // keep "sort by nearest" honest without redrawing the list on every fix
     const sortSel = document.getElementById('sort-sel');
     if (sortSel && sortSel.value === 'near' && Date.now() - lastListRefresh > 15000 && typeof renderList === 'function') {
@@ -204,6 +209,7 @@
   /* ============================================================= 2. TAP RESCUE */
   const TAP_PX = 34;
   map.on('click', e => {
+    if (typeof window.ffJustLongPressed === 'function' && window.ffJustLongPressed()) return;
     const p = map.latLngToContainerPoint(e.latlng);
     let best = null, bd = Infinity;
     map.eachLayer(layer => {
@@ -283,22 +289,34 @@
   const logLayer = L.layerGroup().addTo(map);
   function entryPopup(e) {
     const t = TYPES[e.type] || TYPES.check;
-    return `<div class="pp ff-pop ff-log-pop">
+    const mark = !!e.target_status;
+    return `<div class="pp ff-pop ff-log-pop" data-eid="${html(e.id)}">
       <b style="color:${t.color}">${html(t.label)}</b>${e.label ? ' — ' + html(e.label) : ''}<br>
-      <span style="opacity:.8">${new Date(e.ts).toLocaleString()} · ±${Math.round(e.acc || 0)} m</span>
+      <span style="opacity:.8">${new Date(e.ts).toLocaleString()} · ${e.acc ? '±' + Math.round(e.acc) + ' m' : 'placed by hand'}</span>
+      ${mark ? '<p class="ff-warn">Target mark whose target is no longer at these coordinates.</p>' : ''}
       ${e.photo ? `<img src="${e.photo}" class="ff-photo" alt="">` : ''}
       ${e.note ? `<p>${html(e.note)}</p>` : ''}
       <div class="btns">
-        <button onclick="copyText('${e.lat.toFixed(5)}, ${e.lon.toFixed(5)}')">Copy coords</button>
+        ${mark ? '' : '<button type="button" data-ffe="edit">Edit</button><button type="button" data-ffe="move">Move</button>'}
+        <button type="button" data-ffe="copy">Copy coordinates</button>
+        <button type="button" data-ffe="route" data-ff-route>Route here</button>
+        <button type="button" data-ffe="delete">Delete</button>
       </div></div>`;
   }
   let logCache = []; const logMarkers = {};
-  async function drawLog() {
-    logLayer.clearLayers();
+  let movingId = null;
+  // Redraws run one after another. Two overlapping redraws (startup calls it twice)
+  // each cleared the layer and then both added every pin, so pins doubled.
+  let drawChain = Promise.resolve();
+  function drawLog() { drawChain = drawChain.then(drawLogNow, drawLogNow); return drawChain; }
+  async function drawLogNow() {
+    movingId = null;
     const all = await allEntries();
+    const unattached = await reconcileMarks(all);
+    logLayer.clearLayers();
     refreshTargetDots(all);
     logCache = all; for (const k in logMarkers) delete logMarkers[k];
-    all.filter(e => !e.target_status).forEach(e => {
+    all.filter(e => !e.target_status || unattached.has(e.id)).forEach(e => {
       const t = TYPES[e.type] || TYPES.check;
       logMarkers[e.id] = L.marker([e.lat, e.lon], {
         pane: 'star',
@@ -327,8 +345,10 @@
         <textarea id="ff-note" rows="2" placeholder="Note: what you saw, water level, access…"></textarea>
         <label class="ff-photo-btn"><input id="ff-file" type="file" accept="image/*" capture="environment" hidden>📷 Add photo</label>
         <img id="ff-preview" class="ff-photo" hidden alt="">
-        <div class="ff-where" id="ff-where">Position: waiting for GPS — or it will use the map centre.</div>
+        <button type="button" id="ff-rmphoto" class="ff-linkbtn" hidden>Remove photo</button>
+        <div class="ff-where" id="ff-where">Waiting for GPS… or long-press the map</div>
         <button class="wide-btn" type="button" id="ff-save">Save here</button>
+        <button class="wide-btn" type="button" id="ff-cancel-edit" hidden>Cancel edit</button>
       </div>
       <div class="ff-tools">
         <button type="button" id="ff-exp-geo">Export GeoJSON</button>
@@ -342,27 +362,54 @@
     </div>`;
   document.body.appendChild(sheet);
 
+  let gpsPoll = null, lastPoke = 0;
   function openSheet(on) {
     sheet.classList.toggle('open', on); sheet.setAttribute('aria-hidden', on ? 'false' : 'true');
-    if (on) { refreshWhere(); renderLog(); if (typeof setSheet === 'function') setSheet(false); if (typeof setPanel === 'function') setPanel(false); }
+    clearInterval(gpsPoll); gpsPoll = null;
+    if (!on && editing) endEdit();
+    if (on) {
+      if (!editing && watchId === null) startWatch(false);            // logging at "here" needs a live GPS fix
+      refreshWhere(); renderLog(); if (typeof setSheet === 'function') setSheet(false); if (typeof setPanel === 'function') setPanel(false);
+      gpsPoll = setInterval(refreshWhere, 2000);                       // notices a fix going stale
+    }
   }
   logBtn.addEventListener('click', () => openSheet(!sheet.classList.contains('open')));
-  window.ffLogAt = (lat, lng) => { pinnedPos = L.latLng(lat, lng); map.closePopup(); openSheet(true); };
+  window.ffLogAt = (lat, lng) => { if (editing) endEdit(); pinnedPos = L.latLng(lat, lng); map.closePopup(); openSheet(true); };
   $('#ff-close', sheet).addEventListener('click', () => openSheet(false));
 
   let pinnedPos = null;              // set by "Log a spot here" on a tapped point
+  const freshFix = () => typeof lastFix !== 'undefined' && !!lastFix && Date.now() - fixTime <= FIX_MAX_AGE;
+  // Where a new entry would be saved: a pinned spot, or a GPS fix from the last 60 s.
+  // There is no silent fallback to the map centre; null means "no position yet".
   function currentPos() {
-    if (pinnedPos) return { ll: pinnedPos, gps: false, pinned: true };
-    if (typeof lastFix !== 'undefined' && lastFix) return { ll: lastFix, gps: true };
-    return { ll: map.getCenter(), gps: false };
+    if (pinnedPos) return { ll: pinnedPos, gps: false, pinned: true, acc: null };
+    if (freshFix()) return { ll: lastFix, gps: true, acc: fixAcc };
+    return null;
+  }
+  // The position is stale, so ask the phone for one fresh reading (a parked phone may
+  // stop sending updates). Rate-limited so a weak-signal spot is not hammered.
+  function pokeGPS() {
+    if (!navigator.geolocation || Date.now() - lastPoke < 8000) return;
+    lastPoke = Date.now();
+    navigator.geolocation.getCurrentPosition(p => { hideLocHelp(); drawFix(p); }, () => {}, { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
   }
   function refreshWhere() {
+    const w = $('#ff-where', sheet), saveBtn = $('#ff-save', sheet);
+    if (editing) {
+      const o = editing.orig;
+      w.textContent = `Editing the saved pin at ${o.lat.toFixed(5)}, ${o.lon.toFixed(5)}. Use Move on its popup to change the spot.`;
+      saveBtn.disabled = false; return;
+    }
     const c = currentPos();
-    if (c.pinned) { $('#ff-where', sheet).innerHTML = `Position: the spot you tapped ${c.ll.lat.toFixed(5)}, ${c.ll.lng.toFixed(5)} · <a href="#" id="ff-unpin">use my GPS instead</a>`;
+    saveBtn.disabled = !c;
+    if (!c) {
+      w.textContent = 'Waiting for GPS… or long-press the map';
+      if (sheet.classList.contains('open')) pokeGPS();
+      return;
+    }
+    if (c.pinned) { w.innerHTML = `Position: the spot you tapped ${c.ll.lat.toFixed(5)}, ${c.ll.lng.toFixed(5)} · <a href="#" id="ff-unpin">use my GPS instead</a>`;
       const u = $('#ff-unpin', sheet); if (u) u.onclick = ev => { ev.preventDefault(); pinnedPos = null; refreshWhere(); }; return; }
-    $('#ff-where', sheet).textContent = c.gps
-      ? `Position: your GPS fix ${c.ll.lat.toFixed(5)}, ${c.ll.lng.toFixed(5)}`
-      : `Position: map centre ${c.ll.lat.toFixed(5)}, ${c.ll.lng.toFixed(5)} (tap ◎ Locate for GPS)`;
+    w.textContent = `Position: your GPS fix ${c.ll.lat.toFixed(5)}, ${c.ll.lng.toFixed(5)}` + (Number.isFinite(c.acc) ? ` ±${Math.round(c.acc)} m` : '');
   }
 
   // photo: downscale to 1280 px JPEG so a phone photo is ~150 KB, not 4 MB
@@ -378,6 +425,7 @@
         cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
         pendingPhoto = cv.toDataURL('image/jpeg', 0.75);
         const pv = $('#ff-preview', sheet); pv.src = pendingPhoto; pv.hidden = false;
+        if (editing) editing.removePhoto = false;
       } catch (_) { toast('Could not prepare that photo', 2600); }
       URL.revokeObjectURL(url);
     };
@@ -385,14 +433,51 @@
     img.src = url;
   });
 
+  // ---- edit an existing saved pin (same id, so nothing else that refers to it breaks)
+  let editing = null;                // { orig, removePhoto }
+  function resetForm() {
+    $('#ff-label', sheet).value = ''; $('#ff-note', sheet).value = '';
+    pendingPhoto = null; $('#ff-preview', sheet).hidden = true; $('#ff-file', sheet).value = '';
+    $('#ff-rmphoto', sheet).hidden = true;
+  }
+  function endEdit() {
+    editing = null; resetForm();
+    $('#ff-save', sheet).textContent = 'Save here'; $('#ff-cancel-edit', sheet).hidden = true;
+  }
+  function beginEdit(e) {
+    map.closePopup(); pinnedPos = null;
+    editing = { orig: e, removePhoto: false };
+    $('#ff-type', sheet).value = TYPES[e.type] ? e.type : 'check';
+    $('#ff-label', sheet).value = e.label || ''; $('#ff-note', sheet).value = e.note || '';
+    pendingPhoto = null; $('#ff-file', sheet).value = '';
+    const pv = $('#ff-preview', sheet);
+    if (e.photo) { pv.src = e.photo; pv.hidden = false; } else pv.hidden = true;
+    $('#ff-rmphoto', sheet).hidden = !e.photo;
+    $('#ff-save', sheet).textContent = 'Save changes'; $('#ff-cancel-edit', sheet).hidden = false;
+    openSheet(true);
+  }
+  $('#ff-cancel-edit', sheet).addEventListener('click', () => { endEdit(); refreshWhere(); openSheet(false); });
+  $('#ff-rmphoto', sheet).addEventListener('click', () => {
+    pendingPhoto = null; $('#ff-file', sheet).value = ''; $('#ff-preview', sheet).hidden = true; $('#ff-rmphoto', sheet).hidden = true;
+    if (editing) editing.removePhoto = true;
+  });
+
   $('#ff-save', sheet).addEventListener('click', async () => {
+    if (editing) {
+      const o = editing.orig;
+      const ne = { ...o, type: $('#ff-type', sheet).value, label: $('#ff-label', sheet).value.trim(), note: $('#ff-note', sheet).value.trim(),
+        photo: pendingPhoto !== null ? pendingPhoto : (editing.removePhoto ? null : o.photo || null), edited: Date.now() };
+      if (await putEntry(ne)) { toast('Saved changes'); endEdit(); refreshWhere(); await drawLog(); renderLog(); openSheet(false); }
+      return;
+    }
     const c = currentPos();
+    if (!c) { toast('Waiting for GPS… or long-press the map', 2600); refreshWhere(); return; }
     const e = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       ts: Date.now(), type: $('#ff-type', sheet).value,
       label: $('#ff-label', sheet).value.trim(), note: $('#ff-note', sheet).value.trim(),
       lat: +c.ll.lat.toFixed(6), lon: +c.ll.lng.toFixed(6), gps: c.gps,
-      acc: c.gps && typeof readout !== 'undefined' ? (parseInt((readout.textContent.match(/±(\d+)/) || [])[1], 10) || null) : null,
+      acc: c.gps && Number.isFinite(c.acc) ? Math.round(c.acc) : null,
       photo: pendingPhoto,
     };
     const n = nearestTarget(c.ll);
@@ -400,12 +485,46 @@
     if (await putEntry(e)) {
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
       toast('Saved to the field log');
-      $('#ff-label', sheet).value = ''; $('#ff-note', sheet).value = '';
-      pendingPhoto = null; $('#ff-preview', sheet).hidden = true; $('#ff-file', sheet).value = '';
+      resetForm();
       pinnedPos = null; refreshWhere();
       drawLog(); renderLog();
       if (typeof window.ffAfterLogSave === 'function') window.ffAfterLogSave(e);
     }
+  });
+
+  // ---- saved-pin popup buttons: Edit, Move, Copy coordinates, Route here, Delete
+  async function entryAction(id, action) {
+    const e = logCache.find(x => x.id === id); if (!e) return;
+    const nm = e.label || (TYPES[e.type] || TYPES.check).label;
+    if (action === 'copy') return window.copyText(`${e.lat.toFixed(5)}, ${e.lon.toFixed(5)}`);
+    if (action === 'route') { map.closePopup(); return window.ffRouteTo(e.lat, e.lon, nm); }
+    if (action === 'edit') return beginEdit(e);
+    if (action === 'delete') {
+      if (!confirm('Delete this saved pin' + (e.photo ? ' and its photo' : '') + '?')) return;
+      map.closePopup(); await delEntry(id); await drawLog(); renderLog(); return toast('Deleted', 1200);
+    }
+    if (action === 'move') {
+      const mk = logMarkers[id]; if (!mk) return;
+      map.closePopup(); movingId = id; mk.dragging.enable();
+      mk.once('dragend', async () => {
+        if (movingId !== id) return;
+        movingId = null; mk.dragging.disable();
+        if (typeof suppressMapClick !== 'undefined') suppressMapClick = true;
+        const ll = mk.getLatLng(), ne = { ...e, lat: +ll.lat.toFixed(6), lon: +ll.lng.toFixed(6), gps: false, acc: null, moved: Date.now() };
+        const n = nearestTarget(ll); if (n) { ne.nearest_target = n.t.rank; ne.nearest_target_m = Math.round(n.d); }
+        if (await putEntry(ne)) { toast('Pin moved and saved', 1800); await drawLog(); renderLog(); const m2 = logMarkers[id]; if (m2) setTimeout(() => m2.openPopup(), 250); }
+      });
+      toast('Drag the pin to its new spot, then let go to save', 3200);
+    }
+  }
+  window.ffEntry = entryAction;
+  map.on('popupopen', ev => {                       // buttons inside saved-pin popups (clicks do not reach document)
+    const box = ev.popup.getElement && ev.popup.getElement(); const content = box && box.querySelector('.leaflet-popup-content');
+    if (!content || content._ffe) return; content._ffe = true;
+    content.addEventListener('click', evt => {
+      const b = evt.target.closest && evt.target.closest('[data-ffe]'); if (!b) return;
+      const holder = b.closest('[data-eid]'); if (holder) entryAction(holder.dataset.eid, b.dataset.ffe);
+    });
   });
 
   async function renderLog() {
@@ -447,20 +566,29 @@
     a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
     document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
+  // Home Screen apps on iPhone ignore <a download>, so hand the file to the share
+  // sheet first (same path as the backup) and only fall back to a download link.
+  async function shareOrDownload(name, text, type, shareType, title) {
+    try {
+      const file = new File([text], name, { type: shareType || type });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title }); return 'shared'; }
+    } catch (e) { if (e && e.name === 'AbortError') { toast('Export cancelled', 1400); return 'cancelled'; } }
+    download(name, text, type); return 'download';
+  }
   $('#ff-exp-geo', sheet).addEventListener('click', async () => {
     const list = await allEntries();
-    download(`field-log-${new Date().toISOString().slice(0, 10)}.geojson`, JSON.stringify({
+    shareOrDownload(`field-log-${new Date().toISOString().slice(0, 10)}.geojson`, JSON.stringify({
       type: 'FeatureCollection',
       features: list.map(e => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [e.lon, e.lat] },
         properties: { ...e, photo: e.photo ? '(photo kept in app)' : null } })),
-    }, null, 1), 'application/geo+json');
+    }, null, 1), 'application/geo+json', 'application/json', 'Mineral Maps field log (GeoJSON)');
   });
   $('#ff-exp-csv', sheet).addEventListener('click', async () => {
     const list = await allEntries();
     const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const rows = [['date', 'type', 'label', 'note', 'lat', 'lon', 'gps', 'accuracy_m', 'nearest_target', 'nearest_target_m'].join(',')]
       .concat(list.map(e => [new Date(e.ts).toISOString(), e.type, e.label, e.note, e.lat, e.lon, e.gps, e.acc, e.nearest_target, e.nearest_target_m].map(q).join(',')));
-    download(`field-log-${new Date().toISOString().slice(0, 10)}.csv`, rows.join('\n'), 'text/csv');
+    shareOrDownload(`field-log-${new Date().toISOString().slice(0, 10)}.csv`, rows.join('\n'), 'text/csv', 'text/csv', 'Mineral Maps field log (CSV)');
   });
 
   // GeoJSON/CSV are convenient analysis exports, but they intentionally omit the
@@ -612,7 +740,7 @@
       const t = TYPES[e.type] || TYPES.check;
       extra.push({ kind: 'saved', name: e.label || t.label, sub: `${t.label} · ${new Date(e.ts).toLocaleDateString()}${e.note ? ' · ' + String(e.note).slice(0, 60) : ''}`,
         go: () => {
-          if (e.target_status && typeof openTarget === 'function') return openTarget(e.target_id);
+          if (e.target_status && resolveTid(e) !== null && typeof openTarget === 'function') return openTarget(resolveTid(e));
           map.setView([e.lat, e.lon], Math.max(map.getZoom(), 16));
           const mk = logMarkers[e.id]; if (mk) setTimeout(() => mk.openPopup(), 350);
         } });
@@ -1156,12 +1284,13 @@
         : '<span class="ff-land-tag priv">Not Forest Service-owned — verify ownership/access</span>';
     const div = document.createElement('div'); div.className = 'ff-land';
     div.innerHTML = `${status}<div class="btns">
-      <button type="button" data-route>🧭 Route here</button>
+      ${content.querySelector('[data-ff-route]') ? '' : '<button type="button" data-route>🧭 Route here</button>'}
       <button type="button" data-log>✎ Log a spot here</button>
       <button type="button" data-own>Who owns this?</button>
       <button type="button" data-dir>Directions</button></div>`;
     div.querySelector('[data-log]').onclick = () => window.ffLogAt(ll.lat, ll.lng);
-    div.querySelector('[data-route]').onclick = () => {
+    const routeBtn = div.querySelector('[data-route]');
+    if (routeBtn) routeBtn.onclick = () => {
       const t = content.querySelector('h3, b, strong'); map.closePopup();
       window.ffRouteTo(ll.lat, ll.lng, t ? t.textContent.trim().slice(0, 48) : 'Selected spot');
     };
@@ -1386,6 +1515,36 @@
     skip:  { short: 'Not for me', badge: '✕', cls: 'skip' }
   };
   window.ffTargetStatus = {};                       // id -> newest mark (read by the Targets list)
+  // A mark is tied to a PLACE, not just an id number. If the target list is ever
+  // re-numbered, a mark follows the target within 30 m of where it was made, or
+  // becomes an ordinary pin; it is never attached to a different place.
+  const MARK_M = 30;
+  function resolveTid(e) {
+    const tl = targets(); if (!tl.length) return e.target_id;      // target list not loaded yet: leave as is
+    const la = Number.isFinite(+e.target_lat) ? +e.target_lat : +e.lat, lo = Number.isFinite(+e.target_lon) ? +e.target_lon : +e.lon;
+    const t = tl.find(x => x.id === e.target_id);
+    if (t && map.distance([la, lo], [t.lat, t.lon]) <= MARK_M) return t.id;
+    let best = null, bd = Infinity;
+    tl.forEach(x => { const d = map.distance([la, lo], [x.lat, x.lon]); if (d < bd) { bd = d; best = x; } });
+    return best && bd <= MARK_M ? best.id : null;
+  }
+  // Writes the re-attachment (and the stored coordinates on older marks) once, and
+  // returns the ids of marks that no longer match any target.
+  async function reconcileMarks(all) {
+    const lost = new Set();
+    if (!targets().length) return lost;
+    for (const e of all) {
+      if (!e.target_status) continue;
+      const tid = resolveTid(e);
+      if (tid === null) { lost.add(e.id); continue; }
+      const t = targets().find(x => x.id === tid);
+      if (tid !== e.target_id || !Number.isFinite(+e.target_lat)) {
+        e.target_id = tid; if (t) { e.target_rank = t.rank; if (!Number.isFinite(+e.target_lat)) { e.target_lat = t.lat; e.target_lon = t.lon; } }
+        await putEntry(e);
+      }
+    }
+    return lost;
+  }
   function targetIdForPopup(popup) {
     const src = popup && popup._source;
     if (!src || typeof markerById === 'undefined') return null;
@@ -1396,7 +1555,8 @@
     const newest = {};
     (all || []).forEach(e => {
       if (!e.target_status || e.target_id === undefined || !TSTAT[e.type]) return;
-      if (!newest[e.target_id] || e.ts > newest[e.target_id].ts) newest[e.target_id] = e;
+      const tid = resolveTid(e); if (tid === null) return;          // its target is gone: shown as a plain pin instead
+      if (!newest[tid] || e.ts > newest[tid].ts) newest[tid] = e;
     });
     window.ffTargetStatus = newest;
     if (typeof markerById === 'undefined') return;
@@ -1424,7 +1584,7 @@
       </div>`;
     const hist = box.querySelector('.ff-tn-hist'), ta = box.querySelector('textarea');
     const paint = async () => {
-      const mine = (await allEntries()).filter(e => e.target_status && e.target_id === tid).sort((a, b) => b.ts - a.ts);
+      const mine = (await allEntries()).filter(e => e.target_status && resolveTid(e) === tid).sort((a, b) => b.ts - a.ts);
       hist.innerHTML = mine.length ? mine.map(e => `<div class="ff-tn-row ff-tn-${TSTAT[e.type] ? TSTAT[e.type].cls : 'tried'}">
           <span>${TSTAT[e.type] ? TSTAT[e.type].badge + ' ' + TSTAT[e.type].short : html(e.type)}</span> · ${new Date(e.ts).toLocaleDateString()}
           ${e.note ? `<div class="ff-tn-note">${html(e.note)}</div>` : ''}
@@ -1450,7 +1610,8 @@
       const e = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ts: Date.now(), type,
         label: t ? `#${t.rank} ${String(t.stream || '').slice(0, 60)}` : `Target ${tid}`, note: n,
         lat: t ? t.lat : popup.getLatLng().lat, lon: t ? t.lon : popup.getLatLng().lng, gps: false, acc: null, photo: null,
-        target_status: true, target_id: tid, target_rank: t ? t.rank : null, nearest_target: t ? t.rank : null, nearest_target_m: 0 };
+        target_status: true, target_id: tid, target_rank: t ? t.rank : null, nearest_target: t ? t.rank : null, nearest_target_m: 0,
+        target_lat: t ? t.lat : null, target_lon: t ? t.lon : null };
       if (await putEntry(e)) {
         ta.value = ''; toast(`#${t ? t.rank : ''} marked: ${TSTAT[type].short}`, 1800);
         if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
@@ -1510,7 +1671,7 @@
     truck = { lat: +ll.lat.toFixed(6), lng: +ll.lng.toFixed(6), ts: Date.now() };
     trail = [[truck.lat, truck.lng]]; saveTruck(); saveTrail(); drawTruck();
     toast('Truck saved here — the GPS bar now points back to it', 2600);
-    if (typeof lastFix !== 'undefined' && lastFix) drawFix({ coords: { latitude: lastFix.lat, longitude: lastFix.lng, accuracy: lastAcc || 0 } });
+    if (typeof lastFix !== 'undefined' && lastFix) drawFix({ coords: { latitude: lastFix.lat, longitude: lastFix.lng, accuracy: lastAcc || 0 }, timestamp: fixTime });
   }
   let lastAcc = null;
   window.ffTruck = action => {
@@ -1575,6 +1736,8 @@
       <small style="opacity:.75">Drag the pin to fine-tune${aerial ? '' : ' — aerial view helps'}. Not saved until you tap Save.</small>
       <div class="btns"><button type="button" onclick="ffPin('aerial')">${aerial ? 'Back to topo' : 'Aerial view'}</button>
       <button type="button" onclick="ffPin('save')">Save + label</button>
+      <button type="button" onclick="ffPin('copy')">Copy coordinates</button>
+      <button type="button" data-ff-route onclick="ffPin('route')">Route here</button>
       <button type="button" onclick="ffPin('clear')">Remove pin</button></div></div>`;
   }
   window.ffDropPin = (lat, lng, label) => {
@@ -1606,6 +1769,8 @@
       tempPin.closePopup(); setTimeout(() => tempPin && tempPin.openPopup(), 250);
       return;
     }
+    if (action === 'copy') { const ll = tempPin.getLatLng(); return window.copyText(`${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`); }
+    if (action === 'route') { const ll = tempPin.getLatLng(); tempPin.closePopup(); return window.ffRouteTo(ll.lat, ll.lng, tempLabel); }
     if (action === 'save') {
       const ll = tempPin.getLatLng();
       window.ffLogAt(ll.lat, ll.lng);

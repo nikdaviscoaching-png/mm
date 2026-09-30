@@ -80,17 +80,25 @@ async function copyText(text) {
 window.copyText = copyText;
 
 let suppressMapClick = false;
+let lastLongPress = 0;                       // time a long-press pin was dropped (its release must not open the coordinate popup)
+window.ffJustLongPressed = () => Date.now() - lastLongPress < 900;
 map.on('click', e => {
+  if (window.ffJustLongPressed()) return;
   if (suppressMapClick) { suppressMapClick = false; return; }
   L.popup().setLatLng(e.latlng)
-    .setContent(`<strong>${coordText(e.latlng)}</strong><br><span style="opacity:.7">Long-press to copy coordinates</span>`)
+    .setContent(`<strong>${coordText(e.latlng)}</strong><br><span style="opacity:.7">Long-press to drop a pin</span>`)
     .openOn(map);
 });
 
 let pressTimer = null, pressLatLng = null;
 map.on('mousedown touchstart', e => {
   pressLatLng = e.latlng; clearTimeout(pressTimer);
-  pressTimer = setTimeout(() => { if (pressLatLng) copyText(coordText(pressLatLng)); }, 650);
+  pressTimer = setTimeout(() => {
+    if (!pressLatLng) return;
+    lastLongPress = Date.now();
+    if (typeof window.ffDropPin === 'function') window.ffDropPin(pressLatLng.lat, pressLatLng.lng, 'Dropped pin');
+    else copyText(coordText(pressLatLng));
+  }, 650);
 });
 ['mouseup', 'touchend', 'mousemove', 'touchmove', 'zoomstart', 'movestart'].forEach(evt => {
   map.on(evt, () => { clearTimeout(pressTimer); pressTimer = null; });
