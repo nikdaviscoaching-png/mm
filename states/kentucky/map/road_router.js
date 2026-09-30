@@ -121,13 +121,18 @@
         const a = nodeFor(c[0]), b = nodeFor(c[c.length - 1]);
         if (a === b && d < 30) continue;
         const sp = Number(props.SpeedLimit);
-        edges.push({
+        // Kentucky 911 OneWay: FT = travel only in the digitized direction, TF = only against it,
+        // blank / B = both ways. Anything else is treated as two-way rather than guessed.
+        const ow = String(props.OneWay == null ? '' : props.OneWay).trim().toUpperCase();
+        const e = {
           a, b, d: Math.round(d),
           s: Number.isFinite(sp) && sp >= 5 && sp <= 85 ? sp : 30,
           n: String(props.LSt_Name || props.St_Name || '').slice(0, 80),
           r: String(props.RoadClass || '').slice(0, 40),
           c,
-        });
+        };
+        if (ow === 'FT' || ow === 'TF') e.o = ow;
+        edges.push(e);
       }
       seen++;
       if (progress && seen % 1500 === 0) progress({ stage: 'build', done: seen, total: features.length });
@@ -148,7 +153,7 @@
     const connectedPct = nodes.length ? +(100 * largest / nodes.length).toFixed(1) : 0;
 
     return {
-      id: GRAPH_ID, version: 1, savedAt: Date.now(), source: 'Kentucky 911 Road Centerlines',
+      id: GRAPH_ID, version: 2, savedAt: Date.now(), source: 'Kentucky 911 Road Centerlines',
       box: BOX, featureCount: features.length, nodes, edges, connectedPct,
     };
   }
@@ -195,6 +200,10 @@
     return g;
   }
 
+  // Spatial index of road SEGMENTS (not just junctions), so a start or end point can
+  // snap onto the middle of a road.
+  const ECELL = 0.01;                                   // degrees, about 0.9-1.1 km
+  const ekey = (gx, gy) => (gx + 20000) * 40000 + (gy + 20000);
   function prep(g) {
     if (!g) return null;
     if (prepared && prepared.graph === g) return prepared;
@@ -203,34 +212,57 @@
       adj[e.a].push([e.b, i]);
       adj[e.b].push([e.a, i]);
     });
-    const cell = 0.01, grid = new Map();
-    g.nodes.forEach((p, i) => {
-      const k = `${Math.floor(p[0] / cell)},${Math.floor(p[1] / cell)}`;
-      if (!grid.has(k)) grid.set(k, []); grid.get(k).push(i);
+    const egrid = new Map();
+    g.edges.forEach((e, i) => {
+      const c = e.c;
+      for (let k = 1; k < c.length; k++) {
+        const x0 = Math.floor(Math.min(c[k - 1][0], c[k][0]) / ECELL), x1 = Math.floor(Math.max(c[k - 1][0], c[k][0]) / ECELL);
+        const y0 = Math.floor(Math.min(c[k - 1][1], c[k][1]) / ECELL), y1 = Math.floor(Math.max(c[k - 1][1], c[k][1]) / ECELL);
+        for (let gx = x0; gx <= x1; gx++) for (let gy = y0; gy <= y1; gy++) {
+          const key = ekey(gx, gy); let arr = egrid.get(key);
+          if (!arr) egrid.set(key, arr = []);
+          if (arr[arr.length - 1] !== i) arr.push(i);
+        }
+      }
     });
     const mphToMps = 1609.344 / 3600;
     const maxSpeedMps = Math.max(1, ...g.edges.map(e => (Number(e.s) || 30) * mphToMps));
-    prepared = { graph: g, adj, grid, cell, mphToMps, maxSpeedMps };
+    prepared = { graph: g, adj, egrid, mphToMps, maxSpeedMps };
     return prepared;
   }
 
-  function nearestNode(P, lon, lat) {
-    const { graph: g, grid, cell } = P;
-    const gx = Math.floor(lon / cell), gy = Math.floor(lat / cell);
-    let best = -1, bd = Infinity;
-    for (let ring = 0; ring <= 8; ring++) {
-      let touched = false;
+  // Nearest point on the nearest road segment. Returns the edge, the segment index, the
+  // point, and how far along the edge (metres from its first end) the point is.
+  function snap(P, lon, lat, maxM) {
+    const g = P.graph, kx = 111320 * Math.cos(rad(lat)), ky = 110540;
+    const cellM = ECELL * kx, gx = Math.floor(lon / ECELL), gy = Math.floor(lat / ECELL);
+    const limit = maxM || 5000, maxRing = Math.ceil(limit / cellM) + 1;
+    let best = null, seenEdge = new Set();
+    for (let ring = 0; ring <= maxRing; ring++) {
       for (let dx = -ring; dx <= ring; dx++) for (let dy = -ring; dy <= ring; dy++) {
         if (ring && Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue;
-        const ids = grid.get(`${gx + dx},${gy + dy}`); if (!ids) continue; touched = true;
-        for (const id of ids) {
-          const p = g.nodes[id], d = hav(lon, lat, p[0], p[1]);
-          if (d < bd) { bd = d; best = id; }
+        const ids = P.egrid.get(ekey(gx + dx, gy + dy)); if (!ids) continue;
+        for (const ei of ids) {
+          if (seenEdge.has(ei)) continue; seenEdge.add(ei);
+          const c = g.edges[ei].c;
+          for (let k = 1; k < c.length; k++) {
+            const ax = (c[k - 1][0] - lon) * kx, ay = (c[k - 1][1] - lat) * ky, bx = (c[k][0] - lon) * kx, by = (c[k][1] - lat) * ky;
+            const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy;
+            const t = L2 ? Math.max(0, Math.min(1, -(ax * vx + ay * vy) / L2)) : 0;
+            const d = Math.hypot(ax + t * vx, ay + t * vy);
+            if (!best || d < best.d) best = { ei, seg: k - 1, t, d };
+          }
         }
       }
-      if (best >= 0 && (touched || bd < ring * cell * 85000)) break;
+      if (best && best.d <= ring * cellM) break;        // nothing unscanned can be closer
     }
-    return best >= 0 ? { id: best, d: bd } : null;
+    if (!best || best.d > limit) return null;
+    const c = g.edges[best.ei].c, A = c[best.seg], B = c[best.seg + 1];
+    best.pt = [+(A[0] + best.t * (B[0] - A[0])).toFixed(6), +(A[1] + best.t * (B[1] - A[1])).toFixed(6)];
+    let along = 0; for (let k = 1; k <= best.seg; k++) along += hav(c[k - 1][0], c[k - 1][1], c[k][0], c[k][1]);
+    along += hav(A[0], A[1], best.pt[0], best.pt[1]);
+    best.along = along; best.total = lineLength(c);
+    return best;
   }
 
   class Heap {
@@ -252,58 +284,92 @@
     get length() { return this.a.length; }
   }
 
+  // Route between ANY two points on the saved road network. Each end snaps to the
+  // nearest point on the nearest road (that road is temporarily split there by a
+  // virtual junction), so nothing has to be planned in advance and a start or end in
+  // the middle of a road works. One-way streets are obeyed.
   async function route(fromLat, fromLon, toLat, toLon) {
     const g = await stored(); if (!g) return null;
     const P = prep(g);
-    const S = nearestNode(P, fromLon, fromLat), T = nearestNode(P, toLon, toLat);
-    if (!S || !T || S.d > 5000 || T.d > 5000) return null; // outside saved road area / too far from a road
-    const n = g.nodes.length, gs = new Float64Array(n), seen = new Uint8Array(n);
-    const prev = new Int32Array(n), prevEdge = new Int32Array(n);
-    gs.fill(Infinity); prev.fill(-1); prevEdge.fill(-1); gs[S.id] = 0;
-    const heap = new Heap();
-    const goal = g.nodes[T.id];
-    heap.push(hav(g.nodes[S.id][0], g.nodes[S.id][1], goal[0], goal[1]) / P.maxSpeedMps, S.id);
+    const S = snap(P, fromLon, fromLat), T = snap(P, toLon, toLat);
+    if (!S || !T) return null;                       // outside the saved road area / more than 5 km from any road
+    const n = g.nodes.length, VS = n, VT = n + 1;
+    const fwdOK = e => e.o !== 'TF', backOK = e => e.o !== 'FT';   // digitized direction is edge.a -> edge.b
+    const eS = g.edges[S.ei], eT = g.edges[T.ei];
+    // geometry of the pieces of a split edge
+    const toA = (e, X) => [X.pt, ...e.c.slice(0, X.seg + 1).reverse()];        // snap point back to the edge's first junction
+    const toB = (e, X) => [X.pt, ...e.c.slice(X.seg + 1)];                     // snap point on to its last junction
+    const between = (e, X, Y) => [X.pt, ...e.c.slice(X.seg + 1, Y.seg + 1), Y.pt];   // X before Y along the edge
+    const secs = (e, m) => m / (Math.max(5, Number(e.s) || 30) * P.mphToMps);
+    const virt = [];                                 // virtual pieces: {from, to, geom, len, sec}
+    const add = (from, to, geom, len, e) => virt.push({ from, to, geom, len, sec: secs(e, len) });
+    if (backOK(eS)) add(VS, eS.a, toA(eS, S), S.along, eS);
+    if (fwdOK(eS)) add(VS, eS.b, toB(eS, S), S.total - S.along, eS);
+    if (fwdOK(eT)) add(eT.a, VT, toA(eT, T).reverse(), T.along, eT);
+    if (backOK(eT)) add(eT.b, VT, toB(eT, T).reverse(), T.total - T.along, eT);
+    if (S.ei === T.ei) {                             // both ends on the same road: the piece between them
+      if (S.along <= T.along && fwdOK(eS)) add(VS, VT, between(eS, S, T), T.along - S.along, eS);
+      else if (S.along > T.along && backOK(eS)) add(VS, VT, between(eS, T, S).reverse(), S.along - T.along, eS);
+    }
+    const startLinks = [], endLinks = new Map();
+    virt.forEach((v, i) => {
+      if (v.from === VS) startLinks.push(i);
+      else { if (!endLinks.has(v.from)) endLinks.set(v.from, []); endLinks.get(v.from).push(i); }
+    });
 
+    const gs = new Float64Array(n + 2), seen = new Uint8Array(n + 2);
+    const prev = new Int32Array(n + 2), piece = new Int32Array(n + 2), pdir = new Uint8Array(n + 2);   // piece >= 0: road edge; <= -2: virtual piece (-piece - 2)
+    gs.fill(Infinity); prev.fill(-1); piece.fill(-1); gs[VS] = 0;
+    const heap = new Heap();
+    const xy = id => id === VS ? S.pt : id === VT ? T.pt : g.nodes[id];
+    const goal = T.pt;
+    const h = id => { const p = xy(id); return hav(p[0], p[1], goal[0], goal[1]) / P.maxSpeedMps; };
+    heap.push(h(VS), VS);
+    const relaxVirtual = (u, list) => {
+      for (const vi of list) {
+        const v = virt[vi], ng = gs[u] + v.sec;
+        if (ng >= gs[v.to]) continue;
+        gs[v.to] = ng; prev[v.to] = u; piece[v.to] = -vi - 2; heap.push(ng + h(v.to), v.to);
+      }
+    };
     while (heap.length) {
       const item = heap.pop(); if (!item) break; const u = item[1];
       if (seen[u]) continue; seen[u] = 1;
-      if (u === T.id) break;
+      if (u === VT) break;
+      if (u === VS) { relaxVirtual(u, startLinks); continue; }
       for (const [v, ei] of P.adj[u]) {
         if (seen[v]) continue;
         const e = g.edges[ei];
-        const edgeSeconds = e.d / (Math.max(5, Number(e.s) || 30) * P.mphToMps);
-        const ng = gs[u] + edgeSeconds;
+        const forward = e.a === u && (e.b === v || e.a === e.b);          // travelling in the digitized direction
+        if (forward ? !fwdOK(e) : !backOK(e)) continue;                   // wrong way up a one-way street
+        const ng = gs[u] + e.d / (Math.max(5, Number(e.s) || 30) * P.mphToMps);
         if (ng >= gs[v]) continue;
-        gs[v] = ng; prev[v] = u; prevEdge[v] = ei;
-        const p = g.nodes[v];
-        heap.push(ng + hav(p[0], p[1], goal[0], goal[1]) / P.maxSpeedMps, v);
+        gs[v] = ng; prev[v] = u; piece[v] = ei; pdir[v] = forward ? 1 : 0;
+        heap.push(ng + h(v), v);
       }
+      const ends = endLinks.get(u); if (ends) relaxVirtual(u, ends);
     }
-    if (!Number.isFinite(gs[T.id])) return null;
+    if (!Number.isFinite(gs[VT])) return null;
 
-    const steps = []; let cur = T.id;
-    while (cur !== S.id) {
-      const p = prev[cur], ei = prevEdge[cur];
-      if (p < 0 || ei < 0) return null;
-      steps.push([p, cur, ei]); cur = p;
+    const parts = []; let cur = VT, roadDistance = 0;
+    while (cur !== VS) {
+      const pc = piece[cur]; if (pc === -1 || prev[cur] < 0) return null;
+      if (pc <= -2) { const v = virt[-pc - 2]; parts.push(v.geom); roadDistance += v.len; }
+      else { const e = g.edges[pc]; parts.push(pdir[cur] ? e.c : [...e.c].reverse()); roadDistance += e.d; }
+      cur = prev[cur];
     }
-    steps.reverse();
+    parts.reverse();
     const coords = [];
-    for (const [a, b, ei] of steps) {
-      const e = g.edges[ei]; let c = e.c;
-      if (e.a !== a || e.b !== b) c = [...c].reverse();
-      if (coords.length && c.length && coords[coords.length - 1][0] === c[0][0] && coords[coords.length - 1][1] === c[0][1]) c = c.slice(1);
-      coords.push(...c);
+    for (const part of parts) for (const q of part) {
+      const last = coords[coords.length - 1];
+      if (!last || last[0] !== q[0] || last[1] !== q[1]) coords.push(q);
     }
-    if (!coords.length) coords.push(g.nodes[S.id], g.nodes[T.id]);
-    const roadDistance = steps.reduce((sum, step) => sum + g.edges[step[2]].d, 0);
-    const footStart = S.d, footEnd = T.d;
     return {
       coords,
-      distance: roadDistance,
-      duration: gs[T.id],
-      footStart, footEnd,
-      startRoad: g.nodes[S.id], endRoad: g.nodes[T.id],
+      distance: Math.round(roadDistance),
+      duration: gs[VT],
+      footStart: S.d, footEnd: T.d,
+      startRoad: S.pt, endRoad: T.pt,
       connectedPct: g.connectedPct,
       source: g.source,
     };

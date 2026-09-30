@@ -1306,6 +1306,7 @@
     const div = document.createElement('div'); div.className = 'ff-land';
     div.innerHTML = `${status}<div class="btns">
       ${content.querySelector('[data-ff-route]') ? '' : '<button type="button" data-route>🧭 Route here</button>'}
+      <button type="button" data-from>Start route here</button>
       <button type="button" data-log>✎ Log a spot here</button>
       <button type="button" data-own>Who owns this?</button>
       <button type="button" data-dir>Directions</button></div>`;
@@ -1314,6 +1315,10 @@
     if (routeBtn) routeBtn.onclick = () => {
       const t = content.querySelector('h3, b, strong'); map.closePopup();
       window.ffRouteTo(ll.lat, ll.lng, t ? t.textContent.trim().slice(0, 48) : 'Selected spot');
+    };
+    div.querySelector('[data-from]').onclick = () => {
+      const t = content.querySelector('h3, b, strong'); map.closePopup();
+      window.ffRouteFrom(ll.lat, ll.lng, t ? t.textContent.replace(/^📍\s*/, '').trim().slice(0, 48) : 'Selected spot');
     };
     div.querySelector('[data-own]').onclick = () => window.open(`https://app.regrid.com/us#b=search&q=${ll.lat.toFixed(5)}%2C${ll.lng.toFixed(5)}`, '_blank');
     div.querySelector('[data-dir]').onclick = () => window.open(`https://maps.apple.com/?daddr=${ll.lat},${ll.lng}`, '_blank');
@@ -1392,7 +1397,7 @@
       const foot = map.distance(end, dest);
       const start = L.latLng(route.coords[0][1], route.coords[0][0]);
       const first = route.origin ? map.distance(L.latLng(route.origin.lat, route.origin.lng), start) : 0;
-      line = `<b>${html(route.label)}</b> · ${fmtDist(route.distance)} by road, about ${fmtTime(route.duration)}` +
+      line = `<b>${route.customStart ? html(route.startLabel || 'Start') + ' → ' : ''}${html(route.label)}</b> · ${fmtDist(route.distance)} by road, about ${fmtTime(route.duration)}` +
              (first > 25 ? ` · ${fmtDist(first)} to road` : '') +
              (foot > 25 ? ` · then ${fmtDist(foot)} on foot` : '') +
              (route.local ? ' · <span class="ff-saved">offline roads</span>' : route.offline ? ' · <span class="ff-saved">saved route</span>' : '');
@@ -1427,11 +1432,24 @@
     await Promise.all([worker(), worker(), worker(), worker()]);
   }
 
+  // "Start route here" on any popup sets a start other than the GPS fix (used once, by the next Route here).
+  let routeStart = null;
+  const startLayer = L.layerGroup().addTo(map);
+  function setRouteStart(rs) {
+    routeStart = rs; startLayer.clearLayers();
+    if (rs) L.circleMarker([rs.lat, rs.lng], { radius: 8, color: '#fff', weight: 2.5, fillColor: '#38c172', fillOpacity: 1, interactive: false }).addTo(startLayer);
+  }
+  window.ffRouteFrom = (lat, lng, label) => {
+    setRouteStart({ lat, lng, label: String(label || 'Start').slice(0, 48) });
+    toast('Start set. Now tap Route here on where you want to go.', 3600);
+  };
   async function routeTo(lat, lng, label, opts) {
     const quiet = !!(opts && opts.quiet);             // automatic re-plan while walking/driving
     const say = (m, ms) => { if (!quiet) toast(m, ms); };
     const dest = { lat, lng };
-    const here = (typeof lastFix !== 'undefined' && lastFix) ? lastFix : null;
+    const custom = !quiet && routeStart ? routeStart : null;
+    if (custom) setRouteStart(null);
+    const here = custom ? L.latLng(custom.lat, custom.lng) : ((typeof lastFix !== 'undefined' && lastFix) ? lastFix : null);
     if (!here) {
       pendingDest = { lat, lng, label };
       toast('Finding your location first…', 2200);
@@ -1439,6 +1457,7 @@
       return;
     }
     const base = { dest, origin: { lat: here.lat, lng: here.lng }, label: label || 'Destination', created: Date.now() };
+    if (custom) { base.customStart = true; base.startLabel = custom.label; }
     // Online: use the full OSRM driving router first. It gives the best route and
     // the resulting blue line is saved for later no-signal use.
     if (navigator.onLine !== false) {
@@ -1512,7 +1531,7 @@
     if (pendingDest && typeof lastFix !== 'undefined' && lastFix) { const d = pendingDest; pendingDest = null; routeTo(d.lat, d.lng, d.label); return; }
     if (!route) return;
     updateBar();
-    if (!route.coords || rerouting || (navigator.onLine === false && !route.local)) return;
+    if (!route.coords || rerouting || route.customStart) return;      // off-route with no signal re-plans on the saved roads
     const here = lastFix; if (!here) return;
     if (map.distance(here, L.latLng(route.dest.lat, route.dest.lng)) < 60) { offCount = 0; return; }
     const acc = pos && pos.coords && Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : 0;
