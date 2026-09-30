@@ -820,12 +820,15 @@
     return placesBusy;
   }
   window.ffPlacesFetch = placesFetch;
-  window.ffPlacesAutoRefresh = async maxAge => {            // saved before and older than 30 days: refresh quietly when online
+  window.ffPlacesAutoRefresh = async maxAge => {            // first time online, then every 30 days
     try {
-      const m = JSON.parse(localStorage.getItem(PLACES_META) || 'null'); if (!m || !m.fetched) return;
-      if (navigator.onLine === false || !(Date.now() - Date.parse(m.fetched) > maxAge)) return;
-      const n = await placesFetch(); toast(`Places list refreshed (${n.toLocaleString()} places)`, 2200);
-    } catch (_) { /* keeps the saved list */ }
+      const m = JSON.parse(localStorage.getItem(PLACES_META) || 'null');
+      if (navigator.onLine === false) return;
+      if (m && m.fetched) { if (!(Date.now() - Date.parse(m.fetched) > maxAge)) return; }
+      else if (!window.ffCanTry('places')) return;
+      window.ffMarkTry('places');
+      const n = await placesFetch(); toast(`Places list ${m && m.fetched ? 'refreshed' : 'saved for offline search'} (${n.toLocaleString()} places)`, 2400);
+    } catch (_) { /* keeps the saved list; tries again later */ }
   };
   async function placesSearch(q, cat, bias) {
     const list = await placesLoad(); if (!list) return [];
@@ -2001,19 +2004,43 @@
       <button type="button" data-ff-route onclick="ffPin('route')">Route here</button>
       <button type="button" onclick="ffPin('clear')">Remove pin</button></div></div>`;
   }
-  window.ffDropPin = (lat, lng, label) => {
-    stopFollow(true);
-    tempLabel = String(label || 'Searched spot').slice(0, 80);
+  // A dropped pin is never lost by accident: it is remembered across restarts until you
+  // remove or save it, and if a newer long-press pin replaces it, it is saved on its own first.
+  const TEMP_KEY = 'ff_temppin_v1';
+  let tempSrc = 'search';
+  function saveTempState() {
+    try { if (tempPin) { const ll = tempPin.getLatLng(); localStorage.setItem(TEMP_KEY, JSON.stringify({ lat: ll.lat, lng: ll.lng, label: tempLabel })); } else localStorage.removeItem(TEMP_KEY); } catch (_) {}
+  }
+  async function autoSaveTemp() {
+    if (!tempPin) return;
+    const ll = tempPin.getLatLng();
+    const e = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ts: Date.now(), type: 'place', label: tempLabel,
+      note: 'Saved automatically when another pin was dropped', lat: +ll.lat.toFixed(6), lon: +ll.lng.toFixed(6), gps: false, acc: null, photo: null };
+    const n = nearestTarget(ll); if (n) { e.nearest_target = n.t.rank; e.nearest_target_m = Math.round(n.d); }
+    if (await putEntry(e)) { toast('Your earlier dropped pin was saved', 2000); drawLog(); }
+  }
+  function dropPin(lat, lng, label, quiet) {
+    const src = label === 'Dropped pin' ? 'press' : 'search';
+    if (!quiet) stopFollow(true);
+    if (!quiet && tempPin && tempSrc === 'press' && map.distance(tempPin.getLatLng(), [lat, lng]) > 3) autoSaveTemp();
+    tempLabel = String(label || 'Searched spot').slice(0, 80); tempSrc = src;
     if (!tempPin) {
       tempPin = L.marker([lat, lng], { draggable: true, autoPan: true, zIndexOffset: 1500, icon: pinIcon, title: 'Drag to fine-tune' })
         .bindPopup(pinPopup, { maxWidth: 290 }).addTo(map);
       tempPin.on('click', () => { if (typeof suppressMapClick !== 'undefined') suppressMapClick = true; });
       tempPin.on('dragstart', () => tempPin.closePopup());
-      tempPin.on('dragend', () => { if (typeof suppressMapClick !== 'undefined') suppressMapClick = true; tempPin.openPopup(); });
+      tempPin.on('dragend', () => { if (typeof suppressMapClick !== 'undefined') suppressMapClick = true; saveTempState(); tempPin.openPopup(); });
     } else tempPin.setLatLng([lat, lng]);
+    saveTempState();
+    if (quiet) return;
     map.setView([lat, lng], Math.max(map.getZoom(), 16));
     setTimeout(() => tempPin && tempPin.openPopup(), 350);
-  };
+  }
+  window.ffDropPin = (lat, lng, label) => dropPin(lat, lng, label, false);
+  try {                                                              // bring back an unsaved pin from the last visit (quietly: no zoom, no popup)
+    const t = JSON.parse(localStorage.getItem(TEMP_KEY) || 'null');
+    if (t && Number.isFinite(+t.lat) && Number.isFinite(+t.lng)) dropPin(+t.lat, +t.lng, t.label, true);
+  } catch (_) {}
   function setBase(name) {
     const r = document.querySelector(`input[name="basemap"][value="${name}"]`); if (r) r.checked = true;
     if (typeof setBasemap === 'function') setBasemap(name);
@@ -2040,13 +2067,13 @@
       if (lb && !lb.value) lb.value = tempLabel;
       return;
     }
-    if (action === 'clear') { map.removeLayer(tempPin); tempPin = null; if (aerialBefore) { setBase(aerialBefore); aerialBefore = null; } }
+    if (action === 'clear') { map.removeLayer(tempPin); tempPin = null; saveTempState(); if (aerialBefore) { setBase(aerialBefore); aerialBefore = null; } }
   };
   window.ffAfterLogSave = e => {
     if (!tempPin) return;
     const ll = tempPin.getLatLng();
     if (Math.abs(ll.lat - e.lat) < 1e-5 && Math.abs(ll.lng - e.lon) < 1e-5) {
-      map.removeLayer(tempPin); tempPin = null;
+      map.removeLayer(tempPin); tempPin = null; saveTempState();
       toast('Point saved — it stays on the map offline', 2200);
     }
   };
@@ -2134,7 +2161,7 @@
     if (snap && (snap.truck || (snap.trail && snap.trail.length)) && window.ffTruckRestore) window.ffTruckRestore(snap.truck, snap.trail);
     if (!snap && (cur.length || localStorage.getItem('ff_truck_v1'))) writeMirror();        // first run of this version
     if (navigator.storage && navigator.storage.persist) {
-      try { persisted = await navigator.storage.persisted(); if (!persisted && (cur.length || localStorage.getItem('ff_truck_v1'))) persisted = await navigator.storage.persist(); } catch (_) {}
+      try { persisted = await navigator.storage.persisted(); if (!persisted) persisted = await navigator.storage.persist(); } catch (_) {}   // ask every start: the phone may then never clear this app's data
     }
     updateDataStatus();
   })();
@@ -2199,10 +2226,21 @@
       `<br>Off-phone backup: ${meta.lastBackup ? ago(meta.lastBackup) : 'never'}${pending ? ` · ${pending} change${pending === 1 ? '' : 's'} since` : ' · up to date'}` +
       `<br>Offline map: ${mapReady ? 'ready' : 'not fully saved — use Download above'}${roads ? ' · roads saved' : ' · roads not saved'}`;
     if (typeof window.ffUpdateOfflineDates === 'function') window.ffUpdateOfflineDates();
-    // online with un-backed-up changes: one gentle reminder per session
-    if (online && saveOk && pending >= 3 && !nagged && (!meta.lastBackup || Date.now() - meta.lastBackup > 6 * 3600 * 1000)) {
-      nagged = true; setTimeout(() => toast('You have signal — tap “Data saved” at the top to back up field data off the phone', 4200), 1500);
-    }
+    try { maybeNag(); } catch (_) { /* bar not built yet during start-up */ }
+  }
+  // Nothing leaves the phone by itself (the app has no account or server), so the safest habit is
+  // a one-tap backup whenever you have signal. This bar stays until you do it or tap Later (6 h).
+  const NAG_SNOOZE = 'ff_nag_snooze', NAG_EVERY_MS = 3600000;
+  const nag = document.createElement('div'); nag.id = 'ff-nag'; nag.hidden = true; nag.setAttribute('role', 'status');
+  nag.innerHTML = '<span class="t"></span><button type="button" class="go">Back up now</button><button type="button" class="x">Later</button>';
+  document.body.appendChild(nag);
+  nag.querySelector('.go').onclick = () => backupOffPhone();
+  nag.querySelector('.x').onclick = () => { try { localStorage.setItem(NAG_SNOOZE, String(Date.now() + 6 * 3600000)); } catch (_) {} nag.hidden = true; };
+  function maybeNag() {
+    const pending = meta.pending || 0; let snooze = 0; try { snooze = +localStorage.getItem(NAG_SNOOZE) || 0; } catch (_) {}
+    const want = navigator.onLine !== false && saveOk && pending > 0 && Date.now() > snooze && (!meta.lastBackup || Date.now() - meta.lastBackup > NAG_EVERY_MS);
+    nag.hidden = !want;
+    if (want) nag.querySelector('.t').textContent = `${pending} change${pending === 1 ? '' : 's'} not backed up off this phone`;
   }
   window.addEventListener('online', updateDataStatus);
   window.addEventListener('offline', updateDataStatus);
@@ -2243,18 +2281,131 @@
     if (rb) rb.onclick = () => downloadRoads();
   }
   window.ffUpdateOfflineDates = updateOfflineDates;
+  // Land and the places list save themselves the first time the app is online, then refresh every
+  // 30 days. A failed try is not repeated for 6 hours (the free servers are shared).
+  const TRY_MS = 6 * 3600000;
+  const tryKey = k => 'ff_try_' + k;
+  const canTry = k => { try { return Date.now() - (+localStorage.getItem(tryKey(k)) || 0) > TRY_MS; } catch (_) { return true; } };
+  const markTry = k => { try { localStorage.setItem(tryKey(k), String(Date.now())); } catch (_) {} };
+  window.ffCanTry = canTry; window.ffMarkTry = markTry;
   async function autoRefreshExtras() {
     if (navigator.onLine === false) return;
-    try {                                                    // Forest Service land: only if it was saved before
+    try {                                                    // Forest Service land
       let fetched = (lsJSON(FS_META) || {}).fetched;
-      if (!fetched) { try { await fsLoad(false); fetched = fsGeo.properties.fetched; } catch (_) {} }   // saved by an older version
-      if (fetched && Date.now() - Date.parse(fetched) > EXTRAS_MAX_AGE) { await fsRefresh(); toast('Forest Service land refreshed', 1800); updateOfflineDates(); }
-    } catch (_) { /* keeps the saved copy */ }
+      if (!fetched) { try { await fsLoad(false); fetched = fsGeo.properties.fetched; } catch (_) {} }   // maybe saved by an older version
+      if (!fetched) {
+        if (canTry('fs')) { markTry('fs'); const g = await fsLoad(true); toast(`Forest Service land saved for offline (${g.features.length} parcels)`, 2400); updateOfflineDates(); }
+      } else if (Date.now() - Date.parse(fetched) > EXTRAS_MAX_AGE) { await fsRefresh(); toast('Forest Service land refreshed', 1800); updateOfflineDates(); }
+    } catch (_) { /* keeps whatever is saved */ }
     if (typeof window.ffPlacesAutoRefresh === 'function') window.ffPlacesAutoRefresh(EXTRAS_MAX_AGE);
   }
   setTimeout(autoRefreshExtras, 6000);
   window.addEventListener('online', () => setTimeout(autoRefreshExtras, 2000));
   updateOfflineDates();
+
+  /* ================================================================ 20. CREEK WEATHER */
+  // Rain over the last week and the next few days for the map area, boiled down to
+  // Dry / Medium / Looks great for creek hunting. Rain moves gravel and exposes fresh
+  // stone, but a creek that is high and muddy right after a storm is neither walkable
+  // nor safe, so the best rating is "good rain this week AND the water should be dropping".
+  // The cutoffs below are a judgement call (no published standard exists); change them here.
+  const WX_KEY = 'ff_weather_v1';
+  const WX = { dryBelow: 0.5, greatFrom: 1.0, heavyDay: 1.0, floodDay: 1.5 };      // inches
+  const WX_RATE = { dry: 'Dry', medium: 'Medium', great: 'Looks great' };
+  function wxPlace() {                                       // where you are if that is in the map area, else the middle of it
+    const inside = typeof lastFix !== 'undefined' && lastFix && typeof STUDY_BOUNDS !== 'undefined' && STUDY_BOUNDS.contains(lastFix);
+    const c = inside ? lastFix : L.latLng(typeof STUDY_CENTER !== 'undefined' ? STUDY_CENTER : [37.62, -84.02]);
+    return { lat: +c.lat.toFixed(2), lon: +c.lng.toFixed(2) };
+  }
+  function wxSaved() { try { const w = JSON.parse(localStorage.getItem(WX_KEY) || 'null'); return w && Array.isArray(w.time) && Array.isArray(w.precip) ? w : null; } catch (_) { return null; } }
+  let wxBusy = null;
+  function wxFetch() {
+    if (wxBusy) return wxBusy;
+    wxBusy = (async () => {
+      if (navigator.onLine === false) throw new Error('offline');
+      const pl = wxPlace(), ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 12000);
+      try {
+        const u = 'https://api.open-meteo.com/v1/forecast?' + new URLSearchParams({ latitude: pl.lat, longitude: pl.lon, daily: 'precipitation_sum',
+          past_days: '7', forecast_days: '5', precipitation_unit: 'inch', timezone: 'auto' }).toString();
+        const r = await fetch(u, { signal: ctl.signal }); if (!r.ok) throw new Error('weather ' + r.status);
+        const j = await r.json(), d = j && j.daily;
+        if (!d || !Array.isArray(d.time) || !Array.isArray(d.precipitation_sum) || d.time.length < 8) throw new Error('unexpected weather data');
+        const w = { fetched: Date.now(), lat: pl.lat, lon: pl.lon, time: d.time, precip: d.precipitation_sum.map(v => (Number.isFinite(+v) ? +v : 0)) };
+        try { localStorage.setItem(WX_KEY, JSON.stringify(w)); } catch (_) {}          // kept until the next good reading replaces it
+        return w;
+      } finally { clearTimeout(tm); }
+    })().finally(() => { wxBusy = null; });
+    return wxBusy;
+  }
+  const inch = v => (v >= 10 ? v.toFixed(0) : v.toFixed(v < 0.1 && v > 0 ? 2 : 1)) + ' in';
+  function wxAssess(w) {
+    const t = new Date(), ds = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+    let idx = w.time.indexOf(ds), stale = false;
+    if (idx < 0) { idx = Math.min(7, w.time.length - 1); stale = true; }                   // saved data is too old to line up with today
+    const at = i => (i >= 0 && i < w.precip.length ? w.precip[i] : 0);
+    const sum = (a, b) => { let s = 0; for (let i = a; i <= b; i++) s += at(i); return s; };
+    const p7 = sum(idx - 7, idx - 1), yest = at(idx - 1), today = at(idx), next3 = sum(idx + 1, idx + 3);
+    const washed = p7 + today, heavyNow = yest + today >= WX.heavyDay, heavyAhead = Math.max(at(idx + 1), at(idx + 2)) >= WX.heavyDay;
+    const flood = Math.max(yest, today, at(idx + 1), at(idx + 2)) >= WX.floodDay;
+    let rating = washed < WX.dryBelow ? 'dry' : washed < WX.greatFrom ? 'medium' : 'great', reason;
+    if ((heavyNow || heavyAhead) && rating !== 'medium') rating = rating === 'great' || heavyAhead ? 'medium' : rating;
+    if ((heavyNow || heavyAhead) && rating === 'medium') reason = heavyNow
+      ? 'Heavy rain in the last day. Creeks are likely high and muddy, so wait for the water to drop.'
+      : 'Heavy rain is due in the next 2 days. Creeks will rise, so check the water today and stay out once it starts.';
+    else if (rating === 'great') reason = `Good rain this week (${inch(p7)}) and no big storm now. Creeks should be dropping with fresh gravel showing.`;
+    else if (rating === 'medium') reason = `Some rain this week (${inch(p7)}). Gravel bars are only partly refreshed.`;
+    else reason = `Little rain lately, ${inch(p7)} over 7 days. Gravel bars are mostly unchanged.` + (next3 >= 0.5 ? ` ${inch(next3)} is due in the next 3 days.` : '');
+    const days = w.time.map((d, i) => ({ date: d, v: at(i), kind: i < idx ? 'past' : i === idx ? 'today' : 'next' }));
+    return { rating, label: WX_RATE[rating], reason, p7, today, next3, days, stale,
+      warn: flood ? 'Flash-flood risk: 1.5 in or more in a day. Stay out of creeks and hollows.' : '' };
+  }
+  const wxWhen = ms => { const d = new Date(ms), same = d.toDateString() === new Date().toDateString();
+    return (same ? '' : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ', ') + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
+  // ---- the pill on the map + the card at the top of Layers
+  const wxPill = document.createElement('button');
+  wxPill.type = 'button'; wxPill.id = 'ff-wx'; wxPill.setAttribute('aria-label', 'Creek weather'); wxPill.hidden = true;
+  document.body.appendChild(wxPill);
+  const wxSec = document.createElement('section'); wxSec.className = 'panel-section'; wxSec.id = 'ff-wx-sec';
+  const headEl = document.querySelector('#panel .panel-head');
+  if (headEl) headEl.insertAdjacentElement('afterend', wxSec); else if (panelBox) panelBox.appendChild(wxSec);
+  wxPill.addEventListener('click', () => {
+    if (typeof setSheet === 'function') setSheet(false);
+    if (typeof setPanel === 'function') setPanel(true);
+    setTimeout(() => wxSec.scrollIntoView({ behavior: 'smooth', block: 'start' }), 260);
+  });
+  function wxRender(note) {
+    const w = wxSaved(), off = navigator.onLine === false;
+    if (!w) {
+      wxPill.hidden = false; wxPill.className = 'r-none'; wxPill.innerHTML = '<i></i>Creek weather';
+      wxSec.innerHTML = `<h2>Creek weather</h2><div class="status-box">${note || (off ? 'Needs internet the first time. Connect once and the last reading is kept on this phone.' : 'Loading the rain outlook…')}</div>`;
+      return;
+    }
+    const a = wxAssess(w), max = Math.max(1.5, ...a.days.map(d => d.v));
+    wxPill.hidden = false; wxPill.className = 'r-' + a.rating;
+    wxPill.innerHTML = `<i></i>Creeks: ${a.label}${off ? ' <small>offline</small>' : ''}`;
+    const dn = d => { const x = new Date(d + 'T12:00:00'); return `${'SMTWTFS'[x.getDay()]}<small>${x.getDate()}</small>`; };
+    const bars = a.days.map(d => `<div class="ff-wx-col ${d.kind}"><span class="v">${d.v >= 0.05 ? d.v.toFixed(1) : d.v > 0 ? '·' : ''}</span>` +
+      `<div class="bar"><i style="height:${Math.max(d.v > 0 ? 3 : 0, Math.round(d.v / max * 100))}%"></i></div><span class="d">${dn(d.date)}</span></div>`).join('');
+    const when = `${off || w.stale ? 'Last updated' : 'Updated'} ${wxWhen(w.fetched)}${off ? ' (offline)' : ''}`;
+    wxSec.innerHTML = `<h2>Creek weather</h2>
+      <div class="ff-wx-rate r-${a.rating}"><b>${a.label}</b><span>${html(a.reason)}</span></div>
+      ${a.warn ? `<div class="ff-wx-warn">${a.warn}</div>` : ''}
+      <div class="ff-wx-nums"><div><b>${inch(a.p7)}</b><small>past 7 days</small></div><div><b>${inch(a.today)}</b><small>today</small></div><div><b>${inch(a.next3)}</b><small>next 3 days</small></div></div>
+      <div class="ff-wx-bars" aria-label="Daily rain in inches, last 7 days then the forecast">${bars}</div>
+      <small class="ff-wx-when">${when}${w.stale ? ' · too old to line up with today' : ''} · rain at ${w.lat}, ${w.lon} from Open-Meteo</small>
+      <details><summary>How the rating works</summary><p>Rain moves gravel and exposes fresh stone, but a creek that is high and muddy right after a storm is not walkable or safe. <b>Looks great</b>: at least ${WX.greatFrom} in over the past week and no heavy storm (${WX.heavyDay} in or more) in the last day or the next two. <b>Medium</b>: ${WX.dryBelow} to ${WX.greatFrom} in this week, or a heavy storm that has just passed or is coming. <b>Dry</b>: under ${WX.dryBelow} in. These cutoffs are a rule of thumb, not a measurement of any particular creek.</p></details>`;
+  }
+  async function wxRefresh(quiet) {
+    try { await wxFetch(); wxRender(); }
+    catch (e) { wxRender(quiet || wxSaved() ? null : (navigator.onLine === false ? null : 'Could not load the rain outlook. It will try again.')); }
+  }
+  window.ffWeatherRefresh = wxRefresh;
+  wxRender();
+  setTimeout(() => wxRefresh(true), 2500);
+  setInterval(() => { if (navigator.onLine !== false) wxRefresh(true); else wxRender(); }, 30 * 60 * 1000);
+  window.addEventListener('online', () => wxRefresh(true));
+  window.addEventListener('offline', () => wxRender());
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { const w = wxSaved(); if (!w || Date.now() - w.fetched > 30 * 60 * 1000) wxRefresh(true); else wxRender(); } });
 
   // restore a saved route when the app opens
   try { const saved = JSON.parse(localStorage.getItem(ROUTE_KEY) || 'null'); if (saved) { route = { ...saved, offline: !!saved.coords }; drawRoute(); } } catch (_) {}
