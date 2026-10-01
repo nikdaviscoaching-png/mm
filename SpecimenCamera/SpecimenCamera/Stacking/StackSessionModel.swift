@@ -136,7 +136,8 @@ final class StackSessionModel: ObservableObject {
         setup.configuration.format = camera.captureFormat
         setup.configuration.width = dims.width; setup.configuration.height = dims.height
 
-        let driver = StackCameraDriver(engine: camera.engine, quality: { [settings] in settings.stackQuality })
+        let stackQuality = settings.stackQuality          // read on the main actor; the driver's closure must be Sendable
+        let driver = StackCameraDriver(engine: camera.engine, quality: { stackQuality })
         let c = StackCaptureCoordinator(store: processing.store, camera: driver, settleSeconds: 0.35)
         coordinator = c
         eventTask?.cancel()
