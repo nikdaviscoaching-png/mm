@@ -49,7 +49,7 @@ final class OverlayRenderer: NSObject, MTKViewDelegate, @unchecked Sendable {
     private var frameIndex: Float = 0
     private weak var view: MTKView?
 
-    init?() {
+    init?(useMetal: Bool) {
         guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue() else { return nil }
         self.device = device; self.queue = queue
         do {

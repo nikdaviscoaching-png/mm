@@ -19,7 +19,7 @@ struct MeasurementView: View {
     @State private var lidarDistance: Double?
     @State private var message: String?
 
-    private var item: LibraryItem? { library.items.first { $0.id == itemID } }
+    private var item: SpecimenCore.LibraryItem? { library.items.first { $0.id == itemID } }
 
     var body: some View {
         NavigationStack {
@@ -122,7 +122,7 @@ struct MeasurementView: View {
         i.scale = s; library.update(i); message = "Scale saved with the image."
     }
 
-    private func scaleBarText(item: LibraryItem, scale: ScaleMetadata) -> String? {
+    private func scaleBarText(item: SpecimenCore.LibraryItem, scale: ScaleMetadata) -> String? {
         let b = ScaleBar.choose(pixelsPerMillimeter: scale.pixelsPerMillimeter, imageWidthPixels: item.width)
         return "\(b.label) = \(Int(b.pixels.rounded())) px"
     }

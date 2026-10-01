@@ -18,7 +18,7 @@ final class OverlayAnalyzer: ObservableObject {
     let renderer: OverlayRenderer?
 
     init() {
-        let r = OverlayRenderer()
+        let r = OverlayRenderer(useMetal: true)
         renderer = r
         box.renderer = r                 // set once, before any frame arrives; never replaced
         usingGPU = r != nil

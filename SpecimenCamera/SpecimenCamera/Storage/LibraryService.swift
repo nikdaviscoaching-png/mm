@@ -8,7 +8,7 @@ final class LibraryService: ObservableObject {
     let store: CollectionStore
     @Published private(set) var collections: [SpecimenCollection] = []
     @Published private(set) var activeCollection: SpecimenCollection
-    @Published private(set) var items: [LibraryItem] = []
+    @Published private(set) var items: [SpecimenCore.LibraryItem] = []
     @Published private(set) var lastImage: UIImage?
 
     init() throws {
@@ -24,7 +24,7 @@ final class LibraryService: ObservableObject {
         items = store.items()
     }
 
-    func items(in collection: UUID) -> [LibraryItem] { items.filter { $0.collectionID == collection } }
+    func items(in collection: UUID) -> [SpecimenCore.LibraryItem] { items.filter { $0.collectionID == collection } }
 
     func setActive(_ id: UUID) { try? store.setActive(id); reload() }
     func createCollection(_ name: String) { if let c = try? store.createCollection(named: name) { try? store.setActive(c.id) }; reload() }
@@ -33,16 +33,16 @@ final class LibraryService: ObservableObject {
         guard let fallback = collections.first(where: { $0.id != id }) else { return }
         try? store.deleteCollection(id, moveItemsTo: fallback.id); reload()
     }
-    func move(_ item: LibraryItem, to collection: UUID) { try? store.move(item.id, to: collection); reload() }
-    func delete(_ item: LibraryItem) { try? store.delete(item.id); reload() }
-    func update(_ item: LibraryItem) { try? store.update(item); reload() }
+    func move(_ item: SpecimenCore.LibraryItem, to collection: UUID) { try? store.move(item.id, to: collection); reload() }
+    func delete(_ item: SpecimenCore.LibraryItem) { try? store.delete(item.id); reload() }
+    func update(_ item: SpecimenCore.LibraryItem) { try? store.update(item); reload() }
 
-    func masterURL(_ item: LibraryItem) -> URL { store.masterURL(for: item) }
-    func thumbnail(_ item: LibraryItem) -> UIImage? { store.thumbnailURL(for: item).flatMap { UIImage(contentsOfFile: $0.path) } }
+    func masterURL(_ item: SpecimenCore.LibraryItem) -> URL { store.masterURL(for: item) }
+    func thumbnail(_ item: SpecimenCore.LibraryItem) -> UIImage? { store.thumbnailURL(for: item).flatMap { UIImage(contentsOfFile: $0.path) } }
 
     /// Adds a captured single photo. The camera's own file becomes the master (it is moved into the library, never re-encoded).
     @discardableResult
-    func addSingle(file: URL, info: CapturedFrameInfo, lens: LensInfo?, settings: CameraSettings, format: CaptureFormat) throws -> LibraryItem {
+    func addSingle(file: URL, info: CapturedFrameInfo, lens: LensInfo?, settings: CameraSettings, format: CaptureFormat) throws -> SpecimenCore.LibraryItem {
         let id = UUID()
         let isRAW = info.kind == .dng
         let ext = file.pathExtension.isEmpty ? (isRAW ? "dng" : "heic") : file.pathExtension.lowercased()
@@ -50,7 +50,7 @@ final class LibraryService: ObservableObject {
         let dest = store.mastersDirectory.appendingPathComponent(name)
         try FileManager.default.moveItem(at: file, to: dest)
         let size = ThumbnailService.pixelSize(of: dest) ?? (0, 0)
-        var item = LibraryItem(collectionID: activeCollection.id, kind: .single, captureDate: Date(), fileName: name, width: size.0, height: size.1,
+        var item = SpecimenCore.LibraryItem(collectionID: activeCollection.id, kind: .single, captureDate: Date(), fileName: name, width: size.0, height: size.1,
                                finalFormat: isRAW ? .dng : (ext == "jpg" || ext == "jpeg" ? .jpeg : .heif))
         item.id = id
         item.lensName = lens?.name ?? ""; item.equivalentFocalLength = lens?.equivalentFocalLengthMM
@@ -68,9 +68,9 @@ final class LibraryService: ObservableObject {
 
     /// Registers a finished stack master (already in `Masters/`).
     @discardableResult
-    func addStack(master: URL, project: StackProject, metadata: CompositeMetadata, width: Int, height: Int, keptSourcesFolder: String?, scale: ScaleMetadata?) throws -> LibraryItem {
+    func addStack(master: URL, project: StackProject, metadata: CompositeMetadata, width: Int, height: Int, keptSourcesFolder: String?, scale: ScaleMetadata?) throws -> SpecimenCore.LibraryItem {
         let collection = project.collectionID.flatMap { id in collections.first { $0.id == id } } ?? activeCollection
-        var item = LibraryItem(collectionID: collection.id, kind: LibraryItemKind(project.type), captureDate: metadata.originalCaptureDate, fileName: master.lastPathComponent,
+        var item = SpecimenCore.LibraryItem(collectionID: collection.id, kind: LibraryItemKind(project.type), captureDate: metadata.originalCaptureDate, fileName: master.lastPathComponent,
                                width: width, height: height, finalFormat: project.finalFormat)
         item.id = project.id
         item.processingDate = metadata.processingDate

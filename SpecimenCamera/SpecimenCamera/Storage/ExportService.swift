@@ -18,14 +18,14 @@ enum ExportService {
     private static let context = CIContext(options: [.cacheIntermediates: false])
 
     /// Byte-for-byte copy under a descriptive file name (so listings and the Files app show something meaningful).
-    static func fullQualityCopy(of item: LibraryItem, master: URL) throws -> URL {
+    static func fullQualityCopy(of item: SpecimenCore.LibraryItem, master: URL) throws -> URL {
         let dest = AppPaths.exports.appendingPathComponent(ExportPlanner.fileName(for: item, web: false))
         try? FileManager.default.removeItem(at: dest)
         try FileManager.default.copyItem(at: master, to: dest)
         return dest
     }
 
-    static func webCopy(of item: LibraryItem, master: URL, preset: WebCopyPreset = .eBay) throws -> URL {
+    static func webCopy(of item: SpecimenCore.LibraryItem, master: URL, preset: WebCopyPreset = .eBay) throws -> URL {
         var image: CIImage?
         if item.finalFormat == .dng, let raw = CIRAWFilter(imageURL: master) { image = raw.outputImage }
         else { image = CIImage(contentsOf: master, options: [.applyOrientationProperty: true]) }

@@ -54,7 +54,7 @@ struct ItemDetailView: View {
     @State private var showMeasure = false
     @State private var busy = false
 
-    var item: LibraryItem? { library.items.first { $0.id == itemID } }
+    var item: SpecimenCore.LibraryItem? { library.items.first { $0.id == itemID } }
 
     var body: some View {
         if let item {
@@ -93,7 +93,7 @@ struct ItemDetailView: View {
         }
     }
 
-    private func metadata(_ i: LibraryItem) -> some View {
+    private func metadata(_ i: SpecimenCore.LibraryItem) -> some View {
         let df = DateFormatter(); df.dateStyle = .medium; df.timeStyle = .short
         var rows: [(String, String)] = [
             ("Captured", df.string(from: i.captureDate)), ("Size", "\(i.width) × \(i.height)  (\(String(format: "%.1f", Double(i.width * i.height) / 1e6)) MP)"),
@@ -112,9 +112,9 @@ struct ItemDetailView: View {
         }
     }
 
-    private func save(_ i: LibraryItem) { guard notes != i.notes else { return }; var c = i; c.notes = notes; library.update(c) }
+    private func save(_ i: SpecimenCore.LibraryItem) { guard notes != i.notes else { return }; var c = i; c.notes = notes; library.update(c) }
 
-    private func export(_ i: LibraryItem, web: Bool) {
+    private func export(_ i: SpecimenCore.LibraryItem, web: Bool) {
         busy = true; message = nil
         let master = library.masterURL(i)
         Task {
@@ -126,7 +126,7 @@ struct ItemDetailView: View {
         }
     }
 
-    private func toPhotos(_ i: LibraryItem) async {
+    private func toPhotos(_ i: SpecimenCore.LibraryItem) async {
         do { try await PhotosSaver.save(fileURL: library.masterURL(i), creationDate: i.captureDate); message = "Saved to Photos." }
         catch { message = error.localizedDescription }
     }
