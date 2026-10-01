@@ -1,0 +1,580 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0A3BA397D1B01B975EF08B3E /* CameraCapabilityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C140544FA4BB2087C620D875 /* CameraCapabilityManager.swift */; };
+		0D4916E54024B86A407A571A /* StackCameraDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE10FEA8FCB913E678BD167 /* StackCameraDriver.swift */; };
+		0D94B654C2DD66461307139B /* OverlayShaders.swift in Sources */ = {isa = PBXBuildFile; fileRef = B01D46C9CE2E6C57C2D88DD5 /* OverlayShaders.swift */; };
+		180FEA01E3498B148FBFC0EA /* ReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B0198106B6757B7FC6C389C /* ReviewView.swift */; };
+		190DFEBDDA68C29FDE796895 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A02891E7B9AED4299A21DA7C /* Assets.xcassets */; };
+		1D17B361223B40D7D0778522 /* OverlayRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8958EC887DC5E6F5E1518D4 /* OverlayRenderer.swift */; };
+		2751CE3AF455B64069FB536F /* ZoomableImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3E2154638FEFA64C9E2AB4 /* ZoomableImageView.swift */; };
+		2A9FB4C43E697CC7F207CAD5 /* SpecimenTestKit in Frameworks */ = {isa = PBXBuildFile; productRef = 14087BAE249911B18CDFDEAE /* SpecimenTestKit */; };
+		344E838B02613C69B963A410 /* CameraController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB6BC2C67C410DF0EBA5FA3F /* CameraController.swift */; };
+		3514DE45C9B6A0A5A986B3DD /* DebugPipelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 644A543126C87EB811C7AB60 /* DebugPipelineView.swift */; };
+		373D94CAB3A4C1B569E23655 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB07096283D97CF6A0E62F87 /* AppSettings.swift */; };
+		37EFB8D5D739562B7E43F5BC /* WorkingImageDeveloper.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC609975346E35A8DD9D0F7A /* WorkingImageDeveloper.swift */; };
+		3B851BD2A19F47AD86F3BBF8 /* OverlayViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C49DDD86521CA7CD9B8CAF9 /* OverlayViews.swift */; };
+		41DD6E25B0455BE031FD36DF /* CameraEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F94D889C4431D7B26B7754 /* CameraEngine.swift */; };
+		48CE42D682A4A3603CC4CE1C /* ImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27282104084A26D45D02F2CA /* ImportView.swift */; };
+		4CF0F22FF97B2602FAA5EE20 /* LibraryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED14676696BA2C8D2FDA3C02 /* LibraryService.swift */; };
+		4E5D827696D47A259C5BF45B /* ProcessingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F0F9E58DD42C3766B14C38E /* ProcessingService.swift */; };
+		50C587629816822C44931E61 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C76F7461577BD2C760F56855 /* SettingsView.swift */; };
+		526EFBF737D45D7BD14CE105 /* ImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E5BF81C4EC066A1B8B6CF3 /* ImportService.swift */; };
+		564A3F715B322B6057CCB495 /* CameraPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB255863CF8AB2199DA9C058 /* CameraPreview.swift */; };
+		5DD0BDC90DEB2E5CBF653E2A /* LiDARDistanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53399D02996946EACAD310A6 /* LiDARDistanceView.swift */; };
+		6E0465CC564243F14702BA60 /* FinalImageEncoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40188A97A6BA43729F7D3734 /* FinalImageEncoder.swift */; };
+		6F958B2EF06E98643232E6F5 /* MeasurementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D546D066EA44BE6387BAA5E4 /* MeasurementView.swift */; };
+		80DBE67F9C8EA661A7D259C0 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA19312C27071A85695E9326 /* AppModel.swift */; };
+		9691AB7E00A0357CF58E3890 /* AppPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = C02325EFCDB7E46D0F1E87F3 /* AppPaths.swift */; };
+		A23330ECAE67272E41F2578A /* SpecimenCameraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B5192B8D6A2FB024244E661 /* SpecimenCameraApp.swift */; };
+		A5F0CEEFDF315DD9D792D561 /* OverlayAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA089798536FF414F49EFBF8 /* OverlayAnalyzer.swift */; };
+		A7E2B7659149A232AF185CAB /* PhotosSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEA0258ACD9C603B3B8E4EEA /* PhotosSaver.swift */; };
+		A8F47A71DED49C3652D6556B /* StackPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCF5DDFB557B1DE48779206E /* StackPanel.swift */; };
+		A9E35B2B13B5FC57DD5B0257 /* RecoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 637BF28EC70DBB21364D19BA /* RecoveryView.swift */; };
+		AC714EB2859276876785672B /* StackSessionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C87169EC773DC2A0C68E09 /* StackSessionModel.swift */; };
+		B23711D59D4E4418A74C9830 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 803E882F05E0E7DB0147A22D /* Theme.swift */; };
+		B73963CBA37B7E31BEB75993 /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95CB116749A860924B9A9D06 /* Log.swift */; };
+		BA269EF0BDF15451F18FB986 /* ControlPanels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 385E9CC9D83C09824DAA8234 /* ControlPanels.swift */; };
+		BBDC625B577CBFCDCC402ECC /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28F1492746D7F033A8C778E1 /* LibraryView.swift */; };
+		C4B94EA37A7E4620EAFD4B5F /* ThumbnailService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8854F44846F968013E896600 /* ThumbnailService.swift */; };
+		CD0D6DD0018D22546338DC84 /* ScreenAwake.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C9910FCD90D4856FDA3604F /* ScreenAwake.swift */; };
+		D360BAA70B60BEC5DCDB6150 /* SpecimenCore in Frameworks */ = {isa = PBXBuildFile; productRef = C950FA6520912682D6A12A38 /* SpecimenCore */; };
+		DB1C4275BCAE5089ED10BDC2 /* DeviceStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 253B9D18B50613A8004E7A59 /* DeviceStatus.swift */; };
+		EBE00D3AE74883F072A64101 /* MotionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA732452F1E34018EBF955CB /* MotionService.swift */; };
+		FA7A8633BFBBC48F209956AC /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E36CC63F127042BC323C92FB /* ExportService.swift */; };
+		FE522068903891644775C0A0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF5756C2F212F2EE3B728CE /* RootView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0B0198106B6757B7FC6C389C /* ReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewView.swift; sourceTree = "<group>"; };
+		0F0F9E58DD42C3766B14C38E /* ProcessingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessingService.swift; sourceTree = "<group>"; };
+		11E5BF81C4EC066A1B8B6CF3 /* ImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportService.swift; sourceTree = "<group>"; };
+		14F94D889C4431D7B26B7754 /* CameraEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraEngine.swift; sourceTree = "<group>"; };
+		1DEDEDF9C670694E4696ACEF /* SpecimenCamera.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SpecimenCamera.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		253B9D18B50613A8004E7A59 /* DeviceStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceStatus.swift; sourceTree = "<group>"; };
+		27282104084A26D45D02F2CA /* ImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportView.swift; sourceTree = "<group>"; };
+		28F1492746D7F033A8C778E1 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		385E9CC9D83C09824DAA8234 /* ControlPanels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlPanels.swift; sourceTree = "<group>"; };
+		40188A97A6BA43729F7D3734 /* FinalImageEncoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinalImageEncoder.swift; sourceTree = "<group>"; };
+		4C49DDD86521CA7CD9B8CAF9 /* OverlayViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayViews.swift; sourceTree = "<group>"; };
+		4C9910FCD90D4856FDA3604F /* ScreenAwake.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenAwake.swift; sourceTree = "<group>"; };
+		53399D02996946EACAD310A6 /* LiDARDistanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiDARDistanceView.swift; sourceTree = "<group>"; };
+		5FF5756C2F212F2EE3B728CE /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		637BF28EC70DBB21364D19BA /* RecoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryView.swift; sourceTree = "<group>"; };
+		644A543126C87EB811C7AB60 /* DebugPipelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugPipelineView.swift; sourceTree = "<group>"; };
+		694FCC2882DFFD16101FAFAD /* SpecimenCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SpecimenCore; path = Packages/SpecimenCore; sourceTree = SOURCE_ROOT; };
+		7B5192B8D6A2FB024244E661 /* SpecimenCameraApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpecimenCameraApp.swift; sourceTree = "<group>"; };
+		803E882F05E0E7DB0147A22D /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		8854F44846F968013E896600 /* ThumbnailService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailService.swift; sourceTree = "<group>"; };
+		95CB116749A860924B9A9D06 /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
+		A02891E7B9AED4299A21DA7C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA19312C27071A85695E9326 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		AA3E2154638FEFA64C9E2AB4 /* ZoomableImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomableImageView.swift; sourceTree = "<group>"; };
+		B01D46C9CE2E6C57C2D88DD5 /* OverlayShaders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayShaders.swift; sourceTree = "<group>"; };
+		BCF5DDFB557B1DE48779206E /* StackPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackPanel.swift; sourceTree = "<group>"; };
+		BEA0258ACD9C603B3B8E4EEA /* PhotosSaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosSaver.swift; sourceTree = "<group>"; };
+		C02325EFCDB7E46D0F1E87F3 /* AppPaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPaths.swift; sourceTree = "<group>"; };
+		C140544FA4BB2087C620D875 /* CameraCapabilityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraCapabilityManager.swift; sourceTree = "<group>"; };
+		C76F7461577BD2C760F56855 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		C8958EC887DC5E6F5E1518D4 /* OverlayRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayRenderer.swift; sourceTree = "<group>"; };
+		D4C87169EC773DC2A0C68E09 /* StackSessionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackSessionModel.swift; sourceTree = "<group>"; };
+		D546D066EA44BE6387BAA5E4 /* MeasurementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementView.swift; sourceTree = "<group>"; };
+		DA089798536FF414F49EFBF8 /* OverlayAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayAnalyzer.swift; sourceTree = "<group>"; };
+		DA732452F1E34018EBF955CB /* MotionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionService.swift; sourceTree = "<group>"; };
+		DB07096283D97CF6A0E62F87 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		DB6BC2C67C410DF0EBA5FA3F /* CameraController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraController.swift; sourceTree = "<group>"; };
+		DC609975346E35A8DD9D0F7A /* WorkingImageDeveloper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkingImageDeveloper.swift; sourceTree = "<group>"; };
+		E36CC63F127042BC323C92FB /* ExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportService.swift; sourceTree = "<group>"; };
+		ECE10FEA8FCB913E678BD167 /* StackCameraDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackCameraDriver.swift; sourceTree = "<group>"; };
+		ED14676696BA2C8D2FDA3C02 /* LibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryService.swift; sourceTree = "<group>"; };
+		FB255863CF8AB2199DA9C058 /* CameraPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreview.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AAA390C496F4F742AB799B28 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D360BAA70B60BEC5DCDB6150 /* SpecimenCore in Frameworks */,
+				2A9FB4C43E697CC7F207CAD5 /* SpecimenTestKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0709A5008DF8EC17AFEB98C8 = {
+			isa = PBXGroup;
+			children = (
+				3D5F08D97D8C2950BD88BAAD /* Packages */,
+				C4AFCBAD54AC441A9B170AA0 /* SpecimenCamera */,
+				BD51EC0458974BA4B065F8E3 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		2A0706FB826B2932C81A13CC /* Overlays */ = {
+			isa = PBXGroup;
+			children = (
+				DA089798536FF414F49EFBF8 /* OverlayAnalyzer.swift */,
+				C8958EC887DC5E6F5E1518D4 /* OverlayRenderer.swift */,
+				B01D46C9CE2E6C57C2D88DD5 /* OverlayShaders.swift */,
+				4C49DDD86521CA7CD9B8CAF9 /* OverlayViews.swift */,
+			);
+			path = Overlays;
+			sourceTree = "<group>";
+		};
+		3D5F08D97D8C2950BD88BAAD /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				694FCC2882DFFD16101FAFAD /* SpecimenCore */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		8E2E93EC8F4F8710536991E6 /* Camera */ = {
+			isa = PBXGroup;
+			children = (
+				C140544FA4BB2087C620D875 /* CameraCapabilityManager.swift */,
+				DB6BC2C67C410DF0EBA5FA3F /* CameraController.swift */,
+				14F94D889C4431D7B26B7754 /* CameraEngine.swift */,
+				DA732452F1E34018EBF955CB /* MotionService.swift */,
+				ECE10FEA8FCB913E678BD167 /* StackCameraDriver.swift */,
+			);
+			path = Camera;
+			sourceTree = "<group>";
+		};
+		9C45CE30B9C7DF79E73234F1 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A02891E7B9AED4299A21DA7C /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		BD51EC0458974BA4B065F8E3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				1DEDEDF9C670694E4696ACEF /* SpecimenCamera.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C09A1BCF4085BD3BFD7B18D6 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				E36CC63F127042BC323C92FB /* ExportService.swift */,
+				ED14676696BA2C8D2FDA3C02 /* LibraryService.swift */,
+				BEA0258ACD9C603B3B8E4EEA /* PhotosSaver.swift */,
+				8854F44846F968013E896600 /* ThumbnailService.swift */,
+			);
+			path = Storage;
+			sourceTree = "<group>";
+		};
+		C4AFCBAD54AC441A9B170AA0 /* SpecimenCamera */ = {
+			isa = PBXGroup;
+			children = (
+				C6CD71182AE786BD5D7C6C0F /* App */,
+				8E2E93EC8F4F8710536991E6 /* Camera */,
+				CBC89353C20C5CD995541E78 /* Measurement */,
+				2A0706FB826B2932C81A13CC /* Overlays */,
+				9C45CE30B9C7DF79E73234F1 /* Resources */,
+				E54BABCF20AEDBCA2112D9B5 /* Stacking */,
+				C09A1BCF4085BD3BFD7B18D6 /* Storage */,
+				D45F0D700ECF4486DB0D5A1C /* UI */,
+			);
+			path = SpecimenCamera;
+			sourceTree = "<group>";
+		};
+		C6CD71182AE786BD5D7C6C0F /* App */ = {
+			isa = PBXGroup;
+			children = (
+				AA19312C27071A85695E9326 /* AppModel.swift */,
+				C02325EFCDB7E46D0F1E87F3 /* AppPaths.swift */,
+				DB07096283D97CF6A0E62F87 /* AppSettings.swift */,
+				253B9D18B50613A8004E7A59 /* DeviceStatus.swift */,
+				95CB116749A860924B9A9D06 /* Log.swift */,
+				4C9910FCD90D4856FDA3604F /* ScreenAwake.swift */,
+				7B5192B8D6A2FB024244E661 /* SpecimenCameraApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		CBC89353C20C5CD995541E78 /* Measurement */ = {
+			isa = PBXGroup;
+			children = (
+				53399D02996946EACAD310A6 /* LiDARDistanceView.swift */,
+				D546D066EA44BE6387BAA5E4 /* MeasurementView.swift */,
+			);
+			path = Measurement;
+			sourceTree = "<group>";
+		};
+		D45F0D700ECF4486DB0D5A1C /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				FB255863CF8AB2199DA9C058 /* CameraPreview.swift */,
+				385E9CC9D83C09824DAA8234 /* ControlPanels.swift */,
+				644A543126C87EB811C7AB60 /* DebugPipelineView.swift */,
+				27282104084A26D45D02F2CA /* ImportView.swift */,
+				28F1492746D7F033A8C778E1 /* LibraryView.swift */,
+				637BF28EC70DBB21364D19BA /* RecoveryView.swift */,
+				0B0198106B6757B7FC6C389C /* ReviewView.swift */,
+				5FF5756C2F212F2EE3B728CE /* RootView.swift */,
+				C76F7461577BD2C760F56855 /* SettingsView.swift */,
+				BCF5DDFB557B1DE48779206E /* StackPanel.swift */,
+				803E882F05E0E7DB0147A22D /* Theme.swift */,
+				AA3E2154638FEFA64C9E2AB4 /* ZoomableImageView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		E54BABCF20AEDBCA2112D9B5 /* Stacking */ = {
+			isa = PBXGroup;
+			children = (
+				40188A97A6BA43729F7D3734 /* FinalImageEncoder.swift */,
+				11E5BF81C4EC066A1B8B6CF3 /* ImportService.swift */,
+				0F0F9E58DD42C3766B14C38E /* ProcessingService.swift */,
+				D4C87169EC773DC2A0C68E09 /* StackSessionModel.swift */,
+				DC609975346E35A8DD9D0F7A /* WorkingImageDeveloper.swift */,
+			);
+			path = Stacking;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		EB62691C755E898AF17F5A60 /* SpecimenCamera */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E6DF2949EFD80E35C8E1FEBA /* Build configuration list for PBXNativeTarget "SpecimenCamera" */;
+			buildPhases = (
+				596BBC1D6D533F21B517D6D0 /* Sources */,
+				466F872D0819FCABF35007DD /* Resources */,
+				AAA390C496F4F742AB799B28 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SpecimenCamera;
+			packageProductDependencies = (
+				C950FA6520912682D6A12A38 /* SpecimenCore */,
+				14087BAE249911B18CDFDEAE /* SpecimenTestKit */,
+			);
+			productName = SpecimenCamera;
+			productReference = 1DEDEDF9C670694E4696ACEF /* SpecimenCamera.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F49B7CA6AA552E516F1E9114 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					EB62691C755E898AF17F5A60 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 1AD229F64B7FBCD8E5A6E54F /* Build configuration list for PBXProject "SpecimenCamera" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 0709A5008DF8EC17AFEB98C8;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				86CD5F062565571144E11AE0 /* XCLocalSwiftPackageReference "Packages/SpecimenCore" */,
+			);
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				EB62691C755E898AF17F5A60 /* SpecimenCamera */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		466F872D0819FCABF35007DD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				190DFEBDDA68C29FDE796895 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		596BBC1D6D533F21B517D6D0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				80DBE67F9C8EA661A7D259C0 /* AppModel.swift in Sources */,
+				9691AB7E00A0357CF58E3890 /* AppPaths.swift in Sources */,
+				373D94CAB3A4C1B569E23655 /* AppSettings.swift in Sources */,
+				0A3BA397D1B01B975EF08B3E /* CameraCapabilityManager.swift in Sources */,
+				344E838B02613C69B963A410 /* CameraController.swift in Sources */,
+				41DD6E25B0455BE031FD36DF /* CameraEngine.swift in Sources */,
+				564A3F715B322B6057CCB495 /* CameraPreview.swift in Sources */,
+				BA269EF0BDF15451F18FB986 /* ControlPanels.swift in Sources */,
+				3514DE45C9B6A0A5A986B3DD /* DebugPipelineView.swift in Sources */,
+				DB1C4275BCAE5089ED10BDC2 /* DeviceStatus.swift in Sources */,
+				FA7A8633BFBBC48F209956AC /* ExportService.swift in Sources */,
+				6E0465CC564243F14702BA60 /* FinalImageEncoder.swift in Sources */,
+				526EFBF737D45D7BD14CE105 /* ImportService.swift in Sources */,
+				48CE42D682A4A3603CC4CE1C /* ImportView.swift in Sources */,
+				5DD0BDC90DEB2E5CBF653E2A /* LiDARDistanceView.swift in Sources */,
+				4CF0F22FF97B2602FAA5EE20 /* LibraryService.swift in Sources */,
+				BBDC625B577CBFCDCC402ECC /* LibraryView.swift in Sources */,
+				B73963CBA37B7E31BEB75993 /* Log.swift in Sources */,
+				6F958B2EF06E98643232E6F5 /* MeasurementView.swift in Sources */,
+				EBE00D3AE74883F072A64101 /* MotionService.swift in Sources */,
+				A5F0CEEFDF315DD9D792D561 /* OverlayAnalyzer.swift in Sources */,
+				1D17B361223B40D7D0778522 /* OverlayRenderer.swift in Sources */,
+				0D94B654C2DD66461307139B /* OverlayShaders.swift in Sources */,
+				3B851BD2A19F47AD86F3BBF8 /* OverlayViews.swift in Sources */,
+				A7E2B7659149A232AF185CAB /* PhotosSaver.swift in Sources */,
+				4E5D827696D47A259C5BF45B /* ProcessingService.swift in Sources */,
+				A9E35B2B13B5FC57DD5B0257 /* RecoveryView.swift in Sources */,
+				180FEA01E3498B148FBFC0EA /* ReviewView.swift in Sources */,
+				FE522068903891644775C0A0 /* RootView.swift in Sources */,
+				CD0D6DD0018D22546338DC84 /* ScreenAwake.swift in Sources */,
+				50C587629816822C44931E61 /* SettingsView.swift in Sources */,
+				A23330ECAE67272E41F2578A /* SpecimenCameraApp.swift in Sources */,
+				0D4916E54024B86A407A571A /* StackCameraDriver.swift in Sources */,
+				A8F47A71DED49C3652D6556B /* StackPanel.swift in Sources */,
+				AC714EB2859276876785672B /* StackSessionModel.swift in Sources */,
+				B23711D59D4E4418A74C9830 /* Theme.swift in Sources */,
+				C4B94EA37A7E4620EAFD4B5F /* ThumbnailService.swift in Sources */,
+				37EFB8D5D739562B7E43F5BC /* WorkingImageDeveloper.swift in Sources */,
+				2751CE3AF455B64069FB536F /* ZoomableImageView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		3F4F9974EE2B1086E9782A72 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SpecimenCamera/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.nikdaviscoaching.specimencamera;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		4B203F3BEB12C548AE69AEFE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SpecimenCamera/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.nikdaviscoaching.specimencamera;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		6B0FD59ABA08E2A64399568E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		FDE557A611E2CA08C3A9BAC1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1AD229F64B7FBCD8E5A6E54F /* Build configuration list for PBXProject "SpecimenCamera" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6B0FD59ABA08E2A64399568E /* Debug */,
+				FDE557A611E2CA08C3A9BAC1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E6DF2949EFD80E35C8E1FEBA /* Build configuration list for PBXNativeTarget "SpecimenCamera" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3F4F9974EE2B1086E9782A72 /* Debug */,
+				4B203F3BEB12C548AE69AEFE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		86CD5F062565571144E11AE0 /* XCLocalSwiftPackageReference "Packages/SpecimenCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/SpecimenCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		14087BAE249911B18CDFDEAE /* SpecimenTestKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SpecimenTestKit;
+		};
+		C950FA6520912682D6A12A38 /* SpecimenCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SpecimenCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = F49B7CA6AA552E516F1E9114 /* Project object */;
+}
