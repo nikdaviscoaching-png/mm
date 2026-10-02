@@ -175,19 +175,20 @@ struct HoldRepeatButton: View {
     }
 }
 
-/// Live-view brightness while ISO/shutter are manual.
-struct PreviewBoostRow: View {
+/// Live-view brightness assist while ISO/shutter are manual (the photo always uses the chosen values).
+struct PreviewAssistRow: View {
     @EnvironmentObject var settings: AppSettings
     @EnvironmentObject var camera: CameraController
     var body: some View {
         if camera.isoManual && camera.shutterManual {
-            HStack(spacing: 6) {
-                Text("LIVE VIEW").font(.system(size: 10, weight: .bold)).foregroundColor(.gray)
-                ForEach(PreviewBoost.allCases, id: \.self) { m in
-                    Button(m.title) { settings.previewBoost = m }.buttonStyle(ChipStyle(selected: settings.previewBoost == m))
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 5) {
+                    Text("LIVE VIEW").font(.system(size: 10, weight: .bold)).foregroundColor(.gray)
+                    ForEach(PreviewAssist.allCases, id: \.self) { m in
+                        Button(m.title) { settings.previewAssist = m }.buttonStyle(ChipStyle(selected: settings.previewAssist == m))
+                    }
                 }
-                Spacer(minLength: 2)
-                Text(settings.previewBoost == .off ? "as shot" : "brighter view; photo unchanged").font(.system(size: 9)).foregroundColor(.gray).lineLimit(1)
+                Text(settings.previewAssist.explanation).font(.system(size: 9)).foregroundColor(.gray).lineLimit(2)
             }
         }
     }
@@ -252,7 +253,7 @@ struct ISOControl: View {
             ValueStrip(options: camera.isoOptions, selected: ExposureScales.nearest(camera.iso, in: camera.isoOptions), label: { String(Int($0)) },
                        isAuto: !camera.isoManual, onAuto: { camera.setISOAuto() }, onSelect: { camera.setISO($0) })
             if camera.isoManual && !camera.shutterManual { Text("Shutter follows the meter (ISO priority)").font(.system(size: 10)).foregroundColor(.gray) }
-            PreviewBoostRow()
+            PreviewAssistRow()
         }
     }
 }
@@ -270,7 +271,7 @@ struct ShutterControl: View {
             ValueStrip(options: camera.shutterOptions, selected: ExposureScales.nearest(camera.shutter, in: camera.shutterOptions), label: { ExposureScales.shutterLabel($0) },
                        isAuto: !camera.shutterManual, onAuto: { camera.setShutterAuto() }, onSelect: { camera.setShutter($0) })
             if camera.shutterManual && !camera.isoManual { Text("ISO follows the meter (shutter priority)").font(.system(size: 10)).foregroundColor(.gray) }
-            PreviewBoostRow()
+            PreviewAssistRow()
         }
     }
 }

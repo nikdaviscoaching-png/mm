@@ -45,7 +45,7 @@ final class AppModel: ObservableObject {
         Publishers.CombineLatest(settings.$highResFocusAssist, overlay.$config.map { $0.zoom >= 3 }.removeDuplicates())
             .map { pair in pair.0 || pair.1 }.removeDuplicates()
             .sink { [weak self] hi in self?.camera.engine.setAnalysisHighResolution(hi) }.store(in: &bag)
-        settings.$previewBoost.removeDuplicates().sink { [weak self] m in self?.camera.engine.setPreviewBoost(m) }.store(in: &bag)
+        settings.$previewAssist.removeDuplicates().sink { [weak self] m in self?.camera.engine.setPreviewAssist(m) }.store(in: &bag)
         settings.$captureFormat.removeDuplicates().sink { [weak self] f in self?.camera.captureFormat = f }.store(in: &bag)
         camera.$captureFormat.dropFirst().removeDuplicates().sink { [weak self] f in self?.settings.captureFormat = f }.store(in: &bag)
         // Forward nested ObservableObject changes where views observe `app` directly.

@@ -92,7 +92,10 @@ struct RootView: View {
                     HStack(alignment: .top) {
                         if settings.histogram != .off { HistogramView(data: overlay.histogram, mode: settings.histogram) }
                         Spacer()
-                        if overlay.config.zoom > 1.001 { Text(String(format: "%.0f×", overlay.config.zoom)).font(.system(size: 14, weight: .heavy)).padding(6).background(Color.black.opacity(0.6)).foregroundColor(Theme.accent).clipShape(RoundedRectangle(cornerRadius: 6)) }
+                        VStack(alignment: .trailing, spacing: 6) {
+                            if overlay.config.zoom > 1.001 { Text(String(format: "%.0f×", overlay.config.zoom)).font(.system(size: 14, weight: .heavy)).padding(6).background(Color.black.opacity(0.6)).foregroundColor(Theme.accent).clipShape(RoundedRectangle(cornerRadius: 6)) }
+                            AssistChip()
+                        }
                     }.padding(6)
                     Spacer()
                     if settings.showLiveInfo { LiveInfoBar() }
@@ -171,17 +174,49 @@ struct LiveInfoBar: View {
     @EnvironmentObject var camera: CameraController
     @EnvironmentObject var stack: StackSessionModel
     @EnvironmentObject var status: DeviceStatus
+    @EnvironmentObject var settings: AppSettings
 
     var body: some View {
         let lens = camera.activeLens
         let dims = camera.photoSize(for: camera.captureFormat)
         VStack(alignment: .leading, spacing: 1) {
             Text("\(lens?.name ?? "—") · \(camera.captureFormat.title) · \(Int((Double(dims.width * dims.height) / 1e6).rounded())) MP · f/\(String(format: "%.1f", lens?.fNumber ?? 0))")
-            Text("ISO \(Int(camera.displayedISO.rounded())) · \(ExposureScales.shutterLabel(max(camera.displayedShutter, 1e-6))) · \(Int(camera.displayedKelvin)) K · EV \(ExposureScales.biasLabel(camera.exposureBias)) · \(camera.live.focusModeDescription) \(String(format: "%.2f", camera.displayedLensPosition))")
+            Text("ISO \(Int(camera.displayedISO.rounded())) · \(ExposureScales.shutterLabel(max(camera.displayedShutter, 1e-6))) · \(Int(camera.displayedKelvin)) K · EV \(ExposureScales.biasLabel(camera.exposureBias)) · \(camera.live.focusModeDescription) \(String(format: "%.2f", camera.displayedLensPosition))" + assistSuffix)
             Text("\(stack.mode == .single ? "SINGLE" : stack.mode.rawValue + (stack.isActive ? " · \(stack.capturedFrames) frames" : "")) · \(String(format: "%.1f GB free", Double(status.freeBytes) / 1e9))" + (status.thermal >= .fair ? " · HOT" : ""))
         }
         .font(.system(size: 9.5, weight: .medium, design: .monospaced)).foregroundColor(.white)
         .padding(5).frame(maxWidth: .infinity, alignment: .leading).background(Color.black.opacity(0.55))
+    }
+
+    /// The photo uses the ISO and shutter shown here; the live view may be brighter (preview assist).
+    private var assistSuffix: String {
+        guard camera.isoManual && camera.shutterManual, settings.previewAssist != .off else { return "" }
+        return settings.previewAssist.stops > 0 ? " · VIEW \(settings.previewAssist.title) (histogram/zebra = brightened view)" : " · VIEW \(settings.previewAssist.title)"
+    }
+}
+
+/// One-tap viewfinder exposure assist: cycles OFF → MATCH → +1 → +2 → +3 EV. Only the live view changes; the photo always uses
+/// the ISO and shutter shown in the info bar.
+struct AssistChip: View {
+    @EnvironmentObject var camera: CameraController
+    @EnvironmentObject var settings: AppSettings
+    @EnvironmentObject var stack: StackSessionModel
+
+    var body: some View {
+        // focus/combined series run at the real exposure, so the chip is hidden while one is active
+        if camera.isoManual && camera.shutterManual && !(stack.isActive && stack.mode != .lighting) {
+            Button {
+                settings.previewAssist = settings.previewAssist.next
+                UISelectionFeedbackGenerator().selectionChanged()
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "sun.max.fill").font(.system(size: 12))
+                    Text(settings.previewAssist == .off ? "VIEW: AS SHOT" : "VIEW: \(settings.previewAssist.title)").font(.system(size: 11, weight: .heavy))
+                }
+                .padding(.horizontal, 9).frame(minHeight: 34)
+                .background(Color.black.opacity(0.62)).foregroundColor(settings.previewAssist == .off ? .white : Theme.accent).clipShape(Capsule())
+            }.buttonStyle(.plain)
+        }
     }
 }
 

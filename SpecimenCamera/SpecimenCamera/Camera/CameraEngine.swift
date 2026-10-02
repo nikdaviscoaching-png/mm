@@ -79,7 +79,7 @@ final class CameraEngine: NSObject, @unchecked Sendable {
 
     // Bright preview for manual exposure: the preview runs on a faster-shutter / higher-ISO equivalent; the real values are
     // restored for the instant of capture. `boostSuspended` is true while a stack holds the camera at its locked values.
-    private var previewBoost: PreviewBoost = .off
+    private var previewAssist: PreviewAssist = .off
     private var boostSuspended = false
     private var realManual: (iso: Float, shutter: Double)?
     private var previewExposureActive = false
@@ -331,11 +331,11 @@ final class CameraEngine: NSObject, @unchecked Sendable {
         }
     }
 
-    // MARK: Bright preview
+    // MARK: Preview exposure assist (viewfinder only)
 
-    func setPreviewBoost(_ mode: PreviewBoost) {
+    func setPreviewAssist(_ mode: PreviewAssist) {
         sessionQueue.async {
-            self.previewBoost = mode
+            self.previewAssist = mode
             guard self.realManual != nil, let d = self.device, (try? d.lockForConfiguration()) != nil else { return }
             defer { d.unlockForConfiguration() }
             self.applyManualRespectingPreview(d)
@@ -346,9 +346,9 @@ final class CameraEngine: NSObject, @unchecked Sendable {
     private func applyManualRespectingPreview(_ d: AVCaptureDevice) {
         guard let m = realManual else { return }
         let f = d.activeFormat
-        if !boostSuspended, let p = previewExposure(iso: m.iso, shutter: m.shutter, boost: previewBoost, minISO: f.minISO, maxISO: f.maxISO,
-                                                    minShutter: CMTimeGetSeconds(f.minExposureDuration), maxShutter: CMTimeGetSeconds(f.maxExposureDuration)) {
-            applyCustom(d, iso: p.iso, shutter: p.shutter)
+        if !boostSuspended, let p = PreviewAssistPlanner.plan(iso: m.iso, shutter: m.shutter, assist: previewAssist, minISO: f.minISO, maxISO: f.maxISO,
+                                                              minShutter: CMTimeGetSeconds(f.minExposureDuration), maxShutter: CMTimeGetSeconds(f.maxExposureDuration)) {
+            applyCustom(d, iso: p.iso, shutter: p.shutterSeconds)
             previewExposureActive = true
         } else {
             applyCustom(d, iso: m.iso, shutter: m.shutter)
@@ -377,7 +377,7 @@ final class CameraEngine: NSObject, @unchecked Sendable {
 
     private func resumePreviewExposure() {
         sessionQueue.async {
-            guard self.realManual != nil, !self.boostSuspended, self.previewBoost != .off, let d = self.device, (try? d.lockForConfiguration()) != nil else { return }
+            guard self.realManual != nil, !self.boostSuspended, self.previewAssist != .off, let d = self.device, (try? d.lockForConfiguration()) != nil else { return }
             defer { d.unlockForConfiguration() }
             self.applyManualRespectingPreview(d)
         }
@@ -539,7 +539,10 @@ final class CameraEngine: NSObject, @unchecked Sendable {
 
     /// Pins everything a stack must not change. Focus is pinned too unless `plan.pinnedLensPosition == nil` (focus stack).
     func lockForStack(_ plan: LockPlan, prioritization: StackQuality) async throws {
-        await onQueueVoid { self.boostSuspended = true }                 // a stack runs at the real, locked exposure
+        // FOCUS/COMBINED series run unattended at the real, locked exposure. A LIGHTING stack keeps the preview assist between frames
+        // (you are moving lights and need to see); every capture still switches to the real exposure first.
+        let suspendAssist = plan.pinnedLensPosition == nil
+        await onQueueVoid { self.boostSuspended = suspendAssist }
         try await setLens(plan.lensID)
         await onQueueVoid { self.freezeRotation() }
         try await setExposure(.manual(iso: plan.iso, shutter: plan.shutterSeconds))
@@ -750,39 +753,4 @@ final class OneShot: @unchecked Sendable {
         lock.lock(); let go = !fired; fired = true; lock.unlock()
         if go { body() }
     }
-}
-
-// MARK: - Bright preview (manual exposure)
-
-/// How the live view is brightened while exposure is manual. Only the preview changes: the photo is always taken with the
-/// ISO and shutter you chose (the engine switches to them for the instant of capture).
-enum PreviewBoost: String, CaseIterable, Sendable {
-    case off, match, bright
-    var title: String {
-        switch self {
-        case .off: return "OFF"
-        case .match: return "MATCH"
-        case .bright: return "BRIGHT"
-        }
-    }
-    /// Extra exposure factor on top of "same brightness as the photo".
-    var gain: Double { self == .bright ? 4 : 1 }          // +2 EV for BRIGHT
-}
-
-/// The exposure used for the live view so a slow shutter does not make the preview dark and laggy: keep the same total
-/// exposure (ISO × shutter) but with a shutter no slower than 1/30 s, raising ISO to compensate. Returns nil when the
-/// preview should simply use the photo's own settings. Pure function so it is unit-testable in principle and easy to reason about.
-func previewExposure(iso: Float, shutter: Double, boost: PreviewBoost, minISO: Float, maxISO: Float, minShutter: Double, maxShutter: Double) -> (iso: Float, shutter: Double)? {
-    guard boost != .off, iso > 0, shutter > 0 else { return nil }
-    let target = Double(iso) * shutter * boost.gain
-    var s = min(shutter, 1.0 / 30)
-    var i = target / s
-    if i > Double(maxISO) {                       // not enough ISO: let the shutter lengthen again (never beyond the photo's own)
-        i = Double(maxISO)
-        s = min(target / i, max(shutter, shutter * boost.gain))
-    }
-    i = max(i, Double(minISO))
-    s = min(max(s, minShutter), maxShutter)
-    if abs(Double(iso) - i) / Double(iso) < 0.02 && abs(shutter - s) / shutter < 0.02 { return nil }
-    return (Float(i), s)
 }

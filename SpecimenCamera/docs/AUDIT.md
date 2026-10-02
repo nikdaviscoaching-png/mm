@@ -61,3 +61,13 @@ Everything above was found by reading code. These were found by *using* the app,
 | 10 | Feels unfinished | No feedback on capture. | Shutter flash, haptics, a "Saved to …" toast, a processing screen with elapsed time. |
 
 Also fixed while here: a capture-format sync loop between settings and camera (stack overflow on first change), the ProRAW flag carrying over between lenses, and several state-less buttons.
+
+# Round 3 — hairline peaking, preview exposure assist, tripod lighting stacks
+
+**Peaking (4×–8×).** Rewritten as ridge detection (Sobel strength, non-maximum suppression, steepness test, neighbour support) drawn as screen-resolution hairlines (~1.2 px at any zoom); ROI-only analysis from 2×, full-size buffers from 3×. Sensitivity control kept. Verified: Swift reference tests, before/after images at 1×/4×/8×, and the exact Metal source compiled and run on CPU through `tools/msl-shim` (zero mismatches). Not verified: real Metal pipeline creation, thermals/frame rate, and how fine the lines look on the physical display.
+
+**Preview exposure assist.** Preview-only brightening (Off / Match / +1 / +2 / +3 stops) for manual ISO/shutter; the engine swaps to the real manual exposure around every capture. Planner unit-tested; device behaviour (swap latency, frame rate) unverified.
+
+**Lighting stack (3–5 same-position frames).** Root causes found with `specimen-lab tripod`: (1) cross-frame "added light" cues compared frames of different brightness/lighting; (2) the base was the frame with highest mean quality even when shadier/darker; (3) donors were Burt–Adelson-blended as whole frames in linear light, so a donor's clipped/tinted surroundings and a few percent of gain error beside a bright area leaked into narrow dark bands (grey smears). Changes: exposure/lighting normalisation before the glare cues; base chosen by quality × informative share; relative-darkness (muddy/shadow) penalty; blown areas closed over fine dark structure; robust broad+local gain matching; donors pre-composited onto the base inside their own support and blended on **log light**; monotonic highlight-compression / crushed-shadow lift only inside repaired regions (`ToneAdjustment`). Three legacy assertions were changed because they encoded "a mostly blown hairline patch stays as in the base" (now re-sourced, lines stay crisp) and image-wide contribution counts; 5 new tripod tests added (131 total).
+
+Remaining imperfections: dark specimen bands are deliberately not lifted, so "crushed" shares barely fall when the base is already the better exposure; strong lamp-shading differences are matched by smooth gains only (a donor with a sharp shadow edge can leave a faint soft band); a sparse bright area wrongly read as glare is replaced by a dimmer donor.

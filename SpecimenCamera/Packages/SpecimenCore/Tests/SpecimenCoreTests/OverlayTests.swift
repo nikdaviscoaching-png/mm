@@ -63,14 +63,186 @@ final class OverlayTests: XCTestCase {
         XCTAssertGreaterThan(c[3], c[1])
     }
 
-    func testPeakingOverlayIsRedByDefaultAndThickened() {
+    func testPeakingOverlayIsRedByDefaultAndOnePixelWide() {
         var mask = [UInt8](repeating: 0, count: 20 * 20); mask[10 * 20 + 10] = 255
         let o = FocusPeaking.overlayBGRA(mask: mask, width: 20, height: 20, color: .red)
         let center = (10 * 20 + 10) * 4
         XCTAssertGreaterThan(o[center + 2], 200); XCTAssertLessThan(o[center + 1], 40); XCTAssertEqual(o[center + 3], UInt8(0.9 * 255))
-        XCTAssertGreaterThan(o[(10 * 20 + 11) * 4 + 3], 0, "marker is one pixel thicker")
-        XCTAssertEqual(o[(10 * 20 + 13) * 4 + 3], 0)
+        XCTAssertEqual(o[(10 * 20 + 11) * 4 + 3], 0, "the CPU fallback no longer thickens the marker")
         XCTAssertEqual(PeakingColor.allCases.first, .red)
+    }
+
+    // MARK: Fine ridge peaking
+
+    /// Gaussian-blurred straight edge (`deg` = angle of its normal), pixel-integrated like a sensor.
+    func edgeLuma(sigma: Double, deg: Double, contrast: Double = 100, size: Int = 96, phase: Double = 0.3, noise: Double = 0, seed: UInt64 = 1) -> [Float] {
+        let th = deg * .pi / 180, nx = cos(th), ny = sin(th)
+        var out = [Float](repeating: 0, count: size * size)
+        let cx = Double(size) / 2 + phase, cy = Double(size) / 2 + phase * 0.7
+        var rng = SplitMix64(seed: seed)
+        for y in 0..<size { for x in 0..<size {
+            var acc = 0.0
+            for sy in 0..<4 { for sx in 0..<4 {
+                let d = (Double(x) + (Double(sx) + 0.5) / 4 - cx) * nx + (Double(y) + (Double(sy) + 0.5) / 4 - cy) * ny
+                acc += 0.5 * (1 + erf(d / (sigma * 2.0.squareRoot())))
+            }}
+            out[y * size + x] = 60 + Float(contrast * acc / 16) + Float(noise * Double(rng.gaussian()))
+        }}
+        return out
+    }
+
+    /// Fraction of the edge's length that carries a ridge pixel, and the ridge pixels per unit of edge length.
+    func edgeStats(_ r: PeakingRidges, deg: Double, size: Int = 96) -> (coverage: Double, perLength: Double) {
+        let th = deg * .pi / 180
+        // the edge line crosses the image centre; its length inside the image, and its direction (tangent)
+        let tx = -sin(th), ty = cos(th)
+        let length = Double(size) / max(abs(tx), abs(ty))
+        var marked = 0
+        for y in 0..<size { for x in 0..<size where r.flag[y * size + x] != 0 {
+            // only count ridge pixels near the real edge (ignore image borders)
+            if x < 4 || y < 4 || x >= size - 4 || y >= size - 4 { continue }
+            marked += 1
+        }}
+        // steps along the tangent in 1 px increments: is there a ridge pixel within 1.2 px of the true line there?
+        var hit = 0, total = 0
+        var t = -length / 2 + 6
+        while t < length / 2 - 6 {
+            let px = Double(size) / 2 + 0.3 + tx * t, py = Double(size) / 2 + 0.21 + ty * t
+            if px > 5, py > 5, px < Double(size) - 5, py < Double(size) - 5 {
+                total += 1
+                var found = false
+                for dy in -2...2 { for dx in -2...2 {
+                    let ix = Int(px) + dx, iy = Int(py) + dy
+                    if r.flag[iy * size + ix] != 0, hypot(Double(ix) + 0.5 - px, Double(iy) + 0.5 - py) < 1.2 { found = true }
+                }}
+                if found { hit += 1 }
+            }
+            t += 1
+        }
+        return (Double(hit) / Double(max(total, 1)), Double(marked) / length)
+    }
+
+    func testRidgesAreOnePixelThinAtAnyAngle() {
+        for deg in [0.0, 20, 45, 70, 90] {
+            let l = edgeLuma(sigma: 0.6, deg: deg)
+            let r = FocusPeaking.ridges(luma: l, width: 96, height: 96, sensitivity: .medium)
+            let s = edgeStats(r, deg: deg)
+            XCTAssertGreaterThan(s.coverage, 0.95, "edge at \(deg)° must be continuous (\(s.coverage))")
+            // a one-pixel-wide digital line has |cos θ| + |sin θ| pixels per unit length (1 axis-aligned … 1.41 diagonal); a band
+            // (the old Laplacian result) has several times that
+            let th = deg * .pi / 180
+            XCTAssertLessThan(s.perLength, abs(cos(th)) + abs(sin(th)) + 0.15, "edge at \(deg)° must be a single-pixel line, not a band (\(s.perLength) ridge px per px of edge)")
+        }
+    }
+
+    func testSteepnessSeparatesCrispFromSoftIndependentOfContrastAndAngle() {
+        for contrast in [45.0, 200] { for deg in [0.0, 45, 70] {
+            let crisp = FocusPeaking.ridges(luma: edgeLuma(sigma: 0.6, deg: deg, contrast: contrast), width: 96, height: 96, sensitivity: .medium)
+            let soft = FocusPeaking.ridges(luma: edgeLuma(sigma: 2.0, deg: deg, contrast: contrast), width: 96, height: 96, sensitivity: .medium)
+            XCTAssertGreaterThan(edgeStats(crisp, deg: deg).coverage, 0.9, "crisp edge, contrast \(contrast), \(deg)°")
+            XCTAssertLessThan(edgeStats(soft, deg: deg).coverage, 0.05, "soft edge must not be marked, contrast \(contrast), \(deg)°")
+        }}
+    }
+
+    func testSensitivityControlsHowSoftAnEdgeStillCounts() {
+        func coverage(_ sigma: Double, _ sens: PeakingSensitivity) -> Double {
+            let vals = [0.0, 45, 70].map { deg in edgeStats(FocusPeaking.ridges(luma: edgeLuma(sigma: sigma, deg: deg), width: 96, height: 96, sensitivity: sens), deg: deg).coverage }
+            return vals.reduce(0, +) / 3
+        }
+        // slightly soft edge (σ 1.3): only HIGH marks it
+        XCTAssertLessThan(coverage(1.3, .low), 0.1); XCTAssertLessThan(coverage(1.3, .medium), 0.3); XCTAssertGreaterThan(coverage(1.3, .high), 0.8)
+        // very crisp edge (σ 0.5): every level marks it
+        for sens in [PeakingSensitivity.low, .medium, .high] { XCTAssertGreaterThan(coverage(0.5, sens), 0.9, "\(sens)") }
+        // clearly defocused (σ 2.5): nothing marks it
+        for sens in [PeakingSensitivity.low, .medium, .high] { XCTAssertLessThan(coverage(2.5, sens), 0.05, "\(sens)") }
+    }
+
+    func testEdgesStayContinuousInNoiseAndNoiseDrawsNothing() {
+        // moderate sensor noise (σ 4 on a 100-level edge): the line must remain mostly intact
+        let n4 = FocusPeaking.ridges(luma: edgeLuma(sigma: 0.7, deg: 20, contrast: 100, noise: 4), width: 96, height: 96, sensitivity: .medium)
+        XCTAssertGreaterThan(edgeStats(n4, deg: 20).coverage, 0.8)
+        // pure noise: next to nothing, even at the most sensitive level
+        var rng = SplitMix64(seed: 9)
+        for sigma in [3.0, 8.0] {
+            let l = (0..<(300 * 200)).map { _ in Float(128 + sigma * Double(rng.gaussian())) }
+            let r = FocusPeaking.ridges(luma: l, width: 300, height: 200, sensitivity: .high)
+            XCTAssertLessThan(Double(r.markedCount) / Double(l.count), 0.002, "noise σ \(sigma)")
+        }
+    }
+
+    func testRidgeDirectionIsTheEdgeTangent() {
+        for deg in [10.0, 40, 75] {
+            let r = FocusPeaking.ridges(luma: edgeLuma(sigma: 0.6, deg: deg), width: 96, height: 96, sensitivity: .medium)
+            var errs: [Double] = []
+            for i in 0..<r.flag.count where r.flag[i] != 0 {
+                let x = i % 96, y = i / 96
+                if x < 8 || y < 8 || x > 87 || y > 87 { continue }
+                let a = Double(r.angle[i]) / 255 * .pi                         // tangent angle
+                let want = (deg + 90) * .pi / 180
+                var d = abs(a - want).truncatingRemainder(dividingBy: .pi); d = min(d, .pi - d)
+                errs.append(d * 180 / .pi)
+            }
+            XCTAssertGreaterThan(errs.count, 40)
+            XCTAssertLessThan(errs.sorted()[errs.count / 2], 4, "median direction error at \(deg)° (degrees)")
+        }
+    }
+
+    func testRoiAnalysisMatchesFullAnalysisInsideTheRegion() {
+        let l = edgeLuma(sigma: 0.7, deg: 33, size: 96)
+        let full = FocusPeaking.ridges(luma: l, width: 96, height: 96, threshold: 18, minSteepness: 1.27)
+        let roi = PixelRect(x: 20, y: 20, width: 50, height: 50)
+        let part = FocusPeaking.ridges(luma: l, width: 96, height: 96, threshold: 18, minSteepness: 1.27, region: roi)
+        for y in (roi.y + 1)..<(roi.maxY - 1) { for x in (roi.x + 1)..<(roi.maxX - 1) { XCTAssertEqual(full.flag[y * 96 + x], part.flag[y * 96 + x]) } }
+    }
+
+    func testGPUParamsLayoutMatchesTheShader() {
+        typealias P = PeakingGPUParams
+        XCTAssertEqual(MemoryLayout<P>.size, 96); XCTAssertEqual(MemoryLayout<P>.stride, 96); XCTAssertEqual(MemoryLayout<P>.alignment, 16)
+        XCTAssertEqual(MemoryLayout<P>.offset(of: \P.threshold), 0); XCTAssertEqual(MemoryLayout<P>.offset(of: \P.showVideo), 24)
+        XCTAssertEqual(MemoryLayout<P>.offset(of: \P.peakColor), 32); XCTAssertEqual(MemoryLayout<P>.offset(of: \P.roiOrigin), 48)
+        XCTAssertEqual(MemoryLayout<P>.offset(of: \P.roiSize), 56); XCTAssertEqual(MemoryLayout<P>.offset(of: \P.viewScale), 64)
+        XCTAssertEqual(MemoryLayout<P>.offset(of: \P.segHalfLength), 72); XCTAssertEqual(MemoryLayout<P>.offset(of: \P.cOrigin), 80)
+        XCTAssertEqual(MemoryLayout<P>.offset(of: \P.cSize), 88)
+    }
+
+    // MARK: Hairline rendering (screen resolution)
+
+    /// Width (screen px, full width at half maximum) of the rendered line, measured across a horizontal run of ridge pixels.
+    func renderedWidth(viewScale: Float) -> (fwhm: Float, minAlongLine: Float) {
+        var r = PeakingRidges(width: 40, height: 40)
+        for x in 8..<32 { r.flag[20 * 40 + x] = 255; r.angle[20 * 40 + x] = 0 }     // horizontal ridge (tangent angle 0)
+        let outW = Int(24 * viewScale), outH = Int(10 * viewScale)
+        let img = PeakingRenderer.render(r, region: (x: 8, y: 15, width: 24, height: 10), outWidth: outW, outHeight: outH)
+        let cx = outW / 2
+        var fwhm: Float = 0
+        for y in 0..<outH { fwhm += img[y * outW + cx] }                           // coverage integrated across the line = its width
+        var minAlong: Float = 1
+        let cy = Int((20.5 - 15) * viewScale)
+        for x in Int(2 * viewScale)..<(outW - Int(2 * viewScale)) { minAlong = min(minAlong, (cy - 1...cy + 1).map { img[$0 * outW + x] }.max()!) }
+        return (fwhm, minAlong)
+    }
+
+    func testHairlineStaysFineAndContinuousAtOneFourAndEightTimesZoom() {
+        // viewScale = screen pixels per camera pixel: ~0.3 at 1x on a full-size buffer, ~1.2 at 4x, ~2.3 at 8x
+        for (zoom, scale) in [(1, Float(1.0)), (4, 1.2), (8, 2.3), (8, 6.5)] {
+            let m = renderedWidth(viewScale: scale)
+            XCTAssertLessThan(m.fwhm, 2.2, "line at \(zoom)x (scale \(scale)) must be a hairline, was \(m.fwhm) px wide")
+            XCTAssertGreaterThan(m.fwhm, 0.9, "line at \(zoom)x must still be visible")
+            XCTAssertGreaterThan(m.minAlongLine, 0.7, "line at \(zoom)x must not break into dashes")
+        }
+    }
+
+    func testDiagonalHairlineJoinsIntoOneContour() {
+        var r = PeakingRidges(width: 40, height: 40)
+        for i in 6..<34 { r.flag[i * 40 + i] = 255; r.angle[i * 40 + i] = UInt8((Double.pi / 4) / Double.pi * 255 + 0.5) }   // tangent 45°
+        let scale: Float = 4
+        let img = PeakingRenderer.render(r, region: (x: 0, y: 0, width: 40, height: 40), outWidth: 160, outHeight: 160)
+        // every point along the diagonal (inside the run) is covered; a point 3 camera px (12 screen px) off the line is not
+        for k in stride(from: 10.0, to: 30.0, by: 0.7) {
+            let on = img[Int((k + 0.5) * Double(scale)) * 160 + Int((k + 0.5) * Double(scale))]
+            let off = img[Int((k + 0.5) * Double(scale)) * 160 + Int((k + 3.5) * Double(scale))]
+            XCTAssertGreaterThan(on, 0.85, "gap in the contour at \(k)"); XCTAssertLessThan(off, 0.02)
+        }
     }
 
     func testZebraThresholds() {

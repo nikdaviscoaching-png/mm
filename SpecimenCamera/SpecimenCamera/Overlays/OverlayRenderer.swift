@@ -15,49 +15,34 @@ struct OverlayConfig: Equatable, Sendable {
     var center: CGPoint = CGPoint(x: 0.5, y: 0.5)
 }
 
-/// GPU focus peaking, zebras and the magnified inspection view.
-/// Falls back (returns `nil` from `init`) if Metal or the shader is unavailable; callers then use `CPUOverlay`.
+/// GPU focus peaking (hairline edge traces), zebras and the magnified inspection view.
+/// Falls back (returns `nil` from `init`) if Metal or the shader is unavailable; callers then use the CPU overlay.
+/// The algorithm and drawing rules are documented in `OverlayShaders.swift` and implemented (and unit-tested) in
+/// `SpecimenCore.FocusPeaking` / `PeakingRenderer`.
 final class OverlayRenderer: NSObject, MTKViewDelegate, @unchecked Sendable {
 
-    /// Must match `struct Params` in OverlayShaders.swift field for field (96 bytes).
-    private struct Params {
-        var threshold: Float = .infinity
-        var supportFraction: Float = FocusPeaking.supportFraction
-        var zebraThreshold: Float = 2
-        var peakingOn: Float = 0
-        var zebraOn: Float = 0
-        var stripePhase: Float = 0
-        var showVideo: Float = 0
-        var thin: Float = 0
-        var peakColor = SIMD4<Float>(1, 0.05, 0.05, 0.9)
-        var roiOrigin = SIMD2<Float>(0, 0)
-        var roiSize = SIMD2<Float>(1, 1)
-        var viewScale: Float = 1
-        var lineHalfWidth: Float = 0.65
-        var pad0: Float = 0
-        var pad1: Float = 0
-        var cOrigin = SIMD2<UInt32>(0, 0)
-        var cSize = SIMD2<UInt32>(0, 0)
-    }
-
-    /// Magnification from which peaking is drawn as thin strokes and only the visible region is analysed.
-    static let thinPeakingZoom = 2.0
+    /// From this magnification on, only the visible part of the frame is analysed (at 8× that is 1/64 of the pixels).
+    static let visibleRegionOnlyZoom = 2.0
 
     private let device: MTLDevice
     private let queue: MTLCommandQueue
     private var textureCache: CVMetalTextureCache?
-    private let peakPipeline: MTLComputePipelineState
-    private let composePipeline: MTLComputePipelineState
+    private let candidatePipeline: MTLComputePipelineState
+    private let finishPipeline: MTLComputePipelineState
     private var presentPipeline: MTLRenderPipelineState?
     private let lock = NSLock()
 
-    private var maskTexture: MTLTexture?
-    private var overlayTexture: MTLTexture?
+    private var candTexture: MTLTexture?          // ridge candidates (flag, direction), rg8
+    private var ridgeTexture: MTLTexture?         // ridges after the neighbour test, rg8
+    private var overlayTexture: MTLTexture?       // zebra stripes, rgba8
     private var latestVideo: MTLTexture?
     private var latestTextureWidth: Float = 1
     private var retainedCV: CVMetalTexture?
-    private var params = Params()
+    private var params = PeakingGPUParams()
     private var frameIndex: Float = 0
+    private var smoothedThreshold: Float?         // video queue only
+    private var smoothedSteepness: Float = 1
+    private var lastSensitivity: PeakingSensitivity = .off
     private weak var view: MTKView?
 
     init?(useMetal: Bool) {
@@ -65,9 +50,9 @@ final class OverlayRenderer: NSObject, MTKViewDelegate, @unchecked Sendable {
         self.device = device; self.queue = queue
         do {
             let lib = try device.makeLibrary(source: OverlayShaders.source, options: nil)
-            guard let peak = lib.makeFunction(name: "peakMask"), let comp = lib.makeFunction(name: "composeOverlay") else { return nil }
-            peakPipeline = try device.makeComputePipelineState(function: peak)
-            composePipeline = try device.makeComputePipelineState(function: comp)
+            guard let cand = lib.makeFunction(name: "peakCandidates"), let fin = lib.makeFunction(name: "peakFinish") else { return nil }
+            candidatePipeline = try device.makeComputePipelineState(function: cand)
+            finishPipeline = try device.makeComputePipelineState(function: fin)
             let desc = MTLRenderPipelineDescriptor()
             desc.vertexFunction = lib.makeFunction(name: "vsMain")
             desc.fragmentFunction = lib.makeFunction(name: "fsMain")
@@ -104,9 +89,9 @@ final class OverlayRenderer: NSObject, MTKViewDelegate, @unchecked Sendable {
         guard CVMetalTextureCacheCreateTextureFromImage(nil, cache, pb, nil, .bgra8Unorm, w, h, 0, &cvTex) == kCVReturnSuccess,
               let cv = cvTex, let src = CVMetalTextureGetTexture(cv) else { return }
         ensureTextures(width: w, height: h)
-        guard let mask = maskTexture, let overlay = overlayTexture else { return }
+        guard let cand = candTexture, let ridge = ridgeTexture, let overlay = overlayTexture else { return }
 
-        var p = Params()
+        var p = PeakingGPUParams()
         p.peakingOn = config.peaking == .off ? 0 : 1
         let zoom = max(config.zoom, 1)
         let size = Float(1 / zoom)
@@ -114,16 +99,22 @@ final class OverlayRenderer: NSObject, MTKViewDelegate, @unchecked Sendable {
         let oy = Float(min(max(config.center.y - 0.5 / zoom, 0), 1 - 1 / zoom))
         p.roiSize = SIMD2<Float>(size, size); p.roiOrigin = SIMD2<Float>(ox, oy)
         p.showVideo = zoom > 1 ? 1 : 0
-        let thin = zoom >= Self.thinPeakingZoom
-        p.thin = thin ? 1 : 0
         // Magnified: analyse only what is on screen (plus a margin). At 8x that is 1/64 of the frame, which keeps the phone cool.
         var x0 = 0, y0 = 0, x1 = w, y1 = h
-        if thin {
+        if zoom >= Self.visibleRegionOnlyZoom {
             x0 = max(0, Int((ox * Float(w)).rounded(.down)) - 3); y0 = max(0, Int((oy * Float(h)).rounded(.down)) - 3)
             x1 = min(w, Int(((ox + size) * Float(w)).rounded(.up)) + 3); y1 = min(h, Int(((oy + size) * Float(h)).rounded(.up)) + 3)
         }
         p.cOrigin = SIMD2<UInt32>(UInt32(x0), UInt32(y0)); p.cSize = SIMD2<UInt32>(UInt32(max(x1 - x0, 1)), UInt32(max(y1 - y0, 1)))
-        if p.peakingOn > 0 { p.threshold = Self.sampledThreshold(pb, sensitivity: config.peaking, x0: x0, y0: y0, x1: x1, y1: y1) }
+        if p.peakingOn > 0 {
+            let prm = FocusPeaking.parameters(fromSampledResponses: Self.sampledStrengths(pb, x0: x0, y0: y0, x1: x1, y1: y1), sensitivity: config.peaking)
+            // smooth over a few frames so the marks do not flicker as the noise estimate wobbles
+            if config.peaking != lastSensitivity { smoothedThreshold = nil; smoothedSteepness = prm.minSteepness; lastSensitivity = config.peaking }
+            let t = smoothedThreshold.map { $0 + (prm.threshold - $0) * 0.35 } ?? prm.threshold
+            smoothedThreshold = t
+            smoothedSteepness += (prm.minSteepness - smoothedSteepness) * 0.35
+            p.threshold = t; p.minSteepness = smoothedSteepness
+        }
         let c = config.peakingColor.rgb
         p.peakColor = SIMD4<Float>(c.0, c.1, c.2, 0.92)
         if let z = config.zebra.threshold { p.zebraOn = 1; p.zebraThreshold = Float(z) / 255 }
@@ -134,12 +125,14 @@ final class OverlayRenderer: NSObject, MTKViewDelegate, @unchecked Sendable {
         let tg = MTLSize(width: 16, height: 16, depth: 1)
         let groups = MTLSize(width: (Int(p.cSize.x) + 15) / 16, height: (Int(p.cSize.y) + 15) / 16, depth: 1)
         if let e = cb.makeComputeCommandEncoder() {
-            e.setComputePipelineState(peakPipeline)
-            e.setTexture(src, index: 0); e.setTexture(mask, index: 1)
-            e.setBytes(&p, length: MemoryLayout<Params>.stride, index: 0)
+            // 1. ridge candidates (the same camera texture is bound twice: integer reads and hardware-bilinear samples)
+            e.setComputePipelineState(candidatePipeline)
+            e.setTexture(src, index: 0); e.setTexture(cand, index: 1); e.setTexture(src, index: 2)
+            e.setBytes(&p, length: MemoryLayout<PeakingGPUParams>.stride, index: 0)
             e.dispatchThreadgroups(groups, threadsPerThreadgroup: tg)
-            e.setComputePipelineState(composePipeline)
-            e.setTexture(src, index: 0); e.setTexture(mask, index: 1); e.setTexture(overlay, index: 2)
+            // 2. neighbour test + zebras
+            e.setComputePipelineState(finishPipeline)
+            e.setTexture(src, index: 0); e.setTexture(cand, index: 1); e.setTexture(ridge, index: 2); e.setTexture(overlay, index: 3)
             e.dispatchThreadgroups(groups, threadsPerThreadgroup: tg)
             e.endEncoding()
         }
@@ -149,43 +142,52 @@ final class OverlayRenderer: NSObject, MTKViewDelegate, @unchecked Sendable {
     }
 
     private func ensureTextures(width w: Int, height h: Int) {
-        if let t = maskTexture, t.width == w, t.height == h { return }
-        let md = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .r8Unorm, width: w, height: h, mipmapped: false)
-        md.usage = [.shaderRead, .shaderWrite]; md.storageMode = .private
-        let od = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Unorm, width: w, height: h, mipmapped: false)
-        od.usage = [.shaderRead, .shaderWrite]; od.storageMode = .private
-        lock.lock(); maskTexture = device.makeTexture(descriptor: md); overlayTexture = device.makeTexture(descriptor: od); lock.unlock()
+        if let t = candTexture, t.width == w, t.height == h { return }
+        func descriptor(_ format: MTLPixelFormat) -> MTLTextureDescriptor {
+            let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: format, width: w, height: h, mipmapped: false)
+            d.usage = [.shaderRead, .shaderWrite]; d.storageMode = .private
+            return d
+        }
+        lock.lock()
+        candTexture = device.makeTexture(descriptor: descriptor(.rg8Unorm))
+        ridgeTexture = device.makeTexture(descriptor: descriptor(.rg8Unorm))
+        overlayTexture = device.makeTexture(descriptor: descriptor(.rgba8Unorm))
+        lock.unlock()
     }
 
     // MARK: Noise-adaptive threshold from a sparse sample of the camera buffer
 
-    static func sampledThreshold(_ pb: CVPixelBuffer, sensitivity: PeakingSensitivity, x0: Int = 0, y0: Int = 0, x1: Int = .max, y1: Int = .max) -> Float {
+    /// Edge strength (Sobel ÷ 4 of luma, the same measure the kernels use) at every few pixels inside the analysed region.
+    static func sampledStrengths(_ pb: CVPixelBuffer, x0: Int, y0: Int, x1: Int, y1: Int) -> [Float] {
         CVPixelBufferLockBaseAddress(pb, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(pb, .readOnly) }
-        guard let base = CVPixelBufferGetBaseAddress(pb) else { return sensitivity == .off ? .infinity : 40 }
+        guard let base = CVPixelBufferGetBaseAddress(pb) else { return [] }
         let w = CVPixelBufferGetWidth(pb), h = CVPixelBufferGetHeight(pb), bpr = CVPixelBufferGetBytesPerRow(pb)
         let ptr = base.assumingMemoryBound(to: UInt8.self)
         @inline(__always) func luma(_ x: Int, _ y: Int) -> Float {
             let i = y * bpr + x * 4
-            return Float((Int(ptr[i + 2]) * 54 + Int(ptr[i + 1]) * 183 + Int(ptr[i]) * 19) >> 8)
+            return 0.2110 * Float(ptr[i + 2]) + 0.7148 * Float(ptr[i + 1]) + 0.0742 * Float(ptr[i])
         }
         let xa = max(x0, 3), ya = max(y0, 3), xb = min(x1, w - 3), yb = min(y1, h - 3)
-        guard xb > xa, yb > ya else { return 40 }
-        // Sample spacing: sparse over the whole frame, denser inside a small magnified region (about 12 000 samples either way).
-        let step = max(2, min(7, Int(sqrt(Double((xb - xa) * (yb - ya)) / 12_000))))
-        var responses: [Float] = []
-        responses.reserveCapacity(((xb - xa) / step + 1) * ((yb - ya) / step + 1))
+        guard xb > xa, yb > ya else { return [] }
+        // sparse over the whole frame, denser inside a small magnified region (about 12 000 samples either way)
+        let step = max(2, min(7, Int(Double((xb - xa) * (yb - ya) / 12_000).squareRoot())))
+        var out: [Float] = []
+        out.reserveCapacity(((xb - xa) / step + 1) * ((yb - ya) / step + 1))
         var y = ya
         while y < yb {
             var x = xa
             while x < xb {
-                let c = luma(x, y) * 2
-                responses.append(abs(c - luma(x - 1, y) - luma(x + 1, y)) + abs(c - luma(x, y - 1) - luma(x, y + 1)))
+                let a = luma(x - 1, y - 1), b = luma(x, y - 1), c = luma(x + 1, y - 1)
+                let d = luma(x - 1, y), f = luma(x + 1, y)
+                let g = luma(x - 1, y + 1), hh = luma(x, y + 1), i = luma(x + 1, y + 1)
+                let gx = ((c + 2 * f + i) - (a + 2 * d + g)) * 0.25, gy = ((g + 2 * hh + i) - (a + 2 * b + c)) * 0.25
+                out.append((gx * gx + gy * gy).squareRoot())
                 x += step
             }
             y += step
         }
-        return FocusPeaking.threshold(fromSampledResponses: responses, sensitivity: sensitivity)
+        return out
     }
 
     // MARK: MTKViewDelegate
@@ -194,19 +196,21 @@ final class OverlayRenderer: NSObject, MTKViewDelegate, @unchecked Sendable {
 
     func draw(in view: MTKView) {
         lock.lock()
-        let overlay = overlayTexture, video = latestVideo, mask = maskTexture, pipe = presentPipeline
+        let overlay = overlayTexture, video = latestVideo, ridge = ridgeTexture, pipe = presentPipeline
         var p = params
         let texW = latestTextureWidth
         lock.unlock()
-        guard let overlay, let video, let mask, let pipe, let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
+        guard let overlay, let video, let ridge, let pipe, let pass = view.currentRenderPassDescriptor, let drawable = view.currentDrawable,
               let cb = queue.makeCommandBuffer(), let enc = cb.makeRenderCommandEncoder(descriptor: pass) else { return }
-        // Screen pixels per buffer pixel (magnified view): the thin peaking strokes are sized in screen pixels.
+        // Screen pixels per buffer pixel: the hairlines are sized in screen pixels, whatever the magnification.
         p.viewScale = max(Float(view.drawableSize.width) / max(texW * p.roiSize.x, 1), 0.1)
+        p.lineHalfWidth = PeakingRenderer.lineHalfWidth(viewScale: p.viewScale)
+        p.segHalfLength = PeakingRenderer.segmentHalfLength
         enc.setRenderPipelineState(pipe)
         enc.setFragmentTexture(overlay, index: 0)
         enc.setFragmentTexture(video, index: 1)
-        enc.setFragmentTexture(mask, index: 2)
-        enc.setFragmentBytes(&p, length: MemoryLayout<Params>.stride, index: 0)
+        enc.setFragmentTexture(ridge, index: 2)
+        enc.setFragmentBytes(&p, length: MemoryLayout<PeakingGPUParams>.stride, index: 0)
         enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         enc.endEncoding()
         cb.present(drawable)

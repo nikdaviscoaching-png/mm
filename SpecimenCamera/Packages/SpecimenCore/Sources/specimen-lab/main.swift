@@ -6,6 +6,24 @@ import SpecimenTestKit
 let args = CommandLine.arguments
 let out = URL(fileURLWithPath: args.count > 2 ? args[2] : "lab-out")
 switch args.count > 1 ? args[1] : "help" {
+case "msl-dump":
+    try runMslDump(out: out)
+case "tripod":
+    try runTripodLab(out: out, only: args.count > 3 && !args[3].contains("=") ? args[3] : nil)
+case "stdstats":
+    let s = SyntheticLighting.standardScenario()
+    let rr = PixelRect(x: 372, y: 8, width: 130, height: 100)
+    for (i, f) in s.frames.enumerated() {
+        var clip = 0, hi = 0, tot = 0; var mx: Float = 0
+        for y in rr.y..<rr.maxY { for x in rr.x..<rr.maxX { tot += 1; let m = max(f.r[x, y], f.g[x, y], f.b[x, y]); mx = max(mx, m); if m >= 0.985 { clip += 1 }; if f.luma(.displayP3)[x, y] >= 0.88 { hi += 1 } } }
+        print("frame \(i): hairline patch clipped \(100 * Double(clip) / Double(tot))%  Y>=0.88: \(100 * Double(hi) / Double(tot))%  mean luma \(ImageMetrics.meanLuma(f, in: rr))")
+    }
+case "sheen":
+    try runSheenLab(out: out)
+case "muddy":
+    try runMuddyLab(out: out)
+case "peaking":
+    try runPeakingLab(out: out)
 case "gen-focus":
     let s = SyntheticFocus.make(width: 512, height: 384, frames: 8)
     try PNG.write(s.groundTruth, to: out.appendingPathComponent("focus_truth.png"))
@@ -50,6 +68,9 @@ case "light":
         if let ys = ProcessInfo.processInfo.environment["LAB_Q"] { _ = ys }
     }
     print("PSNR result vs clean base", ImageMetrics.psnr(r, cleanBase), " base frame vs clean base", ImageMetrics.psnr(s.frames[an.baseIndex], cleanBase))
+    let hp = PixelRect(x: 372, y: 8, width: 130, height: 100)
+    print("hairline patch: PSNR result vs clean", ImageMetrics.psnr(r, cleanBase, in: hp), " base frame vs clean", ImageMetrics.psnr(s.frames[an.baseIndex], cleanBase, in: hp), " result vs base frame", ImageMetrics.psnr(r, s.frames[an.baseIndex], in: hp), " sharpness result/base/clean", ImageMetrics.sharpness(r, in: hp), ImageMetrics.sharpness(s.frames[an.baseIndex], in: hp), ImageMetrics.sharpness(cleanBase, in: hp))
+    try PNG.write(ImageMetrics.montage([s.frames[an.baseIndex].crop(hp), r.crop(hp), cleanBase.crop(hp)], columns: 3), to: out.appendingPathComponent("light_hairline.png"))
 case "bench":
     // bench <outdir> <width> <height> <frames> <focus|lighting> [concurrency]: file-backed pipeline timing + peak memory.
     let W = Int(args[3])!, H = Int(args[4])!, N = Int(args[5])!, kind = args[6]

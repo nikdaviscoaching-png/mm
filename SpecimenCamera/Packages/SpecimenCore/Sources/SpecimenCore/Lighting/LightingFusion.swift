@@ -7,6 +7,8 @@ import Foundation
 /// switch over a few pixels (detail stays crisp), coarse bands transition over many (no brightness steps or seams).
 /// Everything is blended in linear light.
 public enum LightingFusionEngine {
+    /// Offset of the log-light representation (linear units): keeps log finite and the darkest values from dominating.
+    static let logFloor: Float = 0.003
 
     /// Bilinear sample of a proxy plane at full-resolution pixel coordinates (proxy p = (full + 0.5)/f − 0.5).
     static func upsample(_ p: Plane, factor f: Int, region: PixelRect) -> Plane {
@@ -38,21 +40,23 @@ public enum LightingFusionEngine {
         let f = analysis.proxyFactor
         let base = analysis.baseIndex
         // Frames that never contribute are never read.
+        let lumaCoefficients = frames[0].colorSpace.luma
         let used: [Bool] = (0..<n).map { j in j == base || analysis.weights[j].pixels.contains { $0 > 0.002 } }
         try TileRunner.run(tiles: grid.tiles, concurrency: options.concurrency, concurrencyProvider: options.concurrencyProvider, isCancelled: isCancelled, onTileDone: { done, total in
             progress?.report(.blending, done, total, sub: Double(done) / Double(total))
         }, work: { t in
             let rect = t.padded
             let sizes = Pyramid.levelSizes(width: rect.width, height: rect.height, count: L + 1)
-            var acc: [[Plane]] = (0..<3).map { _ in sizes.map { Plane(width: $0.width, height: $0.height) } }
             // Replacement weights per level. At coarse levels the Gaussian-blurred mask would let some of the base's
             // low-frequency contamination (a tint, a glare wash) leak into the middle of a defect that is only a few
             // transition-widths wide, so coarse-level replacement masks are dilated; fine levels stay exact.
             var wPyr = [[Plane]](repeating: [], count: n)
+            var wFulls = [Plane](repeating: Plane(width: 0, height: 0), count: n)
             var replaceSum = sizes.map { Plane(width: $0.width, height: $0.height) }
             for j in 0..<n where used[j] && j != base {
                 let wFull = upsample(analysis.weights[j], factor: f, region: rect)
                 if wFull.pixels.allSatisfy({ $0 < 1e-5 }) { continue }
+                wFulls[j] = wFull
                 var levelsW = Pyramid.gaussian(wFull, levels: L + 1)
                 // A donor may only spread over its neighbourhood where it is itself trustworthy at that scale
                 // (eroded quality), otherwise its own glare/tint would leak into the defect it is meant to repair.
@@ -67,27 +71,61 @@ public enum LightingFusionEngine {
                 wPyr[j] = levelsW
                 for l in 0..<levelsW.count { replaceSum[l].addScaled(levelsW[l], 1) }
             }
-            // normalise (others cannot exceed 1 in total); base takes the remainder
+            // normalise (others cannot exceed 1 in total)
             for l in 0..<sizes.count {
                 for i in 0..<replaceSum[l].count where replaceSum[l].pixels[i] > 1 {
                     let inv = 1 / replaceSum[l].pixels[i]
                     for j in 0..<n where !wPyr[j].isEmpty { wPyr[j][l].pixels[i] *= inv }
-                    replaceSum[l].pixels[i] = 1
                 }
             }
-            var baseW = replaceSum.map { Plane(width: $0.width, height: $0.height, value: 1) }
-            for l in 0..<sizes.count { baseW[l].addScaled(replaceSum[l], -1) }
-            wPyr[base] = baseW
+            // The output is the base plus, band by band, the weighted DIFFERENCE between each donor and the base — and that
+            // difference is taken only inside the donor's own support (where its weight is non-zero). Pre-compositing the donor
+            // onto the base this way means nothing from the donor outside its support (its own clipped, glared or tinted
+            // surroundings) can leak into a narrow repair through the coarse bands, which a plain Burt–Adelson blend of whole
+            // frames cannot avoid.
+            // The bands are built on LOG light, not linear light: a few percent of gain mismatch beside a bright region is a few
+            // percent of the bright value in linear light — far more than a dark band next to it contains, so it would wipe the
+            // band out. In log light a mismatch is always relative to the pixel it lands on.
+            let eps = LightingFusionEngine.logFloor
+            let baseLin = ColorMath.toLinear(try frames[base].read(region: rect))
+            let baseLog = [baseLin.r, baseLin.g, baseLin.b].map { $0.mapped { logf($0 + eps) } }
+            var acc: [[Plane]] = baseLog.map { _ in sizes.map { Plane(width: $0.width, height: $0.height) } }
             for j in 0..<n where used[j] && !wPyr[j].isEmpty {
                 var lin = ColorMath.toLinear(try frames[j].read(region: rect))
-                if j != base && options.matchLocalLighting {
+                if options.matchLocalLighting {
                     let g = upsample(analysis.gains[j], factor: f, region: rect)
                     lin.r.multiply(by: g); lin.g.multiply(by: g); lin.b.multiply(by: g)
                 }
-                let pyr = [lin.r, lin.g, lin.b].map { Pyramid.laplacian($0, levels: L) }
+                // support of the donor: everywhere it takes part at all (the per-level weights below do the actual mixing)
+                let m = wFulls[j].mapped { min($0 * 4, 1) }
+                var delta = [Plane](repeating: Plane(width: 0, height: 0), count: 3)
+                for (c, donor) in [lin.r, lin.g, lin.b].enumerated() {
+                    var d = Plane(width: rect.width, height: rect.height)
+                    for i in 0..<d.count { d.pixels[i] = m.pixels[i] * (logf(donor.pixels[i] + eps) - baseLog[c].pixels[i]) }
+                    delta[c] = d
+                }
+                let pyr = delta.map { Pyramid.laplacian($0, levels: L) }
                 for c in 0..<3 { for l in 0..<pyr[c].count { acc[c][l].addMultiplied(pyr[c][l], wPyr[j][l]) } }
             }
-            let fused = RGBImage(r: Pyramid.collapse(acc[0]), g: Pyramid.collapse(acc[1]), b: Pyramid.collapse(acc[2]))
+            var fused = RGBImage(r: Pyramid.collapse(acc[0]), g: Pyramid.collapse(acc[1]), b: Pyramid.collapse(acc[2]))
+            for c in 0..<3 {
+                let src = c == 0 ? fused.r : c == 1 ? fused.g : fused.b
+                var out = Plane(width: src.width, height: src.height)
+                for i in 0..<out.count { out.pixels[i] = max(0, expf(baseLog[c].pixels[i] + src.pixels[i]) - eps) }
+                if c == 0 { fused.r = out } else if c == 1 { fused.g = out } else { fused.b = out }
+            }
+            // extended-range tone adjustment (only where a repair brought in highlights above white / shadows below black)
+            if options.matchLocalLighting && !analysis.tone.isIdentity {
+                let rs = upsample(analysis.restore, factor: f, region: rect)
+                let gate = upsample(analysis.repaired, factor: f, region: rect)
+                let y = Filters.gaussianBlur(fused.luma(lumaCoefficients), sigma: 1)
+                for i in 0..<y.count where gate.pixels[i] > 0.2 {
+                    let m = analysis.tone.multiplier(y.pixels[i], lnRestore: rs.pixels[i])
+                    if m == 1 { continue }
+                    let mm = powf(m, smoothstep(0.2, 0.7, gate.pixels[i]))
+                    fused.r.pixels[i] *= mm; fused.g.pixels[i] *= mm; fused.b.pixels[i] *= mm
+                }
+            }
             let off = (t.core.x - rect.x, t.core.y - rect.y)
             try sink.write(region: t.core, image: ColorMath.toEncoded(fused).crop(PixelRect(x: off.0, y: off.1, width: t.core.width, height: t.core.height)))
         })

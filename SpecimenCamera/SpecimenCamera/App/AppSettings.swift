@@ -25,7 +25,7 @@ final class AppSettings: ObservableObject {
     @Published var developerTools: Bool { didSet { d.set(developerTools, forKey: "developerTools") } }
     /// Seconds between pressing the shutter and the exposure, so the phone has stopped shaking (tripod/stand work).
     /// Brighter, faster live view while ISO/shutter are manual (the photo itself always uses the chosen values).
-    @Published var previewBoost: PreviewBoost { didSet { d.set(previewBoost.rawValue, forKey: "previewBoost") } }
+    @Published var previewAssist: PreviewAssist { didSet { d.set(previewAssist.rawValue, forKey: "previewAssist") } }
     @Published var shutterDelaySeconds: Int { didSet { d.set(shutterDelaySeconds, forKey: "shutterDelay") } }
 
     init() {
@@ -49,7 +49,7 @@ final class AppSettings: ObservableObject {
         captureFormat = e("captureFormat", CaptureFormat.standard)
         highResFocusAssist = b("highResAssist", false)
         developerTools = b("developerTools", false)
-        previewBoost = e("previewBoost", PreviewBoost.match)
+        previewAssist = e("previewAssist", PreviewAssist.match)
         shutterDelaySeconds = UserDefaults.standard.object(forKey: "shutterDelay") as? Int ?? 2
     }
 }

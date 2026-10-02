@@ -67,7 +67,8 @@ final class LightingStackTests: XCTestCase {
         let spot = PixelRect(x: 236, y: 172, width: 40, height: 40)
         let baseL = ImageMetrics.meanLuma(s.frames[0], in: spot)
         XCTAssertEqual(ImageMetrics.meanLuma(r, in: spot), baseL, accuracy: 0.06, "soft unclipped sheen must survive")
-        XCTAssertGreaterThan(a.contribution[0], 0.85)
+        // the picture stays the base frame's overall (blown-out patches may legitimately be re-sourced from other frames)
+        XCTAssertGreaterThan(a.contribution[0], 0.7)
     }
 
     // MARK: colour contamination
@@ -95,7 +96,10 @@ final class LightingStackTests: XCTestCase {
         let (r, a) = try run(s.frames, options: o)
         let spot = PixelRect(x: 150, y: 110, width: 60, height: 60)
         XCTAssertGreaterThan(ImageMetrics.meanLuma(r, in: spot), 0.8 * ImageMetrics.meanLuma(s.clean[0], in: spot), "must not come out muddy")
-        XCTAssertLessThan(a.contribution[1], 0.5 * max(a.contribution[2], a.contribution[3]) + 0.02)
+        // inside its own dark hole the muddy frame must not be used where well-exposed frames can supply the region
+        var mass = [Float](repeating: 0, count: 4); var cnt: Float = 0
+        for y in 89..<199 { for x in 114..<244 { cnt += 1; for j in 0..<4 { mass[j] += a.weights[j][x / a.proxyFactor, y / a.proxyFactor] } } }
+        XCTAssertLessThan(mass[1] / cnt, 0.5 * max(mass[2], mass[3]) / cnt + 0.02, "muddy frame weight \(mass.map { $0 / cnt })")
     }
 
     // MARK: natural look
@@ -110,8 +114,11 @@ final class LightingStackTests: XCTestCase {
         // Next to the repaired glare only the very lowest frequencies shift (coarse-band mask dilation, gain matched).
         let near = PixelRect(x: 8, y: 240, width: 150, height: 130)
         XCTAssertGreaterThan(ImageMetrics.psnr(r, s.frames[0], in: near), 33)
+        // The patch of fine lines is mostly blown out in frame 0 (nothing recorded between the lines), so it is re-sourced from the
+        // frames that kept it — but the lines themselves must stay exactly as crisp and in place.
         let hairlines = PixelRect(x: 372, y: 8, width: 130, height: 100)  // frame 1's glare tail does not matter for base 0
-        XCTAssertGreaterThan(ImageMetrics.psnr(r, s.frames[0], in: hairlines), 38)
+        XCTAssertGreaterThan(ImageMetrics.psnr(r, s.frames[0], in: hairlines), 30)
+        XCTAssertGreaterThan(ImageMetrics.sharpness(r, in: hairlines), 0.9 * ImageMetrics.sharpness(s.frames[0], in: hairlines), "hairlines stay crisp")
     }
 
     func testIdenticalFramesProduceThatFrame() throws {
@@ -179,5 +186,116 @@ final class LightingStackTests: XCTestCase {
         XCTAssertGreaterThan(ImageMetrics.psnr(disk, mem), 50)
         XCTAssertThrowsError(try run([s.frames[0]]))
         XCTAssertThrowsError(try LightingStackEngine.run(frames: [MemoryFrame(s.frames[0]), MemoryFrame(RGBImage(width: 10, height: 10))], sink: MemorySink(width: 10, height: 10)))
+    }
+
+
+    // MARK: same-position tripod stacks (3–5 frames)
+
+    /// Evenly lit version of the specimen at the exposure of the reference frame — what the stack should approach.
+    private func idealImage(_ s: LightingSeries) -> RGBImage {
+        var o = ColorMath.toLinear(s.diffuse)
+        for i in 0..<o.r.count { o.r.pixels[i] *= 0.9; o.g.pixels[i] *= 0.9; o.b.pixels[i] *= 0.9 }
+        return ColorMath.toEncoded(o)
+    }
+
+    /// PSNR against `ideal` after one global linear-light gain fit (the fused picture may be globally brighter or darker).
+    private func fitPSNR(_ a: RGBImage, _ ideal: RGBImage) -> Double {
+        let la = ColorMath.toLinear(a), lb = ColorMath.toLinear(ideal)
+        var num = 0.0, den = 0.0
+        for i in 0..<la.r.count { for (x, y) in [(la.r.pixels[i], lb.r.pixels[i]), (la.g.pixels[i], lb.g.pixels[i]), (la.b.pixels[i], lb.b.pixels[i])] { num += Double(x * y); den += Double(x * x) } }
+        let g = Float(num / max(den, 1e-9)); var scaled = la
+        for i in 0..<scaled.r.count { scaled.r.pixels[i] *= g; scaled.g.pixels[i] *= g; scaled.b.pixels[i] *= g }
+        return ImageMetrics.psnr(ColorMath.toEncoded(scaled), ideal)
+    }
+
+    /// (share of clipped pixels, share of crushed pixels, share of well-exposed pixels)
+    private func exposureShares(_ img: RGBImage) -> (clipped: Double, crushed: Double, good: Double) {
+        let y = img.luma(.displayP3); var c = 0, k = 0, g = 0
+        for i in 0..<img.r.count {
+            if max(img.r.pixels[i], img.g.pixels[i], img.b.pixels[i]) >= 0.985 { c += 1 }
+            if y.pixels[i] <= 0.05 { k += 1 }
+            if y.pixels[i] >= 0.12 && y.pixels[i] <= 0.88 { g += 1 }
+        }
+        let n = Double(img.r.count); return (Double(c) / n, Double(k) / n, Double(g) / n)
+    }
+
+    func testExposureBracketKeepsTheBestFrameAndRepairsItsExtremes() throws {
+        // identical lighting, four exposures ~4.5 stops apart: the darkest keeps highlights, the brightest lifts shadows
+        let specs = [0.10, 0.30, 0.9, 2.6].map { LightingFrameSpec(shadeAngle: 0.6, shadeAmount: 0.15, gain: Float($0)) }
+        let s = SyntheticLighting.make(width: W, height: H, specs: specs, seed: 11, noise: 0.004)
+        let (r, a) = try run(s.frames)
+        XCTAssertEqual(a.baseIndex, 2, "the best-exposed frame (not the darkest, not the blown one) is the base")
+        let ideal = idealImage(s)
+        let best = s.frames.map { fitPSNR($0, ideal) }.max()!
+        // dark bands must keep their depth (no grey smear from bright neighbours) and nothing may be worse than the best frame
+        XCTAssertGreaterThan(fitPSNR(r, ideal), best - 0.5, "fused \(fitPSNR(r, ideal)) dB vs best single \(best) dB")
+        let before = exposureShares(s.frames[2]), after = exposureShares(r)
+        XCTAssertLessThanOrEqual(after.clipped, before.clipped + 0.001)
+        XCTAssertLessThanOrEqual(after.crushed, before.crushed + 0.01)
+        XCTAssertGreaterThanOrEqual(after.good, before.good - 0.005)
+    }
+
+    func testThreeExposuresAreEnoughToo() throws {
+        let specs = [0.3, 0.9, 2.6].map { LightingFrameSpec(shadeAngle: 0.6, shadeAmount: 0.15, gain: Float($0)) }
+        let s = SyntheticLighting.make(width: W, height: H, specs: specs, seed: 11, noise: 0.004)
+        let (r, a) = try run(s.frames)
+        XCTAssertEqual(a.baseIndex, 1)
+        let ideal = idealImage(s)
+        XCTAssertGreaterThan(fitPSNR(r, ideal), s.frames.map { fitPSNR($0, ideal) }.max()! - 0.5)
+    }
+
+    func testMovedLampFramesRecoverBlownAndShadedRegions() throws {
+        // one lamp moved to four sides: each frame is blown near the lamp and dark on the far side; two carry a specular glare
+        let specs = [
+            LightingFrameSpec(shadeAngle: 0.0, shadeAmount: 1.15, gain: 0.95, glares: [GlareBlob(cx: 0.18, cy: 0.35, sigma: 0.05, amplitude: 3.0)]),
+            LightingFrameSpec(shadeAngle: Float.pi, shadeAmount: 1.15, gain: 0.95),
+            LightingFrameSpec(shadeAngle: Float.pi / 2, shadeAmount: 1.15, gain: 0.95, glares: [GlareBlob(cx: 0.62, cy: 0.80, sigma: 0.05, amplitude: 3.0)]),
+            LightingFrameSpec(shadeAngle: -Float.pi / 2, shadeAmount: 1.15, gain: 0.95)]
+        let s = SyntheticLighting.make(width: W, height: H, specs: specs, seed: 12, noise: 0.004)
+        let (r, _) = try run(s.frames)
+        let singles = s.frames.map { exposureShares($0) }, fused = exposureShares(r)
+        XCTAssertLessThan(fused.clipped, 0.75 * singles.map { $0.clipped }.min()!, "blown highlights are rejected: \(fused.clipped) vs \(singles.map { $0.clipped })")
+        XCTAssertLessThan(fused.crushed, singles.map { $0.crushed }.min()!, "overly dark regions are rejected: \(fused.crushed) vs \(singles.map { $0.crushed })")
+        XCTAssertGreaterThan(fused.good, singles.map { $0.good }.max()! + 0.03)
+    }
+
+    func testFiveFrameStackWithAnEvenFillFrameStaysAsGoodAsTheFill() throws {
+        // lamps plus one dim, even frame (a typical "fill" shot): the fill should define the result, with only local repairs
+        let specs = [
+            LightingFrameSpec(shadeAngle: 0.3, shadeAmount: 1.0, gain: 1.3),
+            LightingFrameSpec(shadeAngle: 3.4, shadeAmount: 1.0, gain: 1.3, glares: [GlareBlob(cx: 0.70, cy: 0.30, sigma: 0.05, amplitude: 3.0)]),
+            LightingFrameSpec(shadeAngle: 1.6, shadeAmount: 0.15, gain: 0.30),
+            LightingFrameSpec(shadeAngle: 5.0, shadeAmount: 1.0, gain: 1.3),
+            LightingFrameSpec(shadeAngle: 2.5, shadeAmount: 0.15, gain: 0.35)]
+        let s = SyntheticLighting.make(width: W, height: H, specs: specs, seed: 13, noise: 0.004)
+        let (r, a) = try run(s.frames)
+        let fused = exposureShares(r)
+        let bestFrame = s.frames.map { exposureShares($0) }.max { $0.good < $1.good }!
+        XCTAssertGreaterThanOrEqual(fused.good, bestFrame.good - 0.01)
+        XCTAssertLessThanOrEqual(fused.clipped, bestFrame.clipped + 0.002)
+        XCTAssertLessThanOrEqual(fused.crushed, bestFrame.crushed + 0.01)
+        XCTAssertGreaterThan(a.contribution[a.baseIndex], 0.6, "mostly the base frame, repaired locally")
+    }
+
+    func testToneAdjustmentIsMonotonicBoundedAndIdentityInTheMiddle() {
+        let t = ToneAdjustment.fit(highPercentile: 3.0, lowPercentile: 0.001)
+        XCTAssertLessThan(t.beta, 1); XCTAssertLessThan(t.gamma, 1)
+        // restoration bound: ln(own brightness / base-scale value) — the chosen frame was 8× darker in the highlights, 8× brighter in the shadows
+        func mult(_ v: Float) -> Float { t.multiplier(v, lnRestore: v < 0.05 ? 2.1 : -2.1) }
+        var last: Float = 0
+        for k in 1...4000 {
+            let v = Float(k) * 0.001
+            let out = v * mult(v)
+            XCTAssertGreaterThanOrEqual(out, last - 1e-6, "monotonic at \(v)")
+            last = out
+            if v > 0.03 && v < 0.3 { XCTAssertEqual(mult(v), 1, accuracy: 0.03, "mid-tones untouched at \(v)") }
+        }
+        XCTAssertLessThanOrEqual(3.0 * mult(3.0), 1.0, "the brightest repaired value lands below white")
+        XCTAssertGreaterThan(0.0005 * mult(0.0005), 0.0005 * 1.3, "crushed values are lifted")
+        XCTAssertTrue(ToneAdjustment.fit(highPercentile: 0.9, lowPercentile: 0.05).isIdentity, "nothing to compress, nothing to lift")
+        // never beyond what the better exposed frame itself shows
+        XCTAssertGreaterThanOrEqual(t.multiplier(3.0, lnRestore: -0.1), expf(-0.1) - 1e-5)
+        XCTAssertLessThanOrEqual(t.multiplier(0.0005, lnRestore: 0.1), expf(0.1) + 1e-5)
+        XCTAssertEqual(t.multiplier(3.0, lnRestore: 0.5), 1, accuracy: 1e-6, "a frame that is brighter than the base never darkens a highlight")
     }
 }
