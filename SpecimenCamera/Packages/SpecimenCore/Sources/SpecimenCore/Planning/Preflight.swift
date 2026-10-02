@@ -93,13 +93,15 @@ public enum ThermalLevel: Int, Sendable, Comparable, Codable {
 
 /// Thermal management reduces *concurrency*, never image quality.
 public enum ThermalPolicy {
+    /// Worker threads allowed right now. Two at normal temperature (sustained all-core work heats a phone quickly and the
+    /// result is the same, only later); one when warm or hot; none (pause) when critical. Never changes quality.
     public static func concurrency(thermal: ThermalLevel, cores: Int, lowPowerMode: Bool) -> Int {
-        let base = max(1, min(cores - 1, 3))
+        let base = max(1, min(cores - 2, 2))
         var c: Int
         switch thermal {
         case .nominal: c = base
-        case .fair: c = max(1, base - 1)
-        case .serious, .critical: c = 1
+        case .fair, .serious: c = 1
+        case .critical: return 0
         }
         if lowPowerMode { c = min(c, 1) }
         return max(1, c)
@@ -110,7 +112,7 @@ public enum ThermalPolicy {
         case .nominal: return nil
         case .fair: return "Phone is warming up — processing slightly reduced."
         case .serious: return "Phone is hot — processing is running one tile at a time (same quality, slower)."
-        case .critical: return "Phone is very hot — pausing heavy work until it cools."
+        case .critical: return "Phone is very hot — processing is paused until it cools down. Nothing is lost."
         }
     }
 }

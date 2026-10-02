@@ -1,11 +1,13 @@
 import SwiftUI
 import SpecimenCore
 
-/// FOCUS / LIGHTING / COMBINED workflow panel. Shows only the steps that apply to the current mode and state.
+/// FOCUS / LIGHTING / COMBINED workflow panel. Every mode shows what to do next in plain steps, one obvious primary button,
+/// and a way to import existing photos instead of shooting.
 struct StackPanel: View {
     @EnvironmentObject var stack: StackSessionModel
     @EnvironmentObject var camera: CameraController
     @EnvironmentObject var settings: AppSettings
+    @AppStorage("stackHelpOpen") private var helpOpen = true
 
     var body: some View {
         VStack(spacing: 8) {
@@ -28,22 +30,66 @@ struct StackPanel: View {
         .background(Theme.panel)
     }
 
+    // MARK: Pieces
+
+    private func header(_ title: String, _ subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(title).font(.system(size: 12, weight: .heavy)).foregroundColor(Theme.accent)
+                Spacer()
+                Button(helpOpen ? "HIDE STEPS ▴" : "HOW IT WORKS ▾") { withAnimation { helpOpen.toggle() } }.font(.system(size: 10, weight: .bold)).foregroundColor(.gray)
+            }
+            Text(subtitle).font(.system(size: 11)).foregroundColor(.gray)
+        }
+    }
+
+    private func step(_ n: Int, _ text: String, done: Bool = false) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(done ? "✓" : "\(n)").font(.system(size: 11, weight: .heavy)).foregroundColor(done ? .black : .white)
+                .frame(width: 18, height: 18).background(done ? Theme.ok : Theme.chip).clipShape(Circle())
+            Text(text).font(.system(size: 11)).foregroundColor(done ? .gray : .white).frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func importButton() -> some View {
+        Button { stack.importRequest = stack.mode.stackType } label: {
+            Label("IMPORT PHOTOS INSTEAD", systemImage: "square.and.arrow.down").font(.system(size: 11, weight: .bold)).frame(maxWidth: .infinity, minHeight: 36)
+        }.buttonStyle(ActionStyle(prominent: false))
+    }
+
     // MARK: Setup
 
     @ViewBuilder private var setupPanel: some View {
         switch stack.mode {
         case .single: EmptyView()
         case .lighting:
-            VStack(alignment: .leading, spacing: 4) {
-                Text("LIGHTING STACK").font(.system(size: 11, weight: .heavy)).foregroundColor(Theme.accent)
-                Text("Mount the phone, compose, set and lock focus, exposure and white balance. Press the shutter for frame 1, move the light, repeat (typically 3–8 positions), then FINISH. Keep the phone fixed.")
-                    .font(.system(size: 11)).foregroundColor(.gray)
-            }.frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 6) {
+                header("LIGHTING STACK", "Same view, different light. Glare and reflections are replaced with clean areas from your other frames.")
+                if helpOpen {
+                    step(1, "Frame the specimen and set focus, ISO, shutter and white balance. They are locked when you start.")
+                    step(2, "Press START: this takes frame 1 with the light where it is now.")
+                    step(3, "Move the light, then press CAPTURE FRAME. Repeat for 3–8 light positions.")
+                    step(4, "Press FINISH STACK to blend them into one image.")
+                }
+                HStack(spacing: 8) {
+                    Button("START LIGHTING STACK") { Task { await startLighting() } }
+                        .buttonStyle(ActionStyle()).disabled(stack.isBusy || stack.countdown > 0)
+                    importButton()
+                }
+            }
         case .focus, .combined:
             VStack(spacing: 8) {
-                Text(stack.mode == .focus ? "Mount the phone, lock exposure and white balance. Focus the nearest part that must be sharp → SET NEAR; the farthest → SET FAR."
-                                           : "Set NEAR and FAR once; they apply to every light position. Keep the phone fixed.")
-                    .font(.system(size: 11)).foregroundColor(.gray).frame(maxWidth: .infinity, alignment: .leading)
+                header(stack.mode == .focus ? "FOCUS STACK" : "COMBINED STACK",
+                       stack.mode == .focus ? "Everything sharp from front to back: the app steps the focus through the depth you choose and blends the sharp parts."
+                                            : "A full focus stack at each light position, then the lighting blend. NEAR and FAR are set once.")
+                if helpOpen {
+                    VStack(alignment: .leading, spacing: 5) {
+                        step(1, "Open the FOCUS tab and focus on the NEAREST part that must be sharp (use peaking + 4×/8×), then tap SET NEAR.", done: stack.nearFocus != nil)
+                        step(2, "Focus on the FARTHEST part that must be sharp, then tap SET FAR.", done: stack.farFocus != nil)
+                        step(3, stack.mode == .focus ? "Press START STACK. The phone captures every frame by itself — keep it still."
+                                                     : "Press START: it captures the focus series for light position 1. Then move the light and press CAPTURE LIGHT POSITION; repeat 3–6 times, then FINISH.", done: false)
+                    }
+                }
                 HStack(spacing: 8) {
                     rangeButton("NEAR FOCUS", value: stack.nearFocus) { stack.setNear() }
                     rangeButton("FAR FOCUS", value: stack.farFocus) { stack.setFar() }
@@ -51,23 +97,36 @@ struct StackPanel: View {
                 HStack(spacing: 8) {
                     countMenu
                     Spacer()
-                    Button(stack.mode == .combined ? "START · LIGHT 1" : "START STACK") { Task { await stack.start(); if stack.isActive { await stack.waitShutterDelay(); await stack.captureFocusSeries() } } }
+                    Button(stack.mode == .combined ? "START · LIGHT 1" : "START STACK") { Task { await startFocusLike() } }
                         .buttonStyle(ActionStyle()).disabled(!stack.canStartFocusLike || stack.isBusy || stack.countdown > 0)
                         .opacity(stack.canStartFocusLike ? 1 : 0.4)
                 }
                 if let p = stack.plan {
                     Text("\(p.count) frames · \(p.note)").font(.system(size: 10)).foregroundColor(.gray).frame(maxWidth: .infinity, alignment: .leading)
+                } else if stack.canSetFocusRange {
+                    Text("Set NEAR and FAR to see how many frames are needed.").font(.system(size: 10)).foregroundColor(.gray).frame(maxWidth: .infinity, alignment: .leading)
                 }
                 if !stack.canSetFocusRange { Text("This camera cannot be focused manually; focus stacks are unavailable.").font(.system(size: 11)).foregroundColor(Theme.danger) }
+                importButton()
             }
         }
+    }
+
+    private func startLighting() async {
+        await stack.start()
+        if stack.isActive, await stack.waitShutterDelay() { await stack.captureLightingFrame() }
+    }
+
+    private func startFocusLike() async {
+        await stack.start()
+        if stack.isActive, await stack.waitShutterDelay() { await stack.captureFocusSeries() }
     }
 
     private func rangeButton(_ title: String, value: Float?, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 1) {
                 Text(title).font(.system(size: 9, weight: .bold)).foregroundColor(.gray)
-                Text(value.map { "SET · " + String(format: "%.3f", $0) } ?? "SET").font(.system(size: 13, weight: .heavy, design: .monospaced)).foregroundColor(value == nil ? .white : Theme.ok)
+                Text(value.map { "SET · " + String(format: "%.3f", $0) } ?? "TAP TO SET").font(.system(size: 13, weight: .heavy, design: .monospaced)).foregroundColor(value == nil ? .white : Theme.ok)
             }.frame(maxWidth: .infinity, minHeight: 46).background(Theme.chip).clipShape(RoundedRectangle(cornerRadius: 8))
         }.buttonStyle(.plain).disabled(!stack.canSetFocusRange)
     }
@@ -79,7 +138,7 @@ struct StackPanel: View {
             Button("Custom…") { stack.frameCountChoice = .manual(stack.plan?.count ?? 10) }
         } label: {
             HStack {
-                Text("FRAME COUNT:").font(.system(size: 10, weight: .bold)).foregroundColor(.gray)
+                Text("FRAMES:").font(.system(size: 10, weight: .bold)).foregroundColor(.gray)
                 Text(countLabel).font(.system(size: 13, weight: .heavy, design: .monospaced)).foregroundColor(.white)
                 Image(systemName: "chevron.down").font(.caption2).foregroundColor(.gray)
             }.padding(.horizontal, 10).frame(minHeight: 44).background(Theme.chip).clipShape(RoundedRectangle(cornerRadius: 8))
@@ -110,32 +169,41 @@ struct StackPanel: View {
                     }}
                 }
             }
-            HStack(spacing: 8) {
-                switch stack.mode {
-                case .lighting:
+            switch stack.mode {
+            case .lighting:
+                Text("\(stack.lightPositions) frame(s) captured. Move the light, then capture the next frame (needs at least 2).").font(.system(size: 10)).foregroundColor(.gray).frame(maxWidth: .infinity, alignment: .leading)
+                Button { Task { guard await stack.waitShutterDelay() else { return }; await stack.captureLightingFrame() } } label: {
+                    Text("CAPTURE FRAME \(stack.lightPositions + 1)").frame(maxWidth: .infinity)
+                }.buttonStyle(ActionStyle()).disabled(stack.isBusy || stack.countdown > 0)
+                HStack(spacing: 8) {
                     Button("RETAKE LAST") { Task { await stack.retakeLast() } }.buttonStyle(ActionStyle(prominent: false)).disabled(stack.lightPositions == 0 || stack.isBusy)
                     Button("DELETE LAST") { Task { await stack.deleteLast() } }.buttonStyle(ActionStyle(color: Theme.danger, prominent: false)).disabled(stack.lightPositions == 0 || stack.isBusy)
                     Spacer()
-                    Button("FINISH STACK") { Task { await stack.finish() } }.buttonStyle(ActionStyle()).disabled(stack.lightPositions < 2 || stack.isBusy)
-                case .combined:
+                    Button("FINISH STACK") { Task { await stack.finish() } }.buttonStyle(ActionStyle(prominent: false)).disabled(stack.lightPositions < 2 || stack.isBusy)
+                }
+            case .combined:
+                Text("\(stack.lightPositions) light position(s) · \(stack.capturedFrames) frames. Move the light, then capture the next position (needs at least 2).").font(.system(size: 10)).foregroundColor(.gray).frame(maxWidth: .infinity, alignment: .leading)
+                Button { Task { guard await stack.waitShutterDelay() else { return }; await stack.captureFocusSeries() } } label: {
+                    Text("CAPTURE LIGHT POSITION \(stack.lightPositions + 1)").frame(maxWidth: .infinity)
+                }.buttonStyle(ActionStyle()).disabled(stack.isBusy || stack.countdown > 0)
+                HStack(spacing: 8) {
                     Button("DELETE LAST POSITION") { Task { await stack.deleteLast() } }.buttonStyle(ActionStyle(color: Theme.danger, prominent: false)).disabled(stack.lightPositions == 0 || stack.isBusy)
                     Spacer()
-                    Button("NEXT LIGHT POSITION") { Task { await stack.captureFocusSeries() } }.buttonStyle(ActionStyle(prominent: false)).disabled(stack.isBusy)
-                    Button("FINISH & PROCESS") { Task { await stack.finish() } }.buttonStyle(ActionStyle()).disabled(stack.lightPositions < 2 || stack.isBusy)
-                case .focus:
-                    // After an interruption (call, app switch, error) the series continues where it stopped; or finish with what exists.
-                    Button("CONTINUE") { Task { await stack.captureFocusSeries() } }.buttonStyle(ActionStyle(prominent: false))
+                    Button("FINISH & PROCESS") { Task { await stack.finish() } }.buttonStyle(ActionStyle(prominent: false)).disabled(stack.lightPositions < 2 || stack.isBusy)
+                }
+            case .focus:
+                // After an interruption (call, app switch, error) the series continues where it stopped; or finish with what exists.
+                HStack(spacing: 8) {
+                    Button("CONTINUE") { Task { await stack.captureFocusSeries() } }.buttonStyle(ActionStyle())
                         .disabled(stack.isBusy || (stack.plan.map { stack.capturedFrames >= $0.count } ?? true))
                     Spacer()
                     Button("FINISH NOW") { Task { await stack.finish() } }.buttonStyle(ActionStyle(prominent: false))
                         .disabled(stack.capturedFrames < 2 || stack.isBusy)
-                case .single:
-                    Spacer()
                 }
-                Button("CANCEL") { Task { await stack.cancelStack() } }.buttonStyle(ActionStyle(color: Theme.danger, prominent: false))
+            case .single:
+                EmptyView()
             }
-            if stack.mode == .combined { Text("\(stack.lightPositions) light position(s) · \(stack.capturedFrames) frames").font(.system(size: 10)).foregroundColor(.gray).frame(maxWidth: .infinity, alignment: .leading) }
-            if stack.mode == .lighting { Text("\(stack.lightPositions) frame(s) — move the light, then press the shutter").font(.system(size: 10)).foregroundColor(.gray).frame(maxWidth: .infinity, alignment: .leading) }
+            HStack { Spacer(); Button("CANCEL STACK") { Task { await stack.cancelStack() } }.buttonStyle(ActionStyle(color: Theme.danger, prominent: false)) }
         }
     }
 }

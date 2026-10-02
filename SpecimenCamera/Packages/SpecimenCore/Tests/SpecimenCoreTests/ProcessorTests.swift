@@ -256,6 +256,18 @@ final class ProcessorTests: XCTestCase {
         XCTAssertEqual(res, .sourcesDeleted)
         XCTAssertFalse(FileManager.default.fileExists(atPath: store.projectDirectory(p.id).path))
     }
+
+    func testTileRunnerHonoursLiveConcurrencyLimitAndPause() throws {
+        let tiles = TileGrid(imageWidth: 640, imageHeight: 64, tileSize: 64, halo: 0).tiles     // 10 tiles
+        let active = ManagedCounter(), allowed = ManagedCounter(start: 1)
+        let started = Date()
+        // 1 worker allowed; pause (0) for the first 0.4 s, then one worker: must still finish all tiles, never 2 at once.
+        try TileRunner.run(tiles: tiles, concurrency: 4, concurrencyProvider: { Date().timeIntervalSince(started) < 0.4 ? 0 : allowed.value }) { _ in
+            active.add(1); active.noteMax(); Thread.sleep(forTimeInterval: 0.01); active.add(-1)
+        }
+        XCTAssertEqual(active.maxSeen, 1)
+        XCTAssertGreaterThan(Date().timeIntervalSince(started), 0.35)      // it really waited while paused
+    }
 }
 
 final class CancelFlag: @unchecked Sendable {
@@ -268,4 +280,12 @@ final class PhaseRecorder: @unchecked Sendable {
     private let lock = NSLock(); private var s = Set<ProcessingPhase>()
     func add(_ p: ProcessingPhase) { lock.lock(); s.insert(p); lock.unlock() }
     var set: Set<ProcessingPhase> { lock.lock(); defer { lock.unlock() }; return s }
+}
+
+final class ManagedCounter: @unchecked Sendable {
+    private let lock = NSLock(); private var v: Int; private(set) var maxSeen = 0
+    init(start: Int = 0) { v = start }
+    var value: Int { lock.lock(); defer { lock.unlock() }; return v }
+    func add(_ d: Int) { lock.lock(); v += d; lock.unlock() }
+    func noteMax() { lock.lock(); maxSeen = max(maxSeen, v); lock.unlock() }
 }

@@ -200,7 +200,7 @@ final class CameraController: ObservableObject {
         let c = min(max(p, 0), 1)
         if !focusManual { focusManual = true; focusLocked = false }
         lensPosition = c
-        Task { try? await engine.setLensPosition(c) }
+        engine.setLensPositionLive(c)
     }
 
     // MARK: Settings snapshot for stacks

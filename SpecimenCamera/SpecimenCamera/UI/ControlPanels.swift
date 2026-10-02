@@ -75,9 +75,9 @@ struct FocusControl: View {
             }
             if camera.activeLens?.supportsManualFocus == true {
                 HStack(spacing: 6) {
-                    Button { camera.setLensPosition(ManualFocusMapping.nudge(camera.displayedLensPosition, steps: -1)) } label: { Image(systemName: "minus") }.buttonStyle(ChipStyle())
+                    HoldRepeatButton(systemName: "minus") { n in camera.setLensPosition(ManualFocusMapping.nudge(camera.displayedLensPosition, steps: -(1 + n / 6))) }
                     FocusDial()
-                    Button { camera.setLensPosition(ManualFocusMapping.nudge(camera.displayedLensPosition, steps: 1)) } label: { Image(systemName: "plus") }.buttonStyle(ChipStyle())
+                    HoldRepeatButton(systemName: "plus") { n in camera.setLensPosition(ManualFocusMapping.nudge(camera.displayedLensPosition, steps: 1 + n / 6)) }
                 }
                 Text(ManualFocusMapping.label(lensPosition: camera.displayedLensPosition, model: camera.activeLens?.focusModel ?? FocusDistanceModel(minimumFocusDistanceMM: nil)) + (camera.activeLens?.minimumFocusDistanceMM != nil ? "  (approx.)" : ""))
                     .font(.system(size: 11, design: .monospaced)).foregroundColor(.gray)
@@ -96,44 +96,100 @@ struct FocusControl: View {
     }
 }
 
-/// Broad drag across the whole range; press-and-hold then drag for fine macro-level steps (25× slower).
+/// Focus slider. Drag anywhere on it with your thumb: a quick swipe moves across the whole range, and the slower you move the
+/// finer it gets (down to ~4 % of the finger travel) — so you can sweep to the area and then creep onto the exact plane without
+/// switching modes. The logic lives in `FocusDragTracker` (unit-tested); this view only feeds it positions and times.
 struct FocusDial: View {
     @EnvironmentObject var camera: CameraController
-    @State private var last: CGFloat = 0
-    @State private var fine = false
-    @State private var lastFine: CGFloat = 0
+    @State private var tracker = FocusDragTracker()
+    @State private var lastX: CGFloat?
+    @State private var lastTime: TimeInterval = 0
+    @State private var dragging = false
+    @State private var gain = 1.0
 
     var body: some View {
         GeometryReader { g in
+            let fine = dragging && gain < 0.35
             let x = CGFloat(ManualFocusMapping.control(lensPosition: camera.displayedLensPosition)) * g.size.width
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 8).fill(fine ? Theme.accent.opacity(0.25) : Theme.chip)
+                RoundedRectangle(cornerRadius: 8).fill(fine ? Theme.accent.opacity(0.22) : Theme.chip)
                 Path { p in
                     for i in 0...20 {
                         let tx = g.size.width * CGFloat(i) / 20
                         p.move(to: CGPoint(x: tx, y: g.size.height - (i % 5 == 0 ? 14 : 8))); p.addLine(to: CGPoint(x: tx, y: g.size.height - 2))
                     }
                 }.stroke(Color.gray.opacity(0.6), lineWidth: 1)
-                Rectangle().fill(Theme.accent).frame(width: 3).offset(x: min(max(x - 1.5, 0), g.size.width - 3))
-                if fine { Text("FINE").font(.system(size: 10, weight: .heavy)).foregroundColor(Theme.accent).padding(.leading, 6).frame(maxHeight: .infinity, alignment: .top).padding(.top, 3) }
+                Capsule().fill(Theme.accent).frame(width: dragging ? 8 : 5, height: g.size.height - 8)
+                    .offset(x: min(max(x - 3, 2), g.size.width - 10))
+                if dragging {
+                    Text(fine ? "FINE" : (gain < 0.7 ? "MEDIUM" : "FULL RANGE")).font(.system(size: 10, weight: .heavy)).foregroundColor(Theme.accent)
+                        .padding(.leading, 8).frame(maxHeight: .infinity, alignment: .top).padding(.top, 3)
+                } else {
+                    Text("DRAG · slow = fine").font(.system(size: 9, weight: .semibold)).foregroundColor(.gray.opacity(0.8))
+                        .padding(.leading, 8).frame(maxHeight: .infinity, alignment: .top).padding(.top, 3)
+                }
             }
             .contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 4).onChanged { v in
-                guard !fine else { return }
-                let dx = v.translation.width - last; last = v.translation.width
-                camera.setLensPosition(ManualFocusMapping.apply(drag: Double(dx / g.size.width), to: camera.displayedLensPosition, fine: false))
-            }.onEnded { _ in last = 0 })
-            .simultaneousGesture(LongPressGesture(minimumDuration: 0.35).sequenced(before: DragGesture(minimumDistance: 0)).onChanged { v in
-                switch v {
-                case .first(true): if !fine { fine = true; UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
-                case .second(true, let drag?):
-                    fine = true
-                    let dx = drag.translation.width - lastFine; lastFine = drag.translation.width
-                    camera.setLensPosition(ManualFocusMapping.apply(drag: Double(dx / g.size.width), to: camera.displayedLensPosition, fine: true))
-                default: break
+            .gesture(DragGesture(minimumDistance: 0)
+                .onChanged { v in
+                    let now = Date().timeIntervalSinceReferenceDate
+                    guard dragging, let lx = lastX else {
+                        dragging = true; lastX = v.location.x; lastTime = now; tracker.reset(); gain = 1
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        return
+                    }
+                    let dx = v.location.x - lx, dt = now - lastTime
+                    guard dt > 0.001 else { return }
+                    lastX = v.location.x; lastTime = now
+                    let move = tracker.update(dragFraction: Double(dx / max(g.size.width, 1)), dt: dt)
+                    gain = FocusDragTracker.gain(forSpeed: tracker.smoothedSpeed)
+                    if move != 0 { camera.setLensPosition(ManualFocusMapping.apply(drag: move, to: camera.displayedLensPosition, fine: false)) }
                 }
-            }.onEnded { _ in fine = false; lastFine = 0 })
+                .onEnded { _ in dragging = false; lastX = nil; tracker.reset() })
         }.frame(height: 48)
+    }
+}
+
+/// ± button that repeats (and speeds up) while held.
+struct HoldRepeatButton: View {
+    let systemName: String
+    let action: (Int) -> Void           // 0 on the first press, then 1, 2, 3 … while held
+    @State private var task: Task<Void, Never>?
+
+    var body: some View {
+        Image(systemName: systemName).font(.system(size: 15, weight: .bold)).foregroundColor(.white)
+            .frame(width: 44, height: 48).background(Theme.chip).clipShape(RoundedRectangle(cornerRadius: 8))
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    guard task == nil else { return }
+                    task = Task { @MainActor in
+                        var n = 0
+                        while !Task.isCancelled {
+                            action(n); n += 1
+                            try? await Task.sleep(nanoseconds: n < 3 ? 350_000_000 : 70_000_000)
+                        }
+                    }
+                }
+                .onEnded { _ in task?.cancel(); task = nil })
+    }
+}
+
+/// Live-view brightness while ISO/shutter are manual.
+struct PreviewBoostRow: View {
+    @EnvironmentObject var settings: AppSettings
+    @EnvironmentObject var camera: CameraController
+    var body: some View {
+        if camera.isoManual && camera.shutterManual {
+            HStack(spacing: 6) {
+                Text("LIVE VIEW").font(.system(size: 10, weight: .bold)).foregroundColor(.gray)
+                ForEach(PreviewBoost.allCases, id: \.self) { m in
+                    Button(m.title) { settings.previewBoost = m }.buttonStyle(ChipStyle(selected: settings.previewBoost == m))
+                }
+                Spacer(minLength: 2)
+                Text(settings.previewBoost == .off ? "as shot" : "brighter view; photo unchanged").font(.system(size: 9)).foregroundColor(.gray).lineLimit(1)
+            }
+        }
     }
 }
 
@@ -196,6 +252,7 @@ struct ISOControl: View {
             ValueStrip(options: camera.isoOptions, selected: ExposureScales.nearest(camera.iso, in: camera.isoOptions), label: { String(Int($0)) },
                        isAuto: !camera.isoManual, onAuto: { camera.setISOAuto() }, onSelect: { camera.setISO($0) })
             if camera.isoManual && !camera.shutterManual { Text("Shutter follows the meter (ISO priority)").font(.system(size: 10)).foregroundColor(.gray) }
+            PreviewBoostRow()
         }
     }
 }
@@ -213,6 +270,7 @@ struct ShutterControl: View {
             ValueStrip(options: camera.shutterOptions, selected: ExposureScales.nearest(camera.shutter, in: camera.shutterOptions), label: { ExposureScales.shutterLabel($0) },
                        isAuto: !camera.shutterManual, onAuto: { camera.setShutterAuto() }, onSelect: { camera.setShutter($0) })
             if camera.shutterManual && !camera.isoManual { Text("ISO follows the meter (shutter priority)").font(.system(size: 10)).foregroundColor(.gray) }
+            PreviewBoostRow()
         }
     }
 }

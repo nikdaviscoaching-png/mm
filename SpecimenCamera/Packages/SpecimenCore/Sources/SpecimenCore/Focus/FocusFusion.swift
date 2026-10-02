@@ -6,6 +6,8 @@ public struct FocusStackOptions: Sendable {
     /// Core tile edge in pixels; must be a multiple of 2^(levels+1) so pyramid phases agree across tiles.
     public var tileSize = 768
     public var concurrency = 2
+    /// Live worker limit (thermal management); asked before every tile. nil = fixed `concurrency`.
+    public var concurrencyProvider: (@Sendable () -> Int)? = nil
     /// Sharpness of the per-pixel frame selection (higher → closer to a hard maximum, lower → more averaging).
     public var selectionPower: Float = 8.0
     /// Weight of the multi-signal focus map relative to the per-band coefficient energy.
@@ -86,7 +88,7 @@ public enum FocusStackEngine {
         let calib = BandNoiseCalibration.make(levels: options.levels, sigma: options.saliencySigma)
         let grid = TileGrid(imageWidth: W, imageHeight: H, tileSize: options.tileSize, halo: options.halo)
         let dominant = Counter(frames.count)
-        try TileRunner.run(tiles: grid.tiles, concurrency: options.concurrency, isCancelled: isCancelled, onTileDone: { done, total in
+        try TileRunner.run(tiles: grid.tiles, concurrency: options.concurrency, concurrencyProvider: options.concurrencyProvider, isCancelled: isCancelled, onTileDone: { done, total in
             progress?.report(.blending, done, total, sub: Double(done) / Double(total))
         }, work: { tile in
             let out = try fuseTile(frames: frames, tile: tile, options: options, builder: builder, calib: calib, sigma: sigma, dominant: dominant)

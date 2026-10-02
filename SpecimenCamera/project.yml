@@ -76,6 +76,6 @@ schemes:
       targets:
         SpecimenCamera: all
     run:
-      config: Debug
+      config: Release      # Debug builds run the image processing 10-50x slower and hotter; Release is what you want on the phone
     archive:
       config: Release

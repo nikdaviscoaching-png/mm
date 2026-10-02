@@ -70,6 +70,19 @@ final class CameraEngine: NSObject, @unchecked Sendable {
     private var stackPrioritization: AVCapturePhotoOutput.QualityPrioritization = .quality
     private var analysisHighRes = false
     private var configured = false
+    private var runningObservation: NSKeyValueObservation?
+
+    // Live (drag) focus: values are coalesced so a fast drag never queues a backlog of lens moves.
+    private let lensLock = NSLock()
+    private var pendingLens: Float?
+    private var lensDrainScheduled = false
+
+    // Bright preview for manual exposure: the preview runs on a faster-shutter / higher-ISO equivalent; the real values are
+    // restored for the instant of capture. `boostSuspended` is true while a stack holds the camera at its locked values.
+    private var previewBoost: PreviewBoost = .off
+    private var boostSuspended = false
+    private var realManual: (iso: Float, shutter: Double)?
+    private var previewExposureActive = false
 
     // Orientation is frozen for the duration of a stack: a phone lying nearly flat on a stand can flip between rotation
     // angles from one frame to the next, which would give frames of different pixel dimensions.
@@ -96,6 +109,7 @@ final class CameraEngine: NSObject, @unchecked Sendable {
         NotificationCenter.default.addObserver(self, selector: #selector(sessionWasInterrupted(_:)), name: AVCaptureSession.wasInterruptedNotification, object: session)
         NotificationCenter.default.addObserver(self, selector: #selector(sessionInterruptionEnded(_:)), name: AVCaptureSession.interruptionEndedNotification, object: session)
         NotificationCenter.default.addObserver(self, selector: #selector(sessionRuntimeError(_:)), name: AVCaptureSession.runtimeErrorNotification, object: session)
+        runningObservation = session.observe(\.isRunning, options: [.new]) { [weak self] s, _ in self?.onRunningChanged?(s.isRunning) }
     }
 
     deinit { NotificationCenter.default.removeObserver(self) }
@@ -140,6 +154,7 @@ final class CameraEngine: NSObject, @unchecked Sendable {
             self.updateRotation()
             self.applyVideoOutputSettings()
             self.drive = .auto
+            self.realManual = nil; self.previewExposureActive = false
         }
     }
 
@@ -298,12 +313,14 @@ final class CameraEngine: NSObject, @unchecked Sendable {
             guard let d = self.device else { throw CameraEngineError.noDevice }
             self.stopPriorityLoop()
             self.drive = newDrive
+            self.realManual = nil; self.previewExposureActive = false
             try d.lockForConfiguration(); defer { d.unlockForConfiguration() }
             switch newDrive {
             case .auto:
                 if d.isExposureModeSupported(.continuousAutoExposure) { d.exposureMode = .continuousAutoExposure }
             case .manual(let iso, let shutter):
-                self.applyCustom(d, iso: iso, shutter: shutter)
+                self.realManual = (iso, shutter)
+                self.applyManualRespectingPreview(d)
             case .shutterPriority(let shutter):
                 self.applyCustom(d, iso: d.iso, shutter: shutter)
                 self.startPriorityLoop()
@@ -311,6 +328,58 @@ final class CameraEngine: NSObject, @unchecked Sendable {
                 self.applyCustom(d, iso: iso, shutter: CMTimeGetSeconds(d.exposureDuration))
                 self.startPriorityLoop()
             }
+        }
+    }
+
+    // MARK: Bright preview
+
+    func setPreviewBoost(_ mode: PreviewBoost) {
+        sessionQueue.async {
+            self.previewBoost = mode
+            guard self.realManual != nil, let d = self.device, (try? d.lockForConfiguration()) != nil else { return }
+            defer { d.unlockForConfiguration() }
+            self.applyManualRespectingPreview(d)
+        }
+    }
+
+    /// sessionQueue, device locked. Applies the photo's manual exposure, or its brighter/faster preview equivalent.
+    private func applyManualRespectingPreview(_ d: AVCaptureDevice) {
+        guard let m = realManual else { return }
+        let f = d.activeFormat
+        if !boostSuspended, let p = previewExposure(iso: m.iso, shutter: m.shutter, boost: previewBoost, minISO: f.minISO, maxISO: f.maxISO,
+                                                    minShutter: CMTimeGetSeconds(f.minExposureDuration), maxShutter: CMTimeGetSeconds(f.maxExposureDuration)) {
+            applyCustom(d, iso: p.iso, shutter: p.shutter)
+            previewExposureActive = true
+        } else {
+            applyCustom(d, iso: m.iso, shutter: m.shutter)
+            previewExposureActive = false
+        }
+    }
+
+    /// Before a photo: if the preview is running on boosted values, switch to the real ones and wait until the sensor has them.
+    private func switchToRealExposureForCapture() async {
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            sessionQueue.async {
+                guard self.previewExposureActive, let m = self.realManual, let d = self.device, (try? d.lockForConfiguration()) != nil else { cont.resume(); return }
+                self.previewExposureActive = false
+                let once = OneShot()
+                let f = d.activeFormat
+                let sec = min(max(m.shutter, CMTimeGetSeconds(f.minExposureDuration)), CMTimeGetSeconds(f.maxExposureDuration))
+                d.setExposureModeCustom(duration: CMTime(seconds: sec, preferredTimescale: 1_000_000_000), iso: min(max(m.iso, f.minISO), f.maxISO)) { _ in
+                    once.fire { cont.resume() }
+                }
+                d.unlockForConfiguration()
+                self.sessionQueue.asyncAfter(deadline: .now() + 1.5) { once.fire { cont.resume() } }     // never wait longer than this
+            }
+        }
+        try? await Task.sleep(nanoseconds: 120_000_000)       // first frames after a change can still carry the old exposure
+    }
+
+    private func resumePreviewExposure() {
+        sessionQueue.async {
+            guard self.realManual != nil, !self.boostSuspended, self.previewBoost != .off, let d = self.device, (try? d.lockForConfiguration()) != nil else { return }
+            defer { d.unlockForConfiguration() }
+            self.applyManualRespectingPreview(d)
         }
     }
 
@@ -449,12 +518,28 @@ final class CameraEngine: NSObject, @unchecked Sendable {
         }
     }
 
+    /// Fire-and-forget lens move for dragging the focus slider: no waiting for the lens to settle, and moves arriving faster
+    /// than the camera can apply them are coalesced to the latest one.
+    func setLensPositionLive(_ position: Float) {
+        let p = min(max(position, 0), 1)
+        lensLock.lock(); pendingLens = p; let schedule = !lensDrainScheduled; lensDrainScheduled = true; lensLock.unlock()
+        if schedule { sessionQueue.async { self.drainLiveLens() } }
+    }
+
+    private func drainLiveLens() {
+        lensLock.lock(); let p = pendingLens; pendingLens = nil; lensDrainScheduled = false; lensLock.unlock()
+        guard let p, let d = device, d.isLockingFocusWithCustomLensPositionSupported, (try? d.lockForConfiguration()) != nil else { return }
+        d.setFocusModeLocked(lensPosition: p, completionHandler: nil)
+        d.unlockForConfiguration()
+    }
+
     func currentLensPosition() async -> Float { await onQueueValue { self.device?.lensPosition ?? 0 } }
 
     // MARK: - Stacks
 
     /// Pins everything a stack must not change. Focus is pinned too unless `plan.pinnedLensPosition == nil` (focus stack).
     func lockForStack(_ plan: LockPlan, prioritization: StackQuality) async throws {
+        await onQueueVoid { self.boostSuspended = true }                 // a stack runs at the real, locked exposure
         try await setLens(plan.lensID)
         await onQueueVoid { self.freezeRotation() }
         try await setExposure(.manual(iso: plan.iso, shutter: plan.shutterSeconds))
@@ -476,7 +561,9 @@ final class CameraEngine: NSObject, @unchecked Sendable {
             self.stackPrioritization = .quality
             self.frozenCaptureAngle = nil; self.frozenPreviewAngle = nil
             self.updateRotation()
+            self.boostSuspended = false
         }
+        resumePreviewExposure()
     }
 
     private func freezeRotation() {
@@ -502,6 +589,8 @@ final class CameraEngine: NSObject, @unchecked Sendable {
     /// sessionQueue only.
     private func applyVideoOutputSettings() {
         let wantPreviewSized = !analysisHighRes
+        session.beginConfiguration()
+        defer { session.commitConfiguration() }
         if videoOutput.deliversPreviewSizedOutputBuffers != wantPreviewSized { videoOutput.deliversPreviewSizedOutputBuffers = wantPreviewSized }
         // Pixel format only: no width/height keys.
         videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
@@ -511,17 +600,30 @@ final class CameraEngine: NSObject, @unchecked Sendable {
     // MARK: - Photo capture
 
     func capturePhoto(format: CaptureFormat, into directory: URL, fileName: String, prioritizationOverride: AVCapturePhotoOutput.QualityPrioritization? = nil) async throws -> CapturedFrameInfo {
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<CapturedFrameInfo, Error>) in
+        await switchToRealExposureForCapture()
+        do {
+            let info = try await captureNow(format: format, into: directory, fileName: fileName, prioritizationOverride: prioritizationOverride)
+            resumePreviewExposure()
+            return info
+        } catch {
+            resumePreviewExposure()
+            throw error
+        }
+    }
+
+    private func captureNow(format: CaptureFormat, into directory: URL, fileName: String, prioritizationOverride: AVCapturePhotoOutput.QualityPrioritization?) async throws -> CapturedFrameInfo {
+        let once = OneShot()
+        return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<CapturedFrameInfo, Error>) in
             sessionQueue.async {
-                guard self.configured, self.session.isRunning else { cont.resume(throwing: CameraEngineError.capture("the camera is not running")); return }
+                guard self.configured, self.session.isRunning else { once.fire { cont.resume(throwing: CameraEngineError.capture("the camera is not running")) }; return }
                 guard let settings = self.makePhotoSettings(format, override: prioritizationOverride) else {
-                    cont.resume(throwing: CameraEngineError.capture("\(format.title) is not supported by this camera")); return
+                    once.fire { cont.resume(throwing: CameraEngineError.capture("\(format.title) is not supported by this camera")) }; return
                 }
                 let destination = directory.appendingPathComponent(fileName)
                 let uid = settings.uniqueID
                 let delegate = PhotoCaptureDelegate(destination: destination, format: format) { [weak self] result in
                     self?.sessionQueue.async { self?.inFlight[uid] = nil }
-                    cont.resume(with: result)
+                    once.fire { cont.resume(with: result) }
                 }
                 self.inFlight[uid] = delegate
                 if let conn = self.photoOutput.connection(with: .video) {
@@ -529,6 +631,14 @@ final class CameraEngine: NSObject, @unchecked Sendable {
                     if let angle, conn.isVideoRotationAngleSupported(angle) { conn.videoRotationAngle = angle }
                 }
                 self.photoOutput.capturePhoto(with: settings, delegate: delegate)
+                // A capture that never reports back must not leave the shutter dead: give up after a generous time.
+                self.sessionQueue.asyncAfter(deadline: .now() + 40) {
+                    once.fire {
+                        self.inFlight[uid] = nil
+                        Log.camera.error("capture timed out (\(format.title, privacy: .public))")
+                        cont.resume(throwing: CameraEngineError.capture("the camera did not deliver the photo (timed out)"))
+                    }
+                }
             }
         }
     }
@@ -640,4 +750,39 @@ final class OneShot: @unchecked Sendable {
         lock.lock(); let go = !fired; fired = true; lock.unlock()
         if go { body() }
     }
+}
+
+// MARK: - Bright preview (manual exposure)
+
+/// How the live view is brightened while exposure is manual. Only the preview changes: the photo is always taken with the
+/// ISO and shutter you chose (the engine switches to them for the instant of capture).
+enum PreviewBoost: String, CaseIterable, Sendable {
+    case off, match, bright
+    var title: String {
+        switch self {
+        case .off: return "OFF"
+        case .match: return "MATCH"
+        case .bright: return "BRIGHT"
+        }
+    }
+    /// Extra exposure factor on top of "same brightness as the photo".
+    var gain: Double { self == .bright ? 4 : 1 }          // +2 EV for BRIGHT
+}
+
+/// The exposure used for the live view so a slow shutter does not make the preview dark and laggy: keep the same total
+/// exposure (ISO × shutter) but with a shutter no slower than 1/30 s, raising ISO to compensate. Returns nil when the
+/// preview should simply use the photo's own settings. Pure function so it is unit-testable in principle and easy to reason about.
+func previewExposure(iso: Float, shutter: Double, boost: PreviewBoost, minISO: Float, maxISO: Float, minShutter: Double, maxShutter: Double) -> (iso: Float, shutter: Double)? {
+    guard boost != .off, iso > 0, shutter > 0 else { return nil }
+    let target = Double(iso) * shutter * boost.gain
+    var s = min(shutter, 1.0 / 30)
+    var i = target / s
+    if i > Double(maxISO) {                       // not enough ISO: let the shutter lengthen again (never beyond the photo's own)
+        i = Double(maxISO)
+        s = min(target / i, max(shutter, shutter * boost.gain))
+    }
+    i = max(i, Double(minISO))
+    s = min(max(s, minShutter), maxShutter)
+    if abs(Double(iso) - i) / Double(iso) < 0.02 && abs(shutter - s) / shutter < 0.02 { return nil }
+    return (Float(i), s)
 }

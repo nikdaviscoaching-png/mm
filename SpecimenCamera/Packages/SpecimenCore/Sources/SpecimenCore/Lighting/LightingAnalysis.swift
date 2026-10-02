@@ -4,6 +4,8 @@ public struct LightingStackOptions: Sendable {
     public var levels = 5
     public var tileSize = 768
     public var concurrency = 2
+    /// Live worker limit (thermal management); asked before every tile. nil = fixed `concurrency`.
+    public var concurrencyProvider: (@Sendable () -> Int)? = nil
     /// Memory budget (bytes) for the proxy-resolution analysis data; the proxy shrinks as the frame count grows.
     public var analysisBudgetBytes = 240_000_000
     public var maxProxyPixels = 1_500_000

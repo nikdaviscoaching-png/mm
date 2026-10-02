@@ -177,6 +177,38 @@ public enum ManualFocusMapping {
     }
 }
 
+/// Turns a finger drag on the focus slider into lens movement whose sensitivity follows the finger's speed: a slow, careful
+/// drag becomes a fine adjustment (a few percent of the distance), a quick swipe covers the whole range. Pure logic, so it is
+/// unit-tested; the SwiftUI view only feeds it positions and times.
+public struct FocusDragTracker: Sendable, Equatable {
+    /// Finger speed in slider-widths per second, smoothed over the last few events.
+    public private(set) var smoothedSpeed: Double = 0
+    public init() {}
+
+    public static let slowSpeed = 0.25       // ≈ 80 pt/s on a 330 pt slider: careful tuning
+    public static let fastSpeed = 1.6        // ≈ 530 pt/s: a deliberate swipe
+    public static let fineGain = 0.04
+
+    /// 0.04 (fine) … 1.0 (full range), smoothly eased between the two speeds.
+    public static func gain(forSpeed speed: Double) -> Double {
+        let t = min(max((speed - slowSpeed) / (fastSpeed - slowSpeed), 0), 1)
+        let eased = t * t * (3 - 2 * t)
+        return fineGain + (1 - fineGain) * eased
+    }
+
+    /// `dragFraction` = finger movement since the last event ÷ slider width; `dt` = seconds since the last event.
+    /// Returns the control movement to apply (same sign, scaled by the speed-dependent gain).
+    public mutating func update(dragFraction: Double, dt: Double) -> Double {
+        guard dt > 0 else { return 0 }
+        let instant = abs(dragFraction) / dt
+        // A pause (no events for a moment) means the finger started a new, slow movement.
+        smoothedSpeed = (dt > 0.12 || smoothedSpeed == 0) ? instant : smoothedSpeed * 0.7 + instant * 0.3
+        return dragFraction * Self.gain(forSpeed: smoothedSpeed)
+    }
+
+    public mutating func reset() { smoothedSpeed = 0 }
+}
+
 // MARK: - Stack locking
 
 public enum ExposureMode: String, Codable, Sendable { case auto, manual }

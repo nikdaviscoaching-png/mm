@@ -8,6 +8,7 @@ struct ImportView: View {
     @EnvironmentObject var importer: ImportService
     @EnvironmentObject var processing: ProcessingService
     @EnvironmentObject var settings: AppSettings
+    @EnvironmentObject var stack: StackSessionModel
     @Environment(\.dismiss) private var dismiss
     @State private var type: StackType = .focus
     @State private var pickerItems: [PhotosPickerItem] = []
@@ -61,6 +62,7 @@ struct ImportView: View {
                 }
             }
             .navigationTitle("Import Stack").navigationBarTitleDisplayMode(.inline)
+            .onAppear { if let t = stack.importRequest { type = t; stack.importRequest = nil } }
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { importer.clear(); dismiss() } } }
             .onChange(of: pickerItems) { _, items in
                 Task { await importer.load(from: items); pickerItems = []; regroup() }

@@ -77,9 +77,10 @@ final class PlanningTests: XCTestCase {
     }
 
     func testThermalPolicyReducesConcurrencyNotQuality() {
-        XCTAssertEqual(ThermalPolicy.concurrency(thermal: .nominal, cores: 6, lowPowerMode: false), 3)
-        XCTAssertEqual(ThermalPolicy.concurrency(thermal: .fair, cores: 6, lowPowerMode: false), 2)
+        XCTAssertEqual(ThermalPolicy.concurrency(thermal: .nominal, cores: 6, lowPowerMode: false), 2)
+        XCTAssertEqual(ThermalPolicy.concurrency(thermal: .fair, cores: 6, lowPowerMode: false), 1)
         XCTAssertEqual(ThermalPolicy.concurrency(thermal: .serious, cores: 6, lowPowerMode: false), 1)
+        XCTAssertEqual(ThermalPolicy.concurrency(thermal: .critical, cores: 6, lowPowerMode: false), 0)      // pause
         XCTAssertEqual(ThermalPolicy.concurrency(thermal: .nominal, cores: 6, lowPowerMode: true), 1)
         XCTAssertEqual(ThermalPolicy.concurrency(thermal: .nominal, cores: 1, lowPowerMode: false), 1)
         XCTAssertNotNil(ThermalPolicy.userMessage(.serious)); XCTAssertNil(ThermalPolicy.userMessage(.nominal))

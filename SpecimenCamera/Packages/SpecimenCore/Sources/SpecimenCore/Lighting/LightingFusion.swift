@@ -39,7 +39,7 @@ public enum LightingFusionEngine {
         let base = analysis.baseIndex
         // Frames that never contribute are never read.
         let used: [Bool] = (0..<n).map { j in j == base || analysis.weights[j].pixels.contains { $0 > 0.002 } }
-        try TileRunner.run(tiles: grid.tiles, concurrency: options.concurrency, isCancelled: isCancelled, onTileDone: { done, total in
+        try TileRunner.run(tiles: grid.tiles, concurrency: options.concurrency, concurrencyProvider: options.concurrencyProvider, isCancelled: isCancelled, onTileDone: { done, total in
             progress?.report(.blending, done, total, sub: Double(done) / Double(total))
         }, work: { t in
             let rect = t.padded

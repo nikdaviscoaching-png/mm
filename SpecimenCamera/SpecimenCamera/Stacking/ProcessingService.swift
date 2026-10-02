@@ -22,6 +22,7 @@ final class ProcessingService: ObservableObject {
     let library: LibraryService
     @Published private(set) var progress: ProcessingProgress?
     @Published private(set) var isProcessing = false
+    @Published private(set) var startedAt = Date()
     @Published var review: ReviewState?
     @Published var errorMessage: String?
     @Published private(set) var warnings: [String] = []
@@ -43,7 +44,7 @@ final class ProcessingService: ObservableObject {
 
     func process(projectID: UUID) async {
         guard !isProcessing else { return }
-        isProcessing = true; errorMessage = nil; warnings = []
+        isProcessing = true; errorMessage = nil; warnings = []; startedAt = Date()
         cancelFlag.set(false)
         progress = ProcessingProgress(phase: .preparing)
         ScreenAwake.hold("processing")
@@ -66,7 +67,7 @@ final class ProcessingService: ObservableObject {
         let handler: ProgressHandler = { [weak self] p in Task { @MainActor in self?.progress = p } }
         Log.processing.info("stack processing started")
         do {
-            let result = try await Task.detached(priority: .userInitiated) {
+            let result = try await Task.detached(priority: .utility) {
                 try StackProcessor(store: store).process(projectID: projectID, outputDirectory: staging, services: services, progress: handler, isCancelled: { flag.value })
             }.value
             let project = try store.load(projectID)

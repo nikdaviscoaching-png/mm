@@ -4,7 +4,7 @@
 
 | | Verified here | How |
 |---|---|---|
-| `SpecimenCore` algorithms and logic | **Yes** | 105 XCTest tests (below), compiled with `-enable-experimental-feature StrictConcurrency`, Swift 6.0.3 on Linux x86-64. Outputs inspected as images (`docs/validation/`). |
+| `SpecimenCore` algorithms and logic | **Yes** | 110 XCTest tests (below), compiled with `-enable-experimental-feature StrictConcurrency`, Swift 6.0.3 on Linux x86-64. Outputs inspected as images (`docs/validation/`). |
 | iOS app source (38 files) | **Syntax only** | `swiftc -parse` on every file; Apple API signatures checked against Apple's documentation JSON; line-by-line review. **Not type-checked, not compiled, not run** — no iOS SDK was available. |
 | Xcode project | Generated, structure inspected | XcodeGen 2.44.1 built from source; all 38 source files, the local package dependency, asset catalog and Info.plist keys confirmed in `project.pbxproj`. Never opened in Xcode. |
 
@@ -25,7 +25,7 @@ PlanningTests                9 tests  passed
 ProcessorTests              11 tests  passed
 RegistrationTests            8 tests  passed
 StorageTests                 8 tests  passed
-Executed 105 tests, with 0 failures (0 unexpected) in ~85 s
+Executed 110 tests, with 0 failures (0 unexpected) in ~85 s
 ```
 
 Headline numbers (synthetic datasets with ground truth, generated in code — `SpecimenTestKit`):
@@ -95,6 +95,18 @@ Check the Xcode console / *Console.app* (subsystem `app.specimencamera`) for the
 | A5 | Settings › Shutter delay 2 s; shoot a single and a lighting frame. | A countdown shows on the shutter button; the exposure happens after it. |
 | A6 | Leave the camera untouched for 2 minutes. | The screen does not lock. |
 | A7 | Peaking on: overlay edges line up with the picture in portrait and when the phone is turned (check Console for `overlay buffer request`). | Red marks sit on the in-focus edges, not offset or stretched. |
+
+### Added after the first phone test — please check
+
+| # | Check | Pass when |
+|---|---|---|
+| B1 | SINGLE mode, choose RAW / ProRAW, press the shutter repeatedly. | The button is never dead; each press saves (toast "Saved to …") or shows an error message saying why. |
+| B2 | FOCUS tab, drag the slider quickly, then slowly. | Quick = whole range; slow = tiny steps, badge FINE. ± repeats while held. |
+| B3 | Peaking on, tap 4× then 8×, pan around. | Thin red lines on in-focus edges only; the picture stays sharp (full-size buffers); the phone does not warm quickly. |
+| B4 | Set ISO and SHUTTER to manual with a slow shutter (e.g. 1/4 s). LIVE VIEW = MATCH. | The live view is bright and smooth; the saved photo has exactly your ISO/shutter (check the EXIF in the library details). |
+| B5 | Run a 4–5 frame focus stack **hand-held** (small movements). | Processing finishes without an "alignment uncertain" warning; the processing screen shows elapsed time and moves through ALIGNING and BLENDING. |
+| B6 | Process a stack and feel the phone. | Warm at most; if it gets hot the screen says it is slowing down or pausing. |
+| B7 | LIGHTING / COMBINED: follow the on-screen steps; also try IMPORT PHOTOS INSTEAD. | Each stage has one obvious button; imports open with the right stack type. |
 
 ## 5. End-to-end scenarios
 

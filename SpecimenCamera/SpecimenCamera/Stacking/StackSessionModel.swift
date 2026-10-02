@@ -35,6 +35,9 @@ final class StackSessionModel: ObservableObject {
     @Published private(set) var thumbnails: [UIImage] = []
     /// Seconds left on the shutter delay (0 = not counting).
     @Published private(set) var countdown = 0
+    private var countdownCancelled = false
+    /// Set by the stack panel's "import photos instead" button; the camera screen opens the import sheet for this type.
+    @Published var importRequest: StackType?
 
     private let camera: CameraController
     private let motion: MotionService
@@ -99,11 +102,21 @@ final class StackSessionModel: ObservableObject {
     // MARK: Start / capture
 
     /// The user's shutter delay (Settings). Lets the phone settle after the tap; also used before single photos.
-    func waitShutterDelay() async {
+    /// Returns false when the user cancelled it by pressing the shutter again.
+    func waitShutterDelay() async -> Bool {
+        countdownCancelled = false
         var n = settings.shutterDelaySeconds
-        while n > 0 { countdown = n; try? await Task.sleep(nanoseconds: 1_000_000_000); n -= 1 }
+        while n > 0 {
+            countdown = n
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            if countdownCancelled { countdown = 0; countdownCancelled = false; return false }
+            n -= 1
+        }
         countdown = 0
+        return true
     }
+
+    func cancelCountdown() { if countdown > 0 { countdownCancelled = true } }
 
     /// Whether the shutter button can start or continue the current mode.
     var canStartFocusLike: Bool { (mode == .focus || mode == .combined) && plan != nil && nearFocus != nil && farFocus != nil }

@@ -3,15 +3,28 @@ import Foundation
 /// Runs tile jobs on a bounded number of worker threads. Concurrency is the knob thermal management turns
 /// (fewer workers, same quality). Errors and cancellation stop further tiles; in-flight tiles finish.
 public enum TileRunner {
-    public static func run(tiles: [Tile], concurrency: Int, isCancelled: CancelCheck? = nil,
+    /// `concurrencyProvider` is asked before every tile, so thermal throttling takes effect immediately: workers above the
+    /// allowed count wait (0 = everything waits until the phone cools). Without it `concurrency` is fixed.
+    public static func run(tiles: [Tile], concurrency: Int, concurrencyProvider: (@Sendable () -> Int)? = nil,
+                           isCancelled: CancelCheck? = nil,
                            onTileDone: (@Sendable (Int, Int) -> Void)? = nil,
                            work: @Sendable (Tile) throws -> Void) throws {
         let state = RunState(total: tiles.count)
-        let workers = max(1, min(concurrency, tiles.count))
+        let maxWorkers = concurrencyProvider == nil ? concurrency : max(concurrency, min(ProcessInfo.processInfo.activeProcessorCount - 1, 4))
+        let workers = max(1, min(maxWorkers, tiles.count))
         withoutActuallyEscaping(work) { work in
-            DispatchQueue.concurrentPerform(iterations: workers) { _ in
+            DispatchQueue.concurrentPerform(iterations: workers) { worker in
                 while true {
                     if isCancelled?() == true { state.fail(SpecimenError.cancelled); return }
+                    if let provider = concurrencyProvider {
+                        var allowed = provider()
+                        while worker >= allowed {
+                            if state.finished { return }
+                            if isCancelled?() == true { state.fail(SpecimenError.cancelled); return }
+                            Thread.sleep(forTimeInterval: allowed <= 0 ? 1.0 : 0.25)
+                            allowed = provider()
+                        }
+                    }
                     guard let idx = state.next() else { return }
                     do {
                         try autoreleasepoolCompat { try work(tiles[idx]) }
@@ -41,6 +54,7 @@ private final class RunState: @unchecked Sendable {
         defer { cursor += 1 }
         return cursor
     }
+    var finished: Bool { lock.lock(); defer { lock.unlock() }; return error != nil || cursor >= total }
     func finishOne() -> Int { lock.lock(); defer { lock.unlock() }; done += 1; return done }
     func fail(_ e: Error) { lock.lock(); if error == nil { error = e }; lock.unlock() }
 }

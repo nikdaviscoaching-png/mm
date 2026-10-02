@@ -308,6 +308,37 @@ final class CameraLogicTests: XCTestCase {
         XCTAssertEqual(ManualFocusMapping.label(lensPosition: 0.0, model: FocusDistanceModel(minimumFocusDistanceMM: 120)), "0.000  ≈120 mm")
         XCTAssertEqual(ManualFocusMapping.label(lensPosition: 0.25, model: FocusDistanceModel(minimumFocusDistanceMM: nil)), "0.250")
     }
+
+    // MARK: focus drag (speed-sensitive slider)
+
+    func testFocusDragGainIsFineWhenSlowFullWhenFastAndMonotonic() {
+        XCTAssertEqual(FocusDragTracker.gain(forSpeed: 0), FocusDragTracker.fineGain, accuracy: 1e-9)
+        XCTAssertEqual(FocusDragTracker.gain(forSpeed: 10), 1, accuracy: 1e-9)
+        var last = -1.0
+        for s in stride(from: 0.0, through: 3.0, by: 0.05) {
+            let g = FocusDragTracker.gain(forSpeed: s)
+            XCTAssertGreaterThanOrEqual(g, last); last = g
+        }
+    }
+
+    func testSlowDragMovesFarLessThanFastDragOverTheSameDistance() {
+        // Same 30 % of the slider: once slowly (about 0.1 widths/s) and once as a quick swipe (about 4 widths/s).
+        var slow = FocusDragTracker(), fast = FocusDragTracker()
+        var slowTotal = 0.0, fastTotal = 0.0
+        for _ in 0..<30 { slowTotal += slow.update(dragFraction: 0.01, dt: 0.1) }
+        for _ in 0..<5 { fastTotal += fast.update(dragFraction: 0.06, dt: 0.015) }
+        XCTAssertLessThan(slowTotal, 0.30 * 0.15)           // fine: a small fraction of the finger travel
+        XCTAssertGreaterThan(fastTotal, 0.30 * 0.9)         // coarse: nearly 1:1 with the finger
+        XCTAssertGreaterThan(fastTotal, slowTotal * 6)
+    }
+
+    func testFocusDragKeepsDirectionAndResets() {
+        var t = FocusDragTracker()
+        XCTAssertLessThan(t.update(dragFraction: -0.05, dt: 0.02), 0)
+        XCTAssertGreaterThan(t.update(dragFraction: 0.05, dt: 0.02), 0)
+        t.reset(); XCTAssertEqual(t.smoothedSpeed, 0)
+        XCTAssertEqual(t.update(dragFraction: 0.1, dt: 0), 0)
+    }
 }
 
 extension MockCamera {

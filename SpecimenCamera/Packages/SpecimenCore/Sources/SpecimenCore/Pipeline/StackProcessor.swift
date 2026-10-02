@@ -99,6 +99,7 @@ public final class StackProcessor: @unchecked Sendable {
         let needDevelop = project.groups.filter { g in !(g.compositeFileName != nil && project.completedSteps.contains("composite:\(g.id)")) }.flatMap { $0.frames }
         for (i, f) in needDevelop.enumerated() {
             try check()
+            report(.developing, i + 1, needDevelop.count, 0.12 * Double(i) / Double(max(needDevelop.count, 1)))      // "frame i of n" while it is being worked on
             let dest = work.appendingPathComponent("dev_\(f.id.uuidString).scw")
             if project.completedSteps.contains("developed:\(f.id)"), let existing = try? ScwFrame(url: dest) {
                 size = (existing.width, existing.height)
@@ -111,13 +112,12 @@ public final class StackProcessor: @unchecked Sendable {
                 try checkpoint("developed:\(f.id)")
             }
             devURL[f.id] = dest
-            report(.developing, i + 1, needDevelop.count, 0.10 * Double(i + 1) / Double(max(needDevelop.count, 1)))
         }
         _ = all
 
         // 2. Focus composites (focus + combined). Lighting projects treat each single frame as its own "composite".
         var compositeURL: [UUID: URL] = [:]
-        var progressBase = 0.10
+        var progressBase = 0.12
         let focusGroups = project.type == .lighting ? 0 : project.groups.count
         let focusShare = project.type == .focus ? 0.70 : (project.type == .combined ? 0.55 : 0)
         for gi in 0..<project.groups.count {
@@ -147,6 +147,7 @@ public final class StackProcessor: @unchecked Sendable {
                 var alignments: [FrameAlignment] = []
                 var ro = RegistrationOptions(); ro.estimateRotationScale = true
                 let alignBase = progressBase
+                progress?(ProcessingProgress(phase: .aligning, current: 0, total: max(frames.count - 1, 1), fraction: alignBase))
                 alignments = try ImageRegistrationEngine.align(frames: frames, options: ro, progress: { cur, tot in
                     progress?(ProcessingProgress(phase: .aligning, current: cur, total: tot, fraction: alignBase + sliceSpan * 0.15 * Double(cur) / Double(max(tot, 1))))
                 }, isCancelled: isCancelled)
@@ -155,7 +156,7 @@ public final class StackProcessor: @unchecked Sendable {
                 let aligned = ImageRegistrationEngine.aligned(frames, alignments)
                 let writer = try ScwWriter(url: compURL, width: frames[0].width, height: frames[0].height, colorSpace: frames[0].colorSpace)
                 var fo = FocusStackOptions.preset(project.quality)
-                fo.concurrency = services.concurrency()
+                fo.concurrency = max(1, services.concurrency()); fo.concurrencyProvider = services.concurrency
                 _ = try FocusStackEngine.fuse(frames: aligned, sink: writer, options: fo,
                                               progress: ProgressSlice(progress, start: progressBase + sliceSpan * 0.15, span: sliceSpan * 0.85),
                                               isCancelled: isCancelled)
@@ -190,6 +191,7 @@ public final class StackProcessor: @unchecked Sendable {
             } else {
                 var ro = RegistrationOptions(); ro.estimateRotationScale = false      // light moves; camera does not
                 let alignBase = progressBase
+                progress?(ProcessingProgress(phase: .aligning, current: 0, total: max(sources.count - 1, 1), fraction: alignBase))
                 let alignments = try ImageRegistrationEngine.align(frames: sources, options: ro, progress: { cur, tot in
                     progress?(ProcessingProgress(phase: .aligning, current: cur, total: tot, fraction: alignBase + 0.05 * Double(cur) / Double(max(tot, 1))))
                 }, isCancelled: isCancelled)
@@ -198,7 +200,7 @@ public final class StackProcessor: @unchecked Sendable {
                 let aligned = ImageRegistrationEngine.aligned(sources, alignments)
                 let writer = try ScwWriter(url: finalWorking, width: sources[0].width, height: sources[0].height, colorSpace: sources[0].colorSpace)
                 var lo = LightingStackOptions.preset(project.quality)
-                lo.concurrency = services.concurrency()
+                lo.concurrency = max(1, services.concurrency()); lo.concurrencyProvider = services.concurrency
                 lo.preferredBase = project.preferredLightingBase
                 let a = try LightingStackEngine.run(frames: aligned, sink: writer, options: lo,
                                                     progress: ProgressSlice(progress, start: progressBase + 0.05, span: 0.85 - progressBase - 0.05), isCancelled: isCancelled)

@@ -110,4 +110,22 @@ final class RegistrationTests: XCTestCase {
         XCTAssertTrue(al[1].failed)
         XCTAssertEqual(al[1].transform, .identity)
     }
+
+    /// A phone held in the hand between frames: several percent of shift, a degree of rotation, focus breathing, and the
+    /// frame is also softer than the reference (different focus plane).
+    func testRecoversHandheldShakeRotationAndBreathingWithDefocus() {
+        let tex = SyntheticSpecimen.texture(width: W, height: H, seed: 31)
+        let cases: [(scale: Double, rot: Double, tx: Double, ty: Double)] = [
+            (1.015, 0.012, 22, -17), (0.985, -0.017, -30, 21), (1.025, 0.020, 41, 14),
+            (0.97, -0.035, -50, 35), (1.03, 0.04, 60, -45), (1.0, 0.0, -75, 55),
+        ]
+        for k in cases {
+            let t = Affine2D.similarity(scale: k.scale, rotation: k.rot, translation: (k.tx, k.ty), center: (255.5, 191.5))
+            var frame = warped(tex, t)
+            frame = RGBImage(r: Filters.gaussianBlur(frame.r, sigma: 1.6), g: Filters.gaussianBlur(frame.g, sigma: 1.6), b: Filters.gaussianBlur(frame.b, sigma: 1.6))
+            let (est, conf) = estimate(tex, frame)
+            XCTAssertLessThan(cornerError(est, t.inverted()!), 0.6, "case \(k): est \(est) conf \(conf)")
+            XCTAssertGreaterThan(conf, 0.5)
+        }
+    }
 }

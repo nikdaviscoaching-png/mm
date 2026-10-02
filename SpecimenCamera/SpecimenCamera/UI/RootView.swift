@@ -29,7 +29,13 @@ struct RootView: View {
             case .authorized: cameraScreen
             }
             if processing.isProcessing || processing.progress != nil { ProcessingOverlay() }
+            ShutterFlash(tick: app.flashTick)
+            if let t = app.toast {
+                VStack { ToastView(text: t); Spacer() }.padding(.top, 54).transition(.move(edge: .top).combined(with: .opacity)).allowsHitTesting(false)
+            }
         }
+        .animation(.easeOut(duration: 0.2), value: app.toast)
+        .onChange(of: stack.importRequest) { _, t in if t != nil { showImport = true } }
         .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(isPresented: $showCollections) { CollectionPickerView() }
         .sheet(isPresented: $showLibrary) { LibraryView() }
@@ -220,7 +226,7 @@ struct BottomBar: View {
                     if stack.countdown > 0 { Text("\(stack.countdown)").font(.system(size: 30, weight: .heavy, design: .rounded)).foregroundColor(.black) }
                     else if stack.mode != .single { Image(systemName: icon).font(.system(size: 22, weight: .bold)).foregroundColor(.black) }
                 }
-            }.buttonStyle(.plain).disabled(camera.isCapturing || stack.isBusy || stack.countdown > 0 || !camera.isRunning)
+            }.buttonStyle(.plain).disabled(shutterDisabled)
             Spacer()
             VStack(spacing: 6) {
                 Button { showImport = true } label: { Image(systemName: "square.and.arrow.down") }.buttonStyle(ChipStyle())
@@ -233,18 +239,26 @@ struct BottomBar: View {
         switch stack.mode { case .single: return "camera"; case .focus: return "play.fill"; case .lighting, .combined: return "plus" }
     }
 
+    /// The shutter in SINGLE mode is dead only while a photo is actually being taken (or counting down, when pressing cancels).
+    private var shutterDisabled: Bool {
+        stack.mode == .single ? camera.isCapturing : (camera.isCapturing || stack.isBusy)
+    }
+
     private func shutter() async {
+        if stack.countdown > 0 { stack.cancelCountdown(); return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        if !camera.isRunning { await camera.start() }          // never a dead button: wake the camera if it had stopped
         switch stack.mode {
         case .single:
-            await stack.waitShutterDelay()
+            guard await stack.waitShutterDelay() else { return }
             await app.captureSingle()
         case .focus, .combined:
             // First press starts the stack; while one is running, a press continues an interrupted series.
-            if !stack.isActive { await stack.start(); if stack.isActive { await stack.waitShutterDelay() } }
+            if !stack.isActive { await stack.start(); if stack.isActive { guard await stack.waitShutterDelay() else { return } } }
             if stack.isActive { await stack.captureFocusSeries() }
         case .lighting:
             if !stack.isActive { await stack.start() }
-            if stack.isActive { await stack.waitShutterDelay(); await stack.captureLightingFrame() }
+            if stack.isActive { guard await stack.waitShutterDelay() else { return }; await stack.captureLightingFrame() }
         }
     }
 }
@@ -263,17 +277,67 @@ struct PermissionDeniedView: View {
 struct ProcessingOverlay: View {
     @EnvironmentObject var processing: ProcessingService
     @EnvironmentObject var status: DeviceStatus
+
     var body: some View {
         ZStack {
-            Color.black.opacity(0.85).ignoresSafeArea()
-            VStack(spacing: 16) {
-                Text(processing.progress?.label ?? "PROCESSING").font(.system(size: 18, weight: .heavy, design: .monospaced)).foregroundColor(Theme.accent)
-                ProgressView(value: processing.progress?.fraction ?? 0).tint(Theme.accent).frame(width: 260)
-                Text("Processing runs on this phone. Keep the app open for the fastest result — if it is interrupted your frames are kept.")
-                    .font(.footnote).multilineTextAlignment(.center).foregroundColor(.gray).frame(width: 280)
-                if let t = ThermalPolicy.userMessage(status.thermal) { Text(t).font(.footnote).foregroundColor(.yellow).multilineTextAlignment(.center).frame(width: 280) }
-                Button("CANCEL") { processing.cancel() }.buttonStyle(ActionStyle(color: Theme.danger, prominent: false))
+            Color.black.opacity(0.88).ignoresSafeArea()
+            TimelineView(.periodic(from: .now, by: 1)) { ctx in
+                let elapsed = max(0, ctx.date.timeIntervalSince(processing.startedAt))
+                let f = processing.progress?.fraction ?? 0
+                VStack(spacing: 14) {
+                    Text(processing.progress?.label ?? "PROCESSING").font(.system(size: 18, weight: .heavy, design: .monospaced)).foregroundColor(Theme.accent)
+                    ProgressView(value: min(max(f, 0.02), 1)).tint(Theme.accent).frame(width: 260)
+                    Text(String(format: "%.0f%%", f * 100) + "   ·   elapsed " + clock(elapsed) + etaText(elapsed: elapsed, fraction: f))
+                        .font(.system(size: 12, design: .monospaced)).foregroundColor(.white)
+                    Text(explain(processing.progress?.phase)).font(.footnote).multilineTextAlignment(.center).foregroundColor(.gray).frame(width: 290)
+                    if let w = processing.warnings.first { Text("⚠︎ " + w).font(.footnote).foregroundColor(.yellow).multilineTextAlignment(.center).frame(width: 290) }
+                    if let t = ThermalPolicy.userMessage(status.thermal) { Text(t).font(.footnote).foregroundColor(.yellow).multilineTextAlignment(.center).frame(width: 280) }
+                    #if DEBUG
+                    Text("Debug build: image processing is much slower and hotter than in a Release build. Product ▸ Scheme ▸ Edit Scheme ▸ Run ▸ Build Configuration ▸ Release.")
+                        .font(.caption2).foregroundColor(.orange).multilineTextAlignment(.center).frame(width: 290)
+                    #endif
+                    Text("Keep the app open. If it is interrupted your frames are kept and you can resume.").font(.caption2).multilineTextAlignment(.center).foregroundColor(.gray).frame(width: 280)
+                    Button("CANCEL") { processing.cancel() }.buttonStyle(ActionStyle(color: Theme.danger, prominent: false))
+                }
             }
         }
+    }
+
+    private func clock(_ t: TimeInterval) -> String { String(format: "%d:%02d", Int(t) / 60, Int(t) % 60) }
+
+    /// Only shown once enough progress exists for the estimate to mean something.
+    private func etaText(elapsed: TimeInterval, fraction f: Double) -> String {
+        guard f > 0.08, elapsed > 8 else { return "" }
+        return "   ·   about " + clock(elapsed * (1 - f) / f) + " left"
+    }
+
+    private func explain(_ phase: ProcessingPhase?) -> String {
+        switch phase {
+        case .developing?: return "Converting each photo to a high-precision working image."
+        case .aligning?: return "Lining the frames up exactly (handles small shifts and focus breathing)."
+        case .blending?: return "Blending the sharpest or cleanest parts of every frame, tile by tile. This is the longest step."
+        case .finalizing?, .verifying?: return "Writing the final image and checking it opens correctly."
+        default: return "Working on this phone — nothing is uploaded."
+        }
+    }
+}
+
+struct ShutterFlash: View {
+    let tick: Int
+    @State private var opacity = 0.0
+    var body: some View {
+        Color.white.opacity(opacity).ignoresSafeArea().allowsHitTesting(false)
+            .onChange(of: tick) { _, _ in opacity = 0.65; withAnimation(.easeOut(duration: 0.28)) { opacity = 0 } }
+    }
+}
+
+struct ToastView: View {
+    let text: String
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill").foregroundColor(Theme.ok)
+            Text(text).font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10).background(Color.black.opacity(0.82)).clipShape(Capsule())
     }
 }
