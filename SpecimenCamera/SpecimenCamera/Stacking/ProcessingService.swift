@@ -63,7 +63,7 @@ final class ProcessingService: ObservableObject {
         }
         let store = self.store, flag = cancelFlag, staging = AppPaths.staging
         let services = ProcessingServices(developer: WorkingImageDeveloper(), encoder: encoder, concurrency: { DeviceStatus.currentConcurrency() })
-        let handler: ProgressHandler = { p in Task { @MainActor [weak self] in self?.progress = p } }
+        let handler: ProgressHandler = { [weak self] p in Task { @MainActor in self?.progress = p } }
         Log.processing.info("stack processing started")
         do {
             let result = try await Task.detached(priority: .userInitiated) {

@@ -32,6 +32,13 @@ public struct ProcessedStack: Sendable {
     public var warnings: [String]
     public var lightingBaseIndex: Int?
     public var lightingContribution: [Float]
+
+    public init(projectID: UUID, finalURL: URL, workingFinalURL: URL, width: Int, height: Int, warnings: [String] = [],
+                lightingBaseIndex: Int? = nil, lightingContribution: [Float] = []) {
+        self.projectID = projectID; self.finalURL = finalURL; self.workingFinalURL = workingFinalURL
+        self.width = width; self.height = height; self.warnings = warnings
+        self.lightingBaseIndex = lightingBaseIndex; self.lightingContribution = lightingContribution
+    }
 }
 
 /// Runs a stack project end to end. It writes checkpoints into the project manifest after every expensive step, never
