@@ -664,7 +664,7 @@ final class CameraEngine: NSObject, @unchecked Sendable {
             let s = AVCapturePhotoSettings(format: [AVVideoCodecKey: codec])
             if format == .maximumQuality, let big = largestDims, big.width <= photoOutput.maxPhotoDimensions.width { s.maxPhotoDimensions = big }
             else if let std = standardDims { s.maxPhotoDimensions = std }
-            s.photoQualityPrioritization = format == .maximumQuality ? .quality : minPrioritization(prio, .balanced)
+            s.photoQualityPrioritization = (format == .maximumQuality && override != .speed) ? .quality : minPrioritization(prio, .balanced)   // .speed: Handheld 2x bursts must be quick
             if photoOutput.supportedFlashModes.contains(.off) { s.flashMode = .off }
             return s
         case .raw:

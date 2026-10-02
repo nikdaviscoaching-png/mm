@@ -62,6 +62,10 @@ struct StackPanel: View {
     @ViewBuilder private var setupPanel: some View {
         switch stack.mode {
         case .single: EmptyView()
+        case .upscale2x:
+            VStack(alignment: .leading, spacing: 6) {
+                header("HANDHELD 2X", "Hold the phone as steady as you can and press the shutter once. It takes 5 quick full-quality photos with focus, exposure and white balance locked, then combines their tiny natural shifts into one photo with twice the width and height. Saved to the folder shown at the top.")
+            }
         case .lighting:
             VStack(alignment: .leading, spacing: 6) {
                 header("LIGHTING STACK", "Same view, different light. Glare and reflections are replaced with clean areas from your other frames.")
@@ -200,7 +204,7 @@ struct StackPanel: View {
                     Button("FINISH NOW") { Task { await stack.finish() } }.buttonStyle(ActionStyle(prominent: false))
                         .disabled(stack.capturedFrames < 2 || stack.isBusy)
                 }
-            case .single:
+            case .single, .upscale2x:
                 EmptyView()
             }
             HStack { Spacer(); Button("CANCEL STACK") { Task { await stack.cancelStack() } }.buttonStyle(ActionStyle(color: Theme.danger, prominent: false)) }

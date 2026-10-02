@@ -4,7 +4,7 @@
 
 | | Verified here | How |
 |---|---|---|
-| `SpecimenCore` algorithms and logic | **Yes** | 131 XCTest tests (below), compiled with `-enable-experimental-feature StrictConcurrency`, Swift 6.0.3 on Linux x86-64. Outputs inspected as images (`docs/validation/`). |
+| `SpecimenCore` algorithms and logic | **Yes** | 142 XCTest tests (below), compiled with `-enable-experimental-feature StrictConcurrency`, Swift 6.0.3 on Linux x86-64. Outputs inspected as images (`docs/validation/`). |
 | iOS app source (38 files) | **Syntax only** | `swiftc -parse` on every file; Apple API signatures checked against Apple's documentation JSON; line-by-line review. **Not type-checked, not compiled, not run** — no iOS SDK was available. |
 | Xcode project | Generated, structure inspected | XcodeGen 2.44.1 built from source; all 38 source files, the local package dependency, asset catalog and Info.plist keys confirmed in `project.pbxproj`. Never opened in Xcode. |
 

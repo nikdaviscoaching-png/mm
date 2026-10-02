@@ -4,10 +4,10 @@ import UIKit
 import SpecimenCore
 
 enum ShootMode: String, CaseIterable, Identifiable {
-    case single = "SINGLE", focus = "FOCUS", lighting = "LIGHTING", combined = "COMBINED"
+    case single = "SINGLE", focus = "FOCUS", lighting = "LIGHTING", combined = "COMBINED", upscale2x = "2X"
     var id: String { rawValue }
     var stackType: StackType? {
-        switch self { case .single: return nil; case .focus: return .focus; case .lighting: return .lighting; case .combined: return .combined }
+        switch self { case .single, .upscale2x: return nil; case .focus: return .focus; case .lighting: return .lighting; case .combined: return .combined }
     }
 }
 

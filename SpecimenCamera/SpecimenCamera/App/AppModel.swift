@@ -16,6 +16,8 @@ final class AppModel: ObservableObject {
     let processing: ProcessingService
     let stack: StackSessionModel
     let importer: ImportService
+    /// Handheld 2x (five-frame super-resolution burst)
+    let upscale: UpscaleBurstController
 
     private var bag = Set<AnyCancellable>()
 
@@ -26,6 +28,7 @@ final class AppModel: ObservableObject {
         processing = proc
         stack = StackSessionModel(camera: camera, motion: motion, processing: proc, settings: settings, status: status)
         importer = ImportService(processing: proc)
+        upscale = UpscaleBurstController(camera: camera, library: lib, appSettings: settings)
         AppPaths.cleanScratch()
 
         // Camera frames feed the overlay analyzer.

@@ -27,7 +27,13 @@ final class LibraryService: ObservableObject {
     func items(in collection: UUID) -> [SpecimenCore.LibraryItem] { items.filter { $0.collectionID == collection } }
 
     func setActive(_ id: UUID) { try? store.setActive(id); reload() }
-    func createCollection(_ name: String) { if let c = try? store.createCollection(named: name) { try? store.setActive(c.id) }; reload() }
+    @discardableResult
+    func createCollection(_ name: String, makeActive: Bool = true) -> UUID? {
+        let c = try? store.createCollection(named: name)
+        if let c, makeActive { try? store.setActive(c.id) }
+        reload()
+        return c?.id
+    }
     func rename(_ id: UUID, to name: String) { try? store.rename(id, to: name); reload() }
     func deleteCollection(_ id: UUID) {
         guard let fallback = collections.first(where: { $0.id != id }) else { return }
@@ -86,6 +92,31 @@ final class LibraryService: ObservableObject {
         try store.add(item)
         reload()
         lastImage = thumbnail(item)
+        return item
+    }
+
+    /// Registers a finished Handheld 2x photo (a file already encoded by the upscale pipeline) in the active folder.
+    /// The file is moved into the library; the raw copy is handed to the zoom cache by the caller.
+    @discardableResult
+    func addUpscaled(file: URL, width: Int, height: Int, lens: LensInfo?, settings: CameraSettings, usedFrames: Int, thumbnail: UIImage?) throws -> SpecimenCore.LibraryItem {
+        let id = UUID()
+        let ext = file.pathExtension.isEmpty ? "heic" : file.pathExtension.lowercased()
+        let name = "\(id.uuidString).\(ext)"
+        let dest = store.mastersDirectory.appendingPathComponent(name)
+        try FileManager.default.moveItem(at: file, to: dest)
+        var item = SpecimenCore.LibraryItem(collectionID: activeCollection.id, kind: .single, captureDate: Date(), fileName: name, width: width, height: height,
+                                            finalFormat: ext == "jpg" || ext == "jpeg" ? .jpeg : .heif)
+        item.id = id
+        item.lensName = lens?.name ?? ""; item.equivalentFocalLength = lens?.equivalentFocalLengthMM
+        item.iso = settings.iso; item.shutterSeconds = settings.shutterSeconds
+        item.whiteBalanceKelvin = settings.kelvin; item.captureFormat = .maximumQuality
+        item.notes = "Handheld 2x (\(usedFrames)-frame super-resolution)"
+        let thumbName = "\(id.uuidString).jpg"
+        // (decoding a ~190 MP file just for a thumbnail is exactly what must be avoided: the caller renders it from the raw copy)
+        if let data = thumbnail?.jpegData(compressionQuality: 0.8), (try? data.write(to: store.thumbnailsDirectory.appendingPathComponent(thumbName), options: .atomic)) != nil { item.thumbnailFileName = thumbName }
+        try store.add(item)
+        reload()
+        lastImage = self.thumbnail(item)
         return item
     }
 }

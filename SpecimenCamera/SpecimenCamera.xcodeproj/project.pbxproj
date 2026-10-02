@@ -49,6 +49,12 @@
 		EBE00D3AE74883F072A64101 /* MotionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA732452F1E34018EBF955CB /* MotionService.swift */; };
 		FA7A8633BFBBC48F209956AC /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E36CC63F127042BC323C92FB /* ExportService.swift */; };
 		FE522068903891644775C0A0 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF5756C2F212F2EE3B728CE /* RootView.swift */; };
+		612D349E14EC597D83169AD0 /* MappedRGBAFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3B1C3330A1F8237E17C27DF /* MappedRGBAFile.swift */; };
+		D7B83E9C050951B37B81DF90 /* ZoomCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3D8E2B56F258B6D27E8574E /* ZoomCache.swift */; };
+		2D0C0D68D5723760A51F5ED4 /* UpscaleProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F87108A42A94548F1DFAA09 /* UpscaleProcessor.swift */; };
+		40D7EC953821BE1E43CFD0E4 /* UpscaleBurstController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9781DC44AD8089695460F339 /* UpscaleBurstController.swift */; };
+		19010920978786206F2B1EFB /* PhotoViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED8CD940FA454E8D169B001B /* PhotoViewer.swift */; };
+		40F3C5EBEDD06BADCF522781 /* FolderViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B34780EFD6D9CEA18A078 /* FolderViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -94,6 +100,12 @@
 		ECE10FEA8FCB913E678BD167 /* StackCameraDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackCameraDriver.swift; sourceTree = "<group>"; };
 		ED14676696BA2C8D2FDA3C02 /* LibraryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryService.swift; sourceTree = "<group>"; };
 		FB255863CF8AB2199DA9C058 /* CameraPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreview.swift; sourceTree = "<group>"; };
+		A3B1C3330A1F8237E17C27DF /* MappedRGBAFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Upscale/MappedRGBAFile.swift; sourceTree = "<group>"; };
+		A3D8E2B56F258B6D27E8574E /* ZoomCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Upscale/ZoomCache.swift; sourceTree = "<group>"; };
+		4F87108A42A94548F1DFAA09 /* UpscaleProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Upscale/UpscaleProcessor.swift; sourceTree = "<group>"; };
+		9781DC44AD8089695460F339 /* UpscaleBurstController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Upscale/UpscaleBurstController.swift; sourceTree = "<group>"; };
+		ED8CD940FA454E8D169B001B /* PhotoViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoViewer.swift; sourceTree = "<group>"; };
+		C88B34780EFD6D9CEA18A078 /* FolderViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -195,6 +207,10 @@
 			isa = PBXGroup;
 			children = (
 				AA19312C27071A85695E9326 /* AppModel.swift */,
+				A3B1C3330A1F8237E17C27DF /* MappedRGBAFile.swift */,
+				A3D8E2B56F258B6D27E8574E /* ZoomCache.swift */,
+				4F87108A42A94548F1DFAA09 /* UpscaleProcessor.swift */,
+				9781DC44AD8089695460F339 /* UpscaleBurstController.swift */,
 				C02325EFCDB7E46D0F1E87F3 /* AppPaths.swift */,
 				DB07096283D97CF6A0E62F87 /* AppSettings.swift */,
 				253B9D18B50613A8004E7A59 /* DeviceStatus.swift */,
@@ -228,6 +244,8 @@
 				C76F7461577BD2C760F56855 /* SettingsView.swift */,
 				BCF5DDFB557B1DE48779206E /* StackPanel.swift */,
 				803E882F05E0E7DB0147A22D /* Theme.swift */,
+				ED8CD940FA454E8D169B001B /* PhotoViewer.swift */,
+				C88B34780EFD6D9CEA18A078 /* FolderViews.swift */,
 				AA3E2154638FEFA64C9E2AB4 /* ZoomableImageView.swift */,
 			);
 			path = UI;
@@ -322,6 +340,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				80DBE67F9C8EA661A7D259C0 /* AppModel.swift in Sources */,
+				612D349E14EC597D83169AD0 /* MappedRGBAFile.swift in Sources */,
+				D7B83E9C050951B37B81DF90 /* ZoomCache.swift in Sources */,
+				2D0C0D68D5723760A51F5ED4 /* UpscaleProcessor.swift in Sources */,
+				40D7EC953821BE1E43CFD0E4 /* UpscaleBurstController.swift in Sources */,
+				19010920978786206F2B1EFB /* PhotoViewer.swift in Sources */,
+				40F3C5EBEDD06BADCF522781 /* FolderViews.swift in Sources */,
 				9691AB7E00A0357CF58E3890 /* AppPaths.swift in Sources */,
 				373D94CAB3A4C1B569E23655 /* AppSettings.swift in Sources */,
 				0A3BA397D1B01B975EF08B3E /* CameraCapabilityManager.swift in Sources */,

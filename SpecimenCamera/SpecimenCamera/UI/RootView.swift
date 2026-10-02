@@ -30,6 +30,7 @@ struct RootView: View {
             }
             if processing.isProcessing || processing.progress != nil { ProcessingOverlay() }
             ShutterFlash(tick: app.flashTick)
+            VStack { UpscaleStatusView(controller: app.upscale); Spacer() }.padding(.top, 54)
             if let t = app.toast {
                 VStack { ToastView(text: t); Spacer() }.padding(.top, 54).transition(.move(edge: .top).combined(with: .opacity)).allowsHitTesting(false)
             }
@@ -244,6 +245,7 @@ struct BottomBar: View {
     @Binding var showLibrary: Bool
     @Binding var showImport: Bool
     @Binding var showControls: Bool
+    @EnvironmentObject var upscale: UpscaleBurstController
 
     var body: some View {
         HStack {
@@ -257,7 +259,7 @@ struct BottomBar: View {
             Button { Task { await shutter() } } label: {
                 ZStack {
                     Circle().stroke(Color.white, lineWidth: 4).frame(width: 74, height: 74)
-                    Circle().fill(camera.isCapturing || stack.isBusy ? Theme.accent : Color.white).frame(width: 60, height: 60)
+                    Circle().fill(camera.isCapturing || stack.isBusy || upscale.isBusy ? Theme.accent : Color.white).frame(width: 60, height: 60)
                     if stack.countdown > 0 { Text("\(stack.countdown)").font(.system(size: 30, weight: .heavy, design: .rounded)).foregroundColor(.black) }
                     else if stack.mode != .single { Image(systemName: icon).font(.system(size: 22, weight: .bold)).foregroundColor(.black) }
                 }
@@ -271,12 +273,16 @@ struct BottomBar: View {
     }
 
     private var icon: String {
-        switch stack.mode { case .single: return "camera"; case .focus: return "play.fill"; case .lighting, .combined: return "plus" }
+        switch stack.mode { case .single: return "camera"; case .focus: return "play.fill"; case .lighting, .combined: return "plus"; case .upscale2x: return "square.resize.up" }
     }
 
     /// The shutter in SINGLE mode is dead only while a photo is actually being taken (or counting down, when pressing cancels).
     private var shutterDisabled: Bool {
-        stack.mode == .single ? camera.isCapturing : (camera.isCapturing || stack.isBusy)
+        switch stack.mode {
+        case .single: return camera.isCapturing
+        case .upscale2x: return camera.isCapturing || upscale.isBusy
+        default: return camera.isCapturing || stack.isBusy
+        }
     }
 
     private func shutter() async {
@@ -287,6 +293,9 @@ struct BottomBar: View {
         case .single:
             guard await stack.waitShutterDelay() else { return }
             await app.captureSingle()
+        case .upscale2x:
+            guard !upscale.isBusy, await stack.waitShutterDelay() else { return }
+            upscale.start()
         case .focus, .combined:
             // First press starts the stack; while one is running, a press continues an interrupted series.
             if !stack.isActive { await stack.start(); if stack.isActive { guard await stack.waitShutterDelay() else { return } } }

@@ -20,6 +20,7 @@ struct SpecimenCameraApp: App {
                         .environmentObject(app.stack)
                         .environmentObject(app.status)
                         .environmentObject(app.importer)
+                        .environmentObject(app.upscale)
                         .task { await app.launch() }
                         .onChange(of: scenePhase) { _, phase in
                             switch phase {

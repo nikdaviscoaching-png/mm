@@ -1,44 +1,15 @@
 import SwiftUI
 import SpecimenCore
 
+/// The library: folders first (create / rename / delete / choose where new photos save), then each folder's photo grid and the
+/// full-screen viewer.
 struct LibraryView: View {
-    @EnvironmentObject var library: LibraryService
     @Environment(\.dismiss) private var dismiss
-    @State private var filter: UUID?
-    private let columns = [GridItem(.adaptive(minimum: 100), spacing: 4)]
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                let shown = library.items.filter { filter == nil || $0.collectionID == filter }
-                if shown.isEmpty {
-                    Text("No images yet. Captures go to the current collection automatically.").foregroundColor(.secondary).padding(40).multilineTextAlignment(.center)
-                }
-                LazyVGrid(columns: columns, spacing: 4) {
-                    ForEach(shown) { item in
-                        NavigationLink { ItemDetailView(itemID: item.id) } label: {
-                            ZStack(alignment: .bottomLeading) {
-                                Group {
-                                    if let t = library.thumbnail(item) { Image(uiImage: t).resizable().scaledToFill() } else { Color.gray.opacity(0.3) }
-                                }.frame(minHeight: 100).aspectRatio(1, contentMode: .fill).clipped()
-                                if item.kind != .single {
-                                    Text(item.kind.rawValue.uppercased()).font(.system(size: 9, weight: .heavy)).padding(3).background(Theme.accent).foregroundColor(.black).padding(3)
-                                }
-                            }
-                        }
-                    }
-                }.padding(4)
-            }
-            .navigationTitle("Library").navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button("All collections") { filter = nil }
-                        ForEach(library.collections) { c in Button(c.name) { filter = c.id } }
-                    } label: { Label(filter.flatMap { id in library.collections.first { $0.id == id }?.name } ?? "All", systemImage: "line.3.horizontal.decrease.circle") }
-                }
-            }
+            FoldersView()
+                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
     }
 }
