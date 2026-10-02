@@ -76,10 +76,6 @@ final class CameraEngine: NSObject, @unchecked Sendable {
     private var frozenCaptureAngle: CGFloat?
     private var frozenPreviewAngle: CGFloat?
 
-    // Overlay-buffer scaling self-check (see `verifyOverlayGeometry`).
-    private var scaleAttempt = 0                          // 0: landscape size, 1: swapped size, 2: native size
-    private let geometryTracker = GeometryTracker()
-
     // exposure-priority loop (sessionQueue only)
     private var drive: ExposureDrive = .auto
     private var priorityTimer: DispatchSourceTimer?
@@ -120,7 +116,6 @@ final class CameraEngine: NSObject, @unchecked Sendable {
             self.session.commitConfiguration()
             self.configurePhotoOutput()
             self.updateRotation()
-            self.scaleAttempt = 0; self.geometryTracker.reset()
             self.applyVideoOutputSettings()
             self.configured = true
         }
@@ -143,7 +138,6 @@ final class CameraEngine: NSObject, @unchecked Sendable {
             self.session.commitConfiguration()
             self.configurePhotoOutput()
             self.updateRotation()
-            self.scaleAttempt = 0; self.geometryTracker.reset()
             self.applyVideoOutputSettings()
             self.drive = .auto
         }
@@ -494,64 +488,24 @@ final class CameraEngine: NSObject, @unchecked Sendable {
 
     // MARK: - Overlay buffer size
 
-    /// Standard: ~1920-px-long-side buffers (fast peaking); High: the format's full size (best for 4×/8× focus magnification).
+    /// Standard: preview-sized buffers (fast peaking); High: the format's full size (best for 4×/8× focus magnification).
+    /// The size is chosen with `deliversPreviewSizedOutputBuffers`; width/height must NOT be set while that flag is on
+    /// (AVFoundation raises an exception, which is what the `.photo` preset's default state would trigger).
     func setAnalysisHighResolution(_ high: Bool) {
         sessionQueue.async {
             guard high != self.analysisHighRes else { return }
             self.analysisHighRes = high
-            self.scaleAttempt = 0; self.geometryTracker.reset()
             self.applyVideoOutputSettings()
         }
     }
 
-    /// sessionQueue only. Requests scaled overlay buffers unless high resolution is wanted or scaling proved unreliable.
+    /// sessionQueue only.
     private func applyVideoOutputSettings() {
-        guard let d = device else { return }
-        let dims = CMVideoFormatDescriptionGetDimensions(d.activeFormat.formatDescription)
-        var settings: [String: Any] = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
-        if !analysisHighRes, scaleAttempt < 2, dims.width > 0 {
-            let w = 1920, h = Int((Double(w) * Double(dims.height) / Double(dims.width)).rounded())
-            let size = scaleAttempt == 0 ? (w: w, h: h) : (w: h, h: w)
-            settings[kCVPixelBufferWidthKey as String] = size.w
-            settings[kCVPixelBufferHeightKey as String] = size.h
-        }
-        videoOutput.videoSettings = settings
-        let mode = analysisHighRes ? "native" : (scaleAttempt >= 2 ? "native (scaling unreliable)" : "scaled, attempt \(scaleAttempt)")
-        Log.overlay.info("overlay buffer request: \(mode, privacy: .public)")
-    }
-
-    /// Whether a delivered buffer has the aspect ratio the picture must have for this rotation. A wrong aspect would stretch
-    /// the overlay relative to the preview, so peaking would not line up with the image.
-    private func geometryConsistent(w: Int, h: Int, angle: CGFloat) -> Bool {
-        guard let d = device, h > 0 else { return true }
-        let fd = CMVideoFormatDescriptionGetDimensions(d.activeFormat.formatDescription)
-        guard fd.width > 0, fd.height > 0 else { return true }
-        let landscape = Double(fd.width) / Double(fd.height)
-        let portrait = Int(angle.rounded()) % 180 == 90
-        let expected = portrait ? 1 / landscape : landscape
-        return abs(Double(w) / Double(h) / expected - 1) < 0.03
-    }
-
-    /// Scaling the video output while it is rotated is not documented precisely, so it is verified on the real device: if the
-    /// buffers come back with the wrong aspect (and stay that way) another interpretation is tried, ending at native size.
-    private func checkOverlayGeometry(w: Int, h: Int, angle: CGFloat) {
-        guard !analysisHighRes, scaleAttempt < 2, !geometryConsistent(w: w, h: h, angle: angle) else { return }
-        sessionQueue.asyncAfter(deadline: .now() + 0.5) {
-            let g = self.geometryTracker.snapshot()
-            guard !self.analysisHighRes, self.scaleAttempt < 2, !self.geometryConsistent(w: g.w, h: g.h, angle: g.angle) else { return }
-            self.scaleAttempt += 1
-            self.geometryTracker.reset()
-            Log.overlay.notice("overlay buffer aspect \(g.w)x\(g.h) at \(Int(g.angle))° is wrong; trying scaling attempt \(self.scaleAttempt)")
-            self.applyVideoOutputSettings()
-        }
-    }
-
-    fileprivate func videoFrame(_ pb: CVPixelBuffer, angle: CGFloat) {
-        let w = CVPixelBufferGetWidth(pb), h = CVPixelBufferGetHeight(pb)
-        if geometryTracker.update(w: w, h: h, angle: angle) {
-            sessionQueue.async { self.checkOverlayGeometry(w: w, h: h, angle: angle) }
-        }
-        onVideoFrame?(pb)
+        let wantPreviewSized = !analysisHighRes
+        if videoOutput.deliversPreviewSizedOutputBuffers != wantPreviewSized { videoOutput.deliversPreviewSizedOutputBuffers = wantPreviewSized }
+        // Pixel format only: no width/height keys.
+        videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+        Log.overlay.info("overlay buffers: \(wantPreviewSized ? "preview-sized" : "full size", privacy: .public)")
     }
 
     // MARK: - Photo capture
@@ -637,7 +591,7 @@ final class CameraEngine: NSObject, @unchecked Sendable {
 extension CameraEngine: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let pb = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        videoFrame(pb, angle: connection.videoRotationAngle)
+        onVideoFrame?(pb)
     }
 }
 
@@ -686,23 +640,4 @@ final class OneShot: @unchecked Sendable {
         lock.lock(); let go = !fired; fired = true; lock.unlock()
         if go { body() }
     }
-}
-
-
-/// Latest delivered overlay-buffer geometry, shared between the video queue and the session queue.
-final class GeometryTracker: @unchecked Sendable {
-    private let lock = NSLock()
-    private var latest = (w: 0, h: 0, angle: CGFloat(0))
-    private var reported: (w: Int, h: Int, angle: CGFloat)?
-
-    /// Records the latest frame; true when it differs from the last one that was reported for checking.
-    func update(w: Int, h: Int, angle: CGFloat) -> Bool {
-        lock.lock(); defer { lock.unlock() }
-        latest = (w, h, angle)
-        if let r = reported, r.w == w, r.h == h, r.angle == angle { return false }
-        reported = (w, h, angle)
-        return true
-    }
-    func snapshot() -> (w: Int, h: Int, angle: CGFloat) { lock.lock(); defer { lock.unlock() }; return latest }
-    func reset() { lock.lock(); reported = nil; lock.unlock() }
 }
