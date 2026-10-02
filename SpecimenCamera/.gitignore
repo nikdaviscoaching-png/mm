@@ -1,0 +1,8 @@
+.build/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+.DS_Store
+lab-out/
+*.swp
+SpecimenCamera.zip
