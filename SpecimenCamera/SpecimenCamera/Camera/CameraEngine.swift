@@ -594,7 +594,14 @@ final class CameraEngine: NSObject, @unchecked Sendable {
         let wantPreviewSized = !analysisHighRes
         session.beginConfiguration()
         defer { session.commitConfiguration() }
-        if videoOutput.deliversPreviewSizedOutputBuffers != wantPreviewSized { videoOutput.deliversPreviewSizedOutputBuffers = wantPreviewSized }
+        // Apple: deliversPreviewSizedOutputBuffers (like width/height in videoSettings) raises an NSException unless the output
+        // no longer configures its own buffer dimensions, so that automation must be switched off first. Swift cannot catch the
+        // exception, hence the preconditions: output attached to the session, automation off, and only touch it when it changes.
+        guard session.outputs.contains(videoOutput) else { return }
+        if videoOutput.automaticallyConfiguresOutputBufferDimensions { videoOutput.automaticallyConfiguresOutputBufferDimensions = false }
+        if !videoOutput.automaticallyConfiguresOutputBufferDimensions, videoOutput.deliversPreviewSizedOutputBuffers != wantPreviewSized {
+            videoOutput.deliversPreviewSizedOutputBuffers = wantPreviewSized
+        }
         // Pixel format only: no width/height keys.
         videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         Log.overlay.info("overlay buffers: \(wantPreviewSized ? "preview-sized" : "full size", privacy: .public)")
