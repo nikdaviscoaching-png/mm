@@ -164,15 +164,16 @@ final class CameraEngine: NSObject, @unchecked Sendable {
         let dims = dev.activeFormat.supportedMaxPhotoDimensions.sorted { Int($0.width) * Int($0.height) < Int($1.width) * Int($1.height) }
         standardDims = dims.first
         largestDims = dims.last
-        if let big = largestDims { photoOutput.maxPhotoDimensions = big }
+        if let big = largestDims, photoOutput.maxPhotoDimensions.width != big.width || photoOutput.maxPhotoDimensions.height != big.height { photoOutput.maxPhotoDimensions = big }
         photoOutput.maxPhotoQualityPrioritization = .quality
         // Follows what this module supports (a flag left on from a previous lens must not carry over).
         if photoOutput.isAppleProRAWEnabled != photoOutput.isAppleProRAWSupported { photoOutput.isAppleProRAWEnabled = photoOutput.isAppleProRAWSupported }
         // Zero Shutter Lag and responsive capture return frames from *before* the shutter press. In a focus stack that
         // would be a frame captured while the lens was still moving, so they are switched off.
-        if photoOutput.isResponsiveCaptureSupported { photoOutput.isResponsiveCaptureEnabled = false }
-        if photoOutput.isFastCapturePrioritizationSupported { photoOutput.isFastCapturePrioritizationEnabled = false }
-        if photoOutput.isZeroShutterLagSupported { photoOutput.isZeroShutterLagEnabled = false }
+        // Order matters: responsive capture / fast prioritization depend on zero shutter lag, so they go off first.
+        if photoOutput.isResponsiveCaptureSupported, photoOutput.isResponsiveCaptureEnabled { photoOutput.isResponsiveCaptureEnabled = false }
+        if photoOutput.isFastCapturePrioritizationSupported, photoOutput.isFastCapturePrioritizationEnabled { photoOutput.isFastCapturePrioritizationEnabled = false }
+        if photoOutput.isZeroShutterLagSupported, photoOutput.isZeroShutterLagEnabled { photoOutput.isZeroShutterLagEnabled = false }
         if let c = videoOutput.connection(with: .video), c.isVideoStabilizationSupported { c.preferredVideoStabilizationMode = .off }
     }
 

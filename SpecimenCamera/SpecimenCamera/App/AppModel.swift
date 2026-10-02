@@ -40,8 +40,8 @@ final class AppModel: ObservableObject {
                 self.overlay.config = cfg
             }.store(in: &bag)
         settings.$highResFocusAssist.sink { [weak self] hi in self?.camera.engine.setAnalysisHighResolution(hi) }.store(in: &bag)
-        settings.$captureFormat.sink { [weak self] f in self?.camera.captureFormat = f }.store(in: &bag)
-        camera.$captureFormat.dropFirst().sink { [weak self] f in self?.settings.captureFormat = f }.store(in: &bag)
+        settings.$captureFormat.removeDuplicates().sink { [weak self] f in self?.camera.captureFormat = f }.store(in: &bag)
+        camera.$captureFormat.dropFirst().removeDuplicates().sink { [weak self] f in self?.settings.captureFormat = f }.store(in: &bag)
         // Forward nested ObservableObject changes where views observe `app` directly.
         status.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &bag)
     }

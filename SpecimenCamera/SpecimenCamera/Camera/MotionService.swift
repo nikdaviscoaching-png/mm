@@ -20,7 +20,7 @@ final class MotionService: ObservableObject {
     func start() {
         guard manager.isDeviceMotionAvailable, !manager.isDeviceMotionActive else { return }
         manager.deviceMotionUpdateInterval = 1.0 / 20
-        manager.startDeviceMotionUpdates(to: queue) { [weak self] motion, _ in
+        manager.startDeviceMotionUpdates(to: queue) { @Sendable [weak self] motion, _ in
             guard let m = motion else { return }
             let g = m.gravity
             let rot = sqrt(m.rotationRate.x * m.rotationRate.x + m.rotationRate.y * m.rotationRate.y + m.rotationRate.z * m.rotationRate.z)
