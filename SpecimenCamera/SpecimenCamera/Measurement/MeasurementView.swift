@@ -11,8 +11,10 @@ struct MeasurementView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var image: UIImage?
-    @State private var a = CGPoint(x: 0.25, y: 0.5), b = CGPoint(x: 0.75, y: 0.5)         // reference points (normalised)
-    @State private var c = CGPoint(x: 0.3, y: 0.7), d = CGPoint(x: 0.6, y: 0.7)           // measurement points
+    @State private var a = CGPoint(x: 0.25, y: 0.5)         // reference points (normalised)
+    @State private var b = CGPoint(x: 0.75, y: 0.5)
+    @State private var c = CGPoint(x: 0.3, y: 0.7)          // measurement points
+    @State private var d = CGPoint(x: 0.6, y: 0.7)
     @State private var knownMM = "85.6"
     @State private var calibration: (scale: ScaleMetadata, unc: Double)?
     @State private var showLiDAR = false
