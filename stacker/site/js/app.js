@@ -1,21 +1,36 @@
 // app.js — UI controller (main thread). Heavy work lives in worker.js.
-import { decodeFile, maxCanvasArea } from './decode.js';
+import { decodeFile, maxCanvasArea, isRaw, RAW_EXTENSIONS } from './decode.js';
 import { initCollage } from './collage.js';
 
 const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)];
+export const APP_VERSION = '1.2.0';
 const MAX_FRAMES = 10;
 const MODE_LABEL = { auto: 'Auto', focus: 'Focus', light: 'Light', both: 'Focus + Light' };
 class CancelledErr extends Error { constructor() { super('Cancelled'); this.cancelled = true; } }
 const METHODS = {
-  focus: [['depth', 'Clean'], ['detail', 'Max detail'], ['translucent', 'See-through']],
-  light: [['glare', 'Less glare'], ['exposure', 'Balanced'], ['hdr', 'HDR'], ['lighten', 'Brightest'], ['darken', 'Darkest'], ['average', 'Less noise']],
+  focus: [['sharp', 'Sharp'], ['depth', 'Clean'], ['translucent', 'See-through']],
+  light: [['reflect', 'Reflections'], ['exposure', 'Balanced'], ['hdr', 'HDR'], ['lighten', 'Brightest'], ['darken', 'Darkest'], ['average', 'Less noise']],
   both: [],
 };
-const METHOD_HELP = { depth: 'Clean colours — best for solid stones', detail: 'Most fine detail — may add faint halos', translucent: 'For see-through stones with detail at many depths',
-  glare: 'Keeps texture and drops glare that moves between shots', exposure: 'Evens out bright and dark shots', hdr: 'For RAW exposure brackets', lighten: 'Keeps the brightest version of each spot', darken: 'Keeps the darkest version — kills moving glare', average: 'Averages the shots to remove grain' };
+const METHOD_HELP = { sharp: 'Sharpest detail from every depth', depth: 'Cleaner colours — best for solid stones', translucent: 'For see-through stones with detail at many depths',
+  reflect: 'Keeps your natural light and replaces glare, reflections and shadows from the cleaner photos', exposure: 'Evens out bright and dark shots', hdr: 'For RAW exposure brackets', lighten: 'Keeps the brightest version of each spot', darken: 'Keeps the darkest version — kills moving glare', average: 'Averages the shots to remove grain' };
+const pct = (v) => Math.round(v * 100) + '%';
+const readPref = (k, d) => { try { return localStorage.getItem(k) || d; } catch (e) { return d; } };
+const writePref = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } };
 
-const st = { mode: 'auto', method: null, sliders: { glare: 0.6, detail: 0.5, brightness: 0 }, report: null, auto: null, palette: [], thumbs: [], include: [],
-  busy: false, rtFrame: 0, rtErase: false, tab: 'adjust', notes: [], refExif: null, refHead: null, lastJpeg: null, previewDims: null, exportScaleInfo: null };
+const st = { mode: 'auto', method: null, sliders: { glare: 0.6, detail: 0.5, brightness: 0 }, base: null, lightBase: null, report: null, auto: null, palette: [], thumbs: [], include: [],
+  busy: false, rtFrame: 0, rtErase: false, tab: 'adjust', notes: [], refExif: null, refHead: null, previewDims: null, size: readPref('stacker.size', 'full') };
+
+// Keep the screen on while something long is running (a locked iPhone suspends the page and the stack stalls)
+let wakeLock = null, wakeCount = 0;
+async function wake(on) {
+  wakeCount = Math.max(0, wakeCount + (on ? 1 : -1));
+  try {
+    if (wakeCount > 0 && !wakeLock && 'wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); }
+    else if (wakeCount === 0 && wakeLock) { const l = wakeLock; wakeLock = null; await l.release(); }
+  } catch (e) { /* not supported / not allowed: harmless */ }
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && wakeCount > 0 && !wakeLock) { wakeCount--; wake(true); } });
 
 // ---------------- worker RPC ----------------
 let worker, nextId = 1; const pending = new Map(); let onProgress = null;
@@ -35,11 +50,12 @@ function call(cmd, payload = {}, transfer = []) { const id = nextId++; return ne
 // ---------------- progress modal ----------------
 const STEPS = ['Reading', 'Lining up', 'Merging'];
 function showProgress(stepIdx, stage, frac = 0, detail = '') {
+  if ($('#progress').hidden) wake(true);
   $('#progress').hidden = false; $('#p-stage').textContent = stage; $('#p-bar').style.width = Math.round(Math.max(0, Math.min(1, frac)) * 100) + '%';
   $('#p-detail').textContent = detail || '';
   $('#p-steps').innerHTML = STEPS.map((s, i) => `<span class="${i < stepIdx ? 'done' : i === stepIdx ? 'now' : ''}">${i < stepIdx ? '✓ ' : ''}${s}</span>`).join('<span>›</span>');
 }
-function hideProgress() { $('#progress').hidden = true; onProgress = null; $('#p-eta').textContent = ''; }
+function hideProgress() { if (!$('#progress').hidden) wake(false); $('#progress').hidden = true; onProgress = null; $('#p-eta').textContent = ''; }
 $('#p-cancel').onclick = () => { worker.postMessage({ cmd: 'cancel' }); st.cancelReq = true; $('#p-detail').textContent = 'Cancelling…'; $('#p-cancel').disabled = true; };
 const checkCancel = () => { if (st.cancelReq) throw new CancelledErr(); };
 // rough time-left estimate from overall progress (smoothed)
@@ -66,7 +82,7 @@ $('#picker').onchange = async (e) => { const files = [...e.target.files]; if (fi
 async function runStack(files, mode) {
   if (files.length < 2) { toast('Pick at least 2 photos of the same scene.'); return; }
   if (files.length > MAX_FRAMES) { toast(`Using the first ${MAX_FRAMES} of ${files.length} photos.`); files = files.slice(0, MAX_FRAMES); }
-  st.mode = mode; st.method = null; st.sliders = { glare: 0.6, detail: 0.5, brightness: 0 }; st.notes = []; st.thumbs = []; st.cancelReq = false; st.frameMeta = []; $('#p-cancel').disabled = false; eta(0);
+  st.mode = mode; st.method = null; st.base = null; st.lightBase = null; st.sliders = { glare: 0.6, detail: 0.5, brightness: 0 }; st.notes = []; st.thumbs = []; st.cancelReq = false; st.frameMeta = []; $('#p-cancel').disabled = false; eta(0);
   invalidatePrep(); await stopPrep();
   const R = 0.25, A = 0.45; // share of the progress bar for reading / analysing (rest = blending)
   try {
@@ -94,7 +110,7 @@ async function runStack(files, mode) {
     const sizes = new Set(st.report.frames.map((f) => f.W + 'x' + f.H)); if (sizes.size > 1) st.notes.push('Your photos have different sizes — they were scaled to match.');
     await restack(true); checkCancel();
     show('result'); viewer.resetSplit(); setTab('adjust'); hideProgress(); viewer.hint('Drag the line to compare with the original', 3500);
-    schedulePrep(300);
+    schedulePrep();
   } catch (err) { hideProgress(); if (err.cancelled) { show('home'); toast('Cancelled.'); return; } console.warn(err); toast(friendlyError(err), 8000); }
 }
 
@@ -108,7 +124,7 @@ function currentSpec() {
   let mode = st.mode, method = st.method;
   if (mode === 'auto') { mode = st.auto.mode; method = method || st.auto.method; }
   if (!method && METHODS[mode] && METHODS[mode].length) method = METHODS[mode][0][0];
-  return { mode, method, ...st.sliders };
+  return { mode, method, ...st.sliders, base: st.base };
 }
 let restackQueued = false, restacking = false;
 async function restack(modal = false) {
@@ -124,6 +140,7 @@ async function restack(modal = false) {
       else { $('#view-hint').textContent = 'Updating…'; $('#view-hint').style.opacity = 1; onProgress = null; }
       const r = await call('stack', { spec });
       await viewer.setImages(r);
+      st.lightBase = r.lightBase ?? null;
       st.share = r.share; st.lastStackMs = r.ms; st.cfg = r.cfg;
       renderChrome();
       modal = false;
@@ -141,18 +158,24 @@ function renderChrome() {
   const ms = METHODS[spec.mode] || []; const seg = $('#method-seg'); seg.hidden = !ms.length;
   seg.innerHTML = ms.map(([k, l]) => `<button data-m="${k}" class="${spec.method === k ? 'on' : ''}">${l}</button>`).join('');
   seg.querySelectorAll('button').forEach((b) => b.onclick = () => { st.method = b.dataset.m; renderChrome(); restack(); toast(METHOD_HELP[st.method] || '', 2200); });
-  // sliders (max 3)
+  // sliders: rebuilt only when the SET of sliders changes; otherwise updated in place, so a drag in progress is never interrupted by a re-render
   const defs = [];
-  if (spec.mode === 'both' || (spec.mode === 'light' && ['glare'].includes(spec.method))) defs.push(['glare', 'Glare', 0, 1, 0.05, (v) => Math.round(v * 100) + '%']);
-  if (spec.mode === 'both' || spec.mode === 'focus') defs.push(['detail', 'Detail', 0, 1, 0.05, (v) => Math.round(v * 100) + '%']);
+  if (spec.mode === 'both') defs.push(['glare', 'Glare removal', 0, 1, 0.05, pct]);
+  if (spec.mode === 'both' || spec.mode === 'focus') defs.push(['detail', 'Detail', 0, 1, 0.05, pct]);
   defs.push(['brightness', 'Brightness', -1, 1, 0.05, (v) => (v > 0 ? '+' : '') + v.toFixed(1)]);
-  $('#sliders').innerHTML = defs.map(([k, l, a, b, s, f]) => `<div class="slider-row"><label for="s-${k}">${l}</label><input type="range" id="s-${k}" min="${a}" max="${b}" step="${s}" value="${st.sliders[k]}"><span id="s-${k}-v">${f(st.sliders[k])}</span></div>`).join('');
-  defs.forEach(([k, , , , , f]) => { const el = $('#s-' + k); el.oninput = () => { st.sliders[k] = +el.value; $('#s-' + k + '-v').textContent = f(+el.value); clearTimeout(renderChrome._t); renderChrome._t = setTimeout(() => restack(), 350); }; });
+  const box = $('#sliders'), key = defs.map((d) => d[0]).join();
+  if (box.dataset.key !== key) {
+    box.dataset.key = key;
+    box.innerHTML = defs.map(([k, l, a, b, stp, f]) => `<div class="slider-row"><label for="s-${k}">${l}</label><input type="range" id="s-${k}" min="${a}" max="${b}" step="${stp}" value="${st.sliders[k]}"><span id="s-${k}-v">${f(st.sliders[k])}</span></div>`).join('');
+    defs.forEach(([k, , , , , f]) => { const el = $('#s-' + k); el.oninput = () => { st.sliders[k] = +el.value; $('#s-' + k + '-v').textContent = f(+el.value); clearTimeout(renderChrome._t); renderChrome._t = setTimeout(() => restack(), 350); }; });
+  } else defs.forEach(([k, , , , , f]) => { const el = $('#s-' + k); if (document.activeElement !== el) { el.value = st.sliders[k]; $('#s-' + k + '-v').textContent = f(st.sliders[k]); } });
   // reasons + notes
-  const d = st.report.detect; $('#reasons').textContent = (st.mode === 'auto' ? `Auto chose ${MODE_LABEL[spec.mode]} because ` : 'What Stacker sees: ') + plainReasons(d) + ' Tap ✓ to leave a photo out.';
+  const d = st.report.detect; $('#reasons').textContent = (st.mode === 'auto' ? `Auto chose ${MODE_LABEL[spec.mode]} because ` : 'What Stacker sees: ') + plainReasons(d) + ' Tap ✓ to leave a photo out.' + (usesBase() && st.lightBase != null ? ` The natural light follows photo #${st.lightBase + 1} — tap ★ on another photo to change it.` : '');
   const nl = $('#note-line'); const notes = [...new Set(st.notes)]; nl.hidden = !notes.length; nl.textContent = notes[0] || ''; nl.title = notes.join('\n');
-  renderStrips(); renderLegend();
+  renderStrips(); renderLegend(); updateSaveLabel();
 }
+// the lighting-aware methods follow one photo's light (the "natural light" photo)
+function usesBase() { const sp = currentSpec(); return sp.mode === 'both' || (sp.mode === 'light' && sp.method === 'reflect'); }
 function plainReasons(d) {
   const r = [];
   if (d.focus) r.push(`the sharp area moves between photos (${Math.round(d.focusFrac * 100)}% of the picture)`);
@@ -174,6 +197,12 @@ function renderStrips() {
       const t = document.createElement('button'); t.className = 'tog'; t.setAttribute('aria-label', (f.include ? 'Exclude' : 'Include') + ' frame ' + (i + 1)); t.textContent = f.include ? '✓' : '○';
       t.onclick = async () => { await stopPrep(); const r = await call('include', { i, on: !f.include }); if (!r.ok) { toast('Keep at least 2 photos.'); return; } st.report = r.report; st.auto = r.auto; restack(); };
       el.appendChild(t);
+      if (usesBase() && f.include) {
+        const b = document.createElement('button'), on = st.lightBase === i; b.className = 'star' + (on ? ' on' : ''); b.textContent = '★';
+        b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.setAttribute('aria-label', on ? `Photo ${i + 1} sets the natural light` : `Use photo ${i + 1} as the natural light`);
+        b.onclick = async () => { await stopPrep(); st.base = on && st.base === i ? null : i; restack(); };
+        el.appendChild(b);
+      }
     }
     if (compact) el.onclick = () => { if (f.status === 'failed' || !f.include) return; st.rtFrame = i; st.rtErase = false; $('#rt-erase').classList.remove('on'); renderStrips(); };
     return el;
@@ -267,24 +296,34 @@ const viewer = (() => {
   return { setImages, patch, resize, draw, setOverlay: (o) => { overlay = o; if (o === 'retouch') split = 0; else if (split === 0) split = 0.3; draw(); }, resetSplit: () => { split = 0.3; }, scale: () => s, hint: (t, ms = 2500) => { const h = $('#view-hint'); h.textContent = t; h.style.opacity = 1; clearTimeout(h._t); h._t = setTimeout(() => (h.style.opacity = 0), ms); } };
 })();
 
-// ---------------- export: one-tap save ----------------
-// The 12 MP JPEG is prepared in the background as soon as the result is on screen, so tapping
-// "Save to Photos" can open the iOS share sheet immediately (Safari needs that tap for navigator.share).
+// ---------------- export ----------------
+// Saving is FULL RESOLUTION by default. The compressed file is streamed out of the worker one tile row at a time (exporter.js), so even a
+// 48 MP result needs little memory. When the result is small enough, it is prepared in the background once the picture has settled, so
+// "Save" can open the iOS share sheet inside the tap (Safari only allows that right after a tap); otherwise a progress bar is shown.
+const SIZES = { full: { label: 'Full resolution', mp: null }, 12: { label: '12 MP', mp: 12 }, 4: { label: '4 MP · for sharing', mp: 4 } };
 st.prep = null; let prepTimer = 0, prepGen = 0;
-function invalidatePrep() { prepGen++; st.prep = null; clearTimeout(prepTimer); setSaveLabel(); }
-function schedulePrep(ms = 900) { clearTimeout(prepTimer); prepTimer = setTimeout(() => startPrep(12), ms); }
-async function stopPrep() { clearTimeout(prepTimer); const p = st.prep; if (p && p.running) { worker.postMessage({ cmd: 'cancel' }); await p.promise.catch(() => {}); } }
-function setSaveLabel() { const l = $('#save-label'); if (l) l.textContent = 'Save to Photos'; }
+function sizeInfo() {
+  const c = st.report.crop, ref = st.report.frames[st.report.ref], sFull = ref.W / st.report.w;
+  const dim = (mp) => { const sc = mp ? Math.min(sFull, Math.sqrt(mp * 1e6 / (c.w * c.h))) : sFull, w = Math.round(c.w * sc), h = Math.round(c.h * sc); return { w, h, mp: w * h / 1e6 }; };
+  return { full: dim(null), 12: dim(12), 4: dim(4) };
+}
+function choiceOK(k, info = sizeInfo()) { return k === 'full' || info[k].mp < info.full.mp * 0.97; } // a smaller size only if it really is smaller
+function effChoice() { return SIZES[st.size] && choiceOK(st.size) ? st.size : 'full'; }
 function exportName() { return `stack-${new Date().toISOString().slice(0, 19).replace(/[:T-]/g, '')}.jpg`; }
-function startPrep(targetMP, visible = false) {
-  if (!st.report || !$('#result').classList.contains('active') && !visible) return null;
-  if (st.prep && st.prep.targetMP === targetMP && (st.prep.running || st.prep.file)) return st.prep;
+function invalidatePrep() { prepGen++; st.prep = null; clearTimeout(prepTimer); }
+function schedulePrep(ms = 2500) { clearTimeout(prepTimer); prepTimer = setTimeout(() => { if (!st.report) return; const k = effChoice(); if (sizeInfo()[k].mp > 30) return; startPrep(k); }, ms); }
+async function stopPrep() { clearTimeout(prepTimer); const p = st.prep; if (p && p.running) { worker.postMessage({ cmd: 'cancel' }); await p.promise.catch(() => {}); } }
+function updateSaveLabel() {
+  if (!st.report) return; const i = sizeInfo(), k = effChoice(); $('#save-sub').textContent = `${i[k].w}×${i[k].h} · ${i[k].mp.toFixed(1)} MP`;
+}
+function startPrep(choice, visible = false) {
+  if (!st.report || (!$('#result').classList.contains('active') && !visible)) return null;
+  if (st.prep && st.prep.choice === choice && (st.prep.running || st.prep.file)) return st.prep;
   if (restacking) { schedulePrep(); return null; }
-  const gen = prepGen; const p = { targetMP, running: true, file: null, gen };
-  p.promise = call('export', { targetMP, quality: 92, exifHead: st.refHead ? st.refHead.slice(0) : null, exifInfo: st.refExif }, []).then((r) => {
+  const gen = prepGen, p = { choice, running: true, file: null, gen };
+  p.promise = call('export', { targetMP: SIZES[choice].mp, quality: 95, exifHead: st.refHead ? st.refHead.slice(0) : null, exifInfo: st.refExif }, []).then((r) => {
     p.running = false; if (gen !== prepGen) throw new CancelledErr();
-    const blob = new Blob([r.jpeg], { type: 'image/jpeg' }); p.file = new File([blob], exportName(), { type: 'image/jpeg' }); p.r = r; p.blob = blob;
-    window.__lastExport = { w: r.w, h: r.h, bytes: blob.size, ms: r.ms, encoder: r.encoder }; return p;
+    p.file = new File([r.jpeg], exportName(), { type: 'image/jpeg' }); p.r = r; window.__lastExport = { w: r.w, h: r.h, bytes: p.file.size, ms: r.ms, encoder: r.encoder }; return p;
   }, (e) => { p.running = false; if (st.prep === p) st.prep = null; throw e; });
   p.promise.catch(() => {}); st.prep = p; return p;
 }
@@ -300,45 +339,42 @@ async function deliver(file, info) {
   }
   downloadFile(file); toast('Downloaded ' + file.name, 3500);
 }
+function showExportPane(done) { $('#ex-choose').hidden = done; $('#ex-done').hidden = !done; }
 function offerReady(file, info) {
   const a = $('#ex-download'); if (a.href) URL.revokeObjectURL(a.href); a.href = URL.createObjectURL(file); a.download = file.name;
-  $('#ex-info').textContent = info || ''; $('#ex-share').hidden = !canShareFiles(file);
-  $$('#sheet-export .opt').forEach((o) => (o.hidden = true)); $('#ex-go').hidden = true; $('#ex-warn').hidden = true; $('#sheet-export h2').hidden = true; $('#ex-done').hidden = false;
+  $('#ex-info').textContent = info || ''; $('#ex-share').hidden = !canShareFiles(file); showExportPane(true);
   closeSheets(); openSheet('sheet-export'); st.readyFile = file;
 }
-const infoOf = (p) => `${p.r.w}×${p.r.h} · ${(p.blob.size / 1e6).toFixed(1)} MB JPEG`;
-// QA BUG-5: a rapid double-tap on Save opened the share sheet twice. Ignore taps while a save is in flight.
+const infoOf = (p) => `${p.r.w}×${p.r.h} · ${(p.file.size / 1e6).toFixed(1)} MB JPEG`;
+// A tap on Save while the picture is still updating waits for it (v1.1.1 threw here), and a double tap opens the share sheet only once.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let saving = false;
-async function saveWith(targetMP) {
+async function saveWith(choice) {
   if (saving) return; saving = true;
-  try { await saveWithInner(targetMP); } finally { saving = false; }
+  try { await saveWithInner(choice); } finally { saving = false; }
 }
-async function saveWithInner(targetMP) {
-  let p = st.prep && st.prep.targetMP === targetMP ? st.prep : null;
+async function saveWithInner(choice) {
+  if (restacking || restackQueued) { toast('Finishing the picture first…', 1800); while (restacking || restackQueued) await sleep(60); }
+  let p = st.prep && st.prep.choice === choice ? st.prep : null;
   if (p && p.file) { await deliver(p.file, infoOf(p)); return; } // instant path, still inside the tap
   st.exporting = true; $('#p-cancel').disabled = false; st.cancelReq = false; eta(0);
   try {
-    if (!p) { await stopPrep(); p = startPrep(targetMP, true); }
-    onProgress = (m) => { const f = m.stage === 'Encoding JPEG' ? 0.85 : m.stage === 'Writing metadata' ? 0.97 : 0.85 * (m.frac || 0); showProgress(2, 'Preparing your photo', f, targetMP ? '12 MP JPEG' : 'Full resolution JPEG'); eta(f); };
-    showProgress(2, 'Preparing your photo', 0, targetMP ? '12 MP JPEG' : 'Full resolution JPEG');
+    if (!p) { await stopPrep(); p = startPrep(choice, true); if (!p) throw new Error('Could not start saving. Please try again.'); }
+    const label = SIZES[choice].mp ? SIZES[choice].label : 'Full resolution';
+    onProgress = (m) => { const f = m.stage === 'Finishing' ? 0.99 : (m.frac || 0) * 0.98; showProgress(2, 'Preparing your photo', f, label + ' JPEG'); eta(f); };
+    showProgress(2, 'Preparing your photo', 0, label + ' JPEG');
     await p.promise; hideProgress(); await deliver(p.file, infoOf(p));
   } catch (err) { hideProgress(); if (!err.cancelled) toast(friendlyError(err), 7000); }
   finally { st.exporting = false; }
 }
-$('#btn-save').onclick = () => saveWith(12);
+$('#btn-save').onclick = () => saveWith(effChoice());
 $('#btn-save-opts').onclick = () => {
-  const c = st.report.crop, ref = st.report.frames[st.report.ref]; const sFull = ref.W / st.report.w;
-  const fw = Math.round(c.w * sFull), fh = Math.round(c.h * sFull), fmp = fw * fh / 1e6;
-  const s12 = Math.min(sFull, Math.sqrt(12e6 / (c.w * c.h))); const w12 = Math.round(c.w * s12), h12 = Math.round(c.h * s12);
-  $('#ex-12').textContent = `${w12}×${h12} · recommended`; $('#ex-full').textContent = `${fw}×${fh} · ${fmp.toFixed(1)} MP · slower`;
-  const fullOpt = document.querySelector('input[name=size][value=full]'); $$('#sheet-export .opt').forEach((o) => (o.hidden = false)); fullOpt.parentElement.hidden = fmp <= 12.5;
-  document.querySelector('input[name=size][value="12"]').checked = true; $('#sheet-export h2').hidden = false;
-  const warn = $('#ex-warn'); warn.hidden = true;
-  fullOpt.onchange = () => { warn.hidden = !(fmp > 20); warn.textContent = `Full resolution takes longer and needs a lot of memory. If the app restarts, use 12 MP.`; };
-  document.querySelector('input[name=size][value="12"]').onchange = () => (warn.hidden = true);
-  $('#ex-done').hidden = true; $('#ex-go').hidden = false; openSheet('sheet-export');
+  const info = sizeInfo(), cur = effChoice(), list = $('#size-list');
+  list.innerHTML = ['full', '12', '4'].filter((k) => choiceOK(k, info)).map((k) => `<label class="opt"><input type="radio" name="size" value="${k}"${k === cur ? ' checked' : ''}><span><b>${SIZES[k].label}</b> <small>${info[k].w}×${info[k].h} · ${info[k].mp.toFixed(1)} MP${k === 'full' ? ' · best quality' : ''}</small></span></label>`).join('');
+  const big = info.full.mp > 30; $('#ex-warn').hidden = !big; $('#ex-warn').textContent = big ? 'This is a very large picture. It can take a few minutes and a lot of memory; if the app restarts, choose 12 MP.' : '';
+  showExportPane(false); openSheet('sheet-export');
 };
-$('#ex-go').onclick = () => { const full = document.querySelector('input[name=size]:checked').value === 'full'; closeSheets(); saveWith(full ? null : 12); };
+$('#ex-go').onclick = () => { const k = (document.querySelector('input[name=size]:checked') || {}).value || 'full'; st.size = k; writePref('stacker.size', k); updateSaveLabel(); closeSheets(); saveWith(k); };
 $('#ex-share').onclick = async () => {
   try { await navigator.share({ files: [st.readyFile || st.lastJpeg] }); closeSheets(); toast('Done — check your Photos.', 3000); }
   catch (e) { if (e.name !== 'AbortError') toast('Sharing failed — use Download instead.'); }
@@ -348,9 +384,34 @@ $('#ex-share').onclick = async () => {
 startWorker();
 const collage = initCollage({ show, toast, openSheet, closeSheets, deliver });
 $('#cl-back').onclick = () => { if (history.state && history.state.s === 'collage') history.back(); else show('home'); };
-if ('serviceWorker' in navigator && location.protocol !== 'file:' && !new URLSearchParams(location.search).has('nosw')) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+$('#picker').accept = ['image/*', ...RAW_EXTENSIONS.map((e) => '.' + e), '.heic', '.heif'].join(',');
+$('#app-version').textContent = 'v' + APP_VERSION;
+$$('[data-open="about"]').forEach((b) => (b.onclick = () => openSheet('sheet-about')));
+// drag photos onto the start screen (desktop)
+{
+  const home = $('#home'), okDrop = () => home.classList.contains('active');
+  window.addEventListener('dragover', (e) => { if (okDrop()) { e.preventDefault(); home.classList.add('drag'); } });
+  window.addEventListener('dragleave', (e) => { if (!e.relatedTarget) home.classList.remove('drag'); });
+  window.addEventListener('drop', (e) => {
+    if (!okDrop()) return; e.preventDefault(); home.classList.remove('drag');
+    const files = [...(e.dataTransfer ? e.dataTransfer.files : [])].filter((f) => /^image\//.test(f.type) || isRaw(f) || /\.(heic|heif)$/i.test(f.name));
+    if (files.length) runStack(files, 'auto');
+  });
 }
-window.__stackerReady = true;
+// offline + updates. A new version waits until you accept it (so a running job is never swapped out from under you).
+if ('serviceWorker' in navigator && location.protocol !== 'file:' && !new URLSearchParams(location.search).has('nosw')) {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('sw.js');
+      const offer = (w) => { if (w && navigator.serviceWorker.controller) toast('A new version of Stacker is ready.', 15000, ['Update', () => { st.updating = true; w.postMessage('skipWaiting'); }]); };
+      if (reg.waiting) offer(reg.waiting);
+      reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed') offer(w); }); });
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (st.updating) location.reload(); });
+      // Hosts that cannot send the cross-origin-isolation headers (RAW decoding needs them): the service worker adds them, so reload once under its control.
+      if (!self.crossOriginIsolated && !sessionStorage.getItem('stacker.coi')) { await navigator.serviceWorker.ready; sessionStorage.setItem('stacker.coi', '1'); if (navigator.serviceWorker.controller) location.reload(); else navigator.serviceWorker.addEventListener('controllerchange', () => { if (!st.updating) location.reload(); }, { once: true }); }
+    } catch (e) { /* offline use is optional */ }
+  });
+}
+window.__stackerVersion = APP_VERSION; window.__stackerReady = true;
 // test hooks (used by the headless test-suite; harmless in production)
-window.__stacker = { collage, busy: () => restacking || restackQueued || !!(st.prep && st.prep.running && 0), st, call, runStack, restack, setTab, viewer, maxCanvasArea, currentSpec, show, saveWith };
+window.__stacker = { collage, busy: () => restacking || restackQueued, st, call, runStack, restack, setTab, viewer, maxCanvasArea, currentSpec, show, saveWith, sizeInfo };

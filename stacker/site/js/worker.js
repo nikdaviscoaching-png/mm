@@ -2,6 +2,7 @@
 import { Session, Cancelled, autoSpec, PALETTE } from './pipeline.js';
 import { MemStore, OpfsStore } from './store.js';
 import * as E from './engine.js';
+import { exportJpeg } from './exporter.js';
 
 let S = null, storeKind = 'memory';
 const post = (m, t) => self.postMessage(m, t || []);
@@ -32,59 +33,22 @@ async function renderAll() {
   return { preview: { w: prev.w, h: prev.h, buf: prev.rgba.slice().buffer }, before: imgMsg(before), srcmap: imgMsg(sm), share: sm.share, ms: Math.round(performance.now() - t0) };
 }
 
-// ---- export: full-res tiled render → RGBA buffer → MozJPEG (jSquash) → EXIF (piexif) ----
-async function doExport({ targetMP, quality = 92, exifHead, exifInfo }) {
-  const s = S.exportScale(targetMP); const cr = S.crop; const OW = Math.round(cr.w * s), OH = Math.round(cr.h * s);
-  const t0 = performance.now(); const out = new Uint8ClampedArray(OW * OH * 4);
-  await S.render(s, { tile: 1024, full: true, onTile: (x, y, tw, th, t) => { for (let r = 0; r < th; r++) out.set(t.subarray(r * tw * 4, (r + 1) * tw * 4), ((y + r) * OW + x) * 4); } });
-  const tRender = performance.now() - t0; S.checkCancel(); progress('Encoding JPEG', 0.2);
-  let jpeg, encoder = 'mozjpeg';
-  try {
-    const { default: encode } = await import('../vendor/jsquash/encode.js');
-    jpeg = new Uint8Array(await encode({ data: out, width: OW, height: OH }, { quality, auto_subsample: false, chroma_subsample: 1, progressive: true, optimize_coding: true }));
-  } catch (e) {
-    encoder = 'canvas';
-    const cv = new OffscreenCanvas(OW, OH); cv.getContext('2d').putImageData(new ImageData(out, OW, OH), 0, 0);
-    jpeg = new Uint8Array(await (await cv.convertToBlob({ type: 'image/jpeg', quality: quality / 100 })).arrayBuffer());
-  }
-  S.checkCancel(); progress('Writing metadata', 0.8);
-  try { jpeg = await withExif(jpeg, OW, OH, exifHead, exifInfo); } catch (e) { post({ type: 'log', msg: 'EXIF skipped: ' + e.message }); }
-  return { jpeg: jpeg.buffer, w: OW, h: OH, encoder, ms: { render: Math.round(tRender), total: Math.round(performance.now() - t0) } };
-}
-function toBin(u8) { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return s; }
-async function withExif(jpeg, W, H, head, info) {
-  const { default: piexif } = await import('../vendor/piexif.mjs');
-  let ex = null;
-  if (head) { try { ex = piexif.load(toBin(new Uint8Array(head))); } catch (e) { ex = null; } }
-  if (!ex) { // build from parsed tags (HEIC / DNG reference)
-    ex = { '0th': {}, Exif: {}, GPS: {}, '1st': {}, thumbnail: null }; const i = info || {}; const I = piexif.ImageIFD, X = piexif.ExifIFD;
-    if (i.Make) ex['0th'][I.Make] = String(i.Make); if (i.Model) ex['0th'][I.Model] = String(i.Model);
-    const rat = (v) => { const d = 10000; return [Math.round(v * d), d]; };
-    if (i.ExposureTime) ex.Exif[X.ExposureTime] = rat(i.ExposureTime); if (i.FNumber) ex.Exif[X.FNumber] = rat(i.FNumber);
-    if (i.ISO) ex.Exif[X.ISOSpeedRatings] = Math.round(i.ISO); if (i.FocalLength) ex.Exif[X.FocalLength] = rat(i.FocalLength);
-    if (i.LensModel) ex.Exif[X.LensModel] = String(i.LensModel);
-    if (i.DateTimeOriginal) ex.Exif[X.DateTimeOriginal] = String(i.DateTimeOriginal);
-  }
-  const I = piexif.ImageIFD, X = piexif.ExifIFD; const now = new Date(); const p = (n) => String(n).padStart(2, '0');
-  ex['0th'][I.Orientation] = 1; ex['0th'][I.Software] = 'Stacker PWA'; ex['0th'][I.DateTime] = `${now.getFullYear()}:${p(now.getMonth() + 1)}:${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`;
-  delete ex['0th'][I.XResolution]; delete ex['0th'][I.YResolution];
-  ex.Exif = ex.Exif || {}; ex.Exif[X.PixelXDimension] = W; ex.Exif[X.PixelYDimension] = H; delete ex.Exif[X.MakerNote]; delete ex.Exif[X.ComponentsConfiguration];
-  ex['1st'] = {}; ex.thumbnail = null; // drop the old thumbnail (it would show the un-stacked frame)
-  for (const k of ['Interop']) delete ex[k];
-  let bytes = piexif.dump(ex); // "Exif\0\0" + TIFF
-  const app1 = new Uint8Array(bytes.length + 4); app1[0] = 0xff; app1[1] = 0xe1; app1[2] = ((bytes.length + 2) >> 8) & 0xff; app1[3] = (bytes.length + 2) & 0xff;
-  for (let i = 0; i < bytes.length; i++) app1[4 + i] = bytes.charCodeAt(i);
-  // insert right after SOI, dropping an existing APP0/APP1 so EXIF comes first
-  let pos = 2; while (jpeg[pos] === 0xff && (jpeg[pos + 1] === 0xe0 || jpeg[pos + 1] === 0xe1)) { pos += 2 + ((jpeg[pos + 2] << 8) | jpeg[pos + 3]); }
-  const outb = new Uint8Array(2 + app1.length + jpeg.length - pos); outb[0] = 0xff; outb[1] = 0xd8; outb.set(app1, 2); outb.set(jpeg.subarray(pos), 2 + app1.length);
-  return outb;
+// ---- export: tiled full-resolution render streamed into the JPEG encoder (see exporter.js) ----
+async function doExport({ targetMP, quality = 95, exifHead, exifInfo }) {
+  const r = await exportJpeg(S, { targetMP, quality, exifHead: exifHead ? new Uint8Array(exifHead) : null, exifInfo }, { progress, log: (msg) => post({ type: 'log', msg }) });
+  return { jpeg: r.blob, w: r.w, h: r.h, encoder: 'stream', bytes: r.bytes, ms: { total: r.ms } };
 }
 
 // A cancel only targets work that is running right now. A cancel that arrives while the worker is idle
 // (e.g. Cancel tapped just as a job finished) must not leak into the next job (QA BUG-2).
-let running = 0;
-self.onmessage = async ({ data: m }) => {
+let running = 0, chain = Promise.resolve();
+// Commands run strictly one after another: a retouch stroke must never interleave with a render or another stroke (they share the override
+// map and the preview buffer). Only 'cancel' jumps the queue, and it only ever targets the command that is running right now.
+self.onmessage = ({ data: m }) => {
   if (m.cmd === 'cancel') { if (S && running > 0) S.cancelFlag = true; return; }
+  chain = chain.then(() => handle(m));
+};
+async function handle(m) {
   running++;
   const reply = (out, t) => post({ type: 'result', id: m.id, out }, t);
   try {
@@ -103,6 +67,7 @@ self.onmessage = async ({ data: m }) => {
       case 'stack': {
         S.cancelFlag = false; const t0 = performance.now(); await S.computeWeights(m.spec); const tw = performance.now() - t0;
         const r = await renderAll(); r.ms = { weights: Math.round(tw), render: r.ms }; r.cfg = { space: S.cfg.space, pixelOp: S.cfg.pixelOp, crop: S.crop };
+        r.lightBase = (m.spec.mode === 'both' || (m.spec.mode === 'light' && m.spec.method === 'reflect')) && S.light ? S.light.baseFrame : null; // the frame whose lighting the result follows
         reply(r, [r.preview.buf, r.before.buf, r.srcmap.buf]); break;
       }
       case 'before': { const b = S.beforeImage(m.i); const o = imgMsg(b); reply(o, [o.buf]); break; }
@@ -114,7 +79,7 @@ self.onmessage = async ({ data: m }) => {
         const sm = S.sourceMap(); reply({ rect: r, buf: sub.buffer, ms: res.ms, srcmap: imgMsg(sm), share: sm.share, undo: S.undo.length }, [sub.buffer]); break;
       }
       case 'clearRetouch': { S.override = null; S.undo = []; S.computeCoarse(); const r = await renderAll(); reply(r, [r.preview.buf, r.before.buf, r.srcmap.buf]); break; }
-      case 'export': { S.cancelFlag = false; const r = await doExport(m); reply(r, [r.jpeg]); break; }
+      case 'export': { S.cancelFlag = false; const r = await doExport(m); reply(r); break; }
       case 'renderRaw': { // test hook: full-res RGBA for scoring against ground truth
         const cr = S.crop; const sc = m.scale || 1; const OW = Math.round(cr.w * sc), OH = Math.round(cr.h * sc); const out = new Uint8ClampedArray(OW * OH * 4); const t0 = performance.now();
         await S.render(sc, { tile: 1024, full: true, onTile: (x, y, tw, th, t) => { for (let r = 0; r < th; r++) out.set(t.subarray(r * tw * 4, (r + 1) * tw * 4), ((y + r) * OW + x) * 4); } });
@@ -126,5 +91,5 @@ self.onmessage = async ({ data: m }) => {
   } catch (e) {
     post({ type: 'error', id: m.id, cancelled: e instanceof Cancelled || e.name === 'Cancelled', msg: e.message || String(e) });
   } finally { running--; if (!running && S) S.cancelFlag = false; }
-};
+}
 post({ type: 'ready' });

@@ -192,3 +192,19 @@ input[type=range]{height:44px}
 .swatches button{width:44px;height:44px}
 /* QA BUG-8: iPhone SE landscape — "Choose photos" wrapped to 2 lines and touched the card edge; subtitle was cut off. */
 @media (orientation:landscape) and (max-height:520px){ #home .card.primary .card-text b{font-size:17px;white-space:nowrap} #home .card.primary small{font-size:13px;white-space:normal;overflow:visible} #home .card.wide small{font-size:12px} }
+
+/* ---- v1.2: save caption, natural-light star, About sheet, drag-over ---- */
+.actionbar .big{flex-direction:column;gap:0;line-height:1.15}
+.actionbar .big small{font-size:12px;font-weight:600;opacity:.75}
+.frame .star{position:absolute;left:0;bottom:24px;width:44px;height:44px;display:grid;place-items:center;font-size:18px;color:rgba(255,255,255,.55);isolation:isolate}
+.frame .star::before{content:"";position:absolute;inset:7px;border-radius:50%;background:rgba(0,0,0,.6);z-index:-1}
+.frame .star.on{color:var(--acc)}
+.top-actions{display:flex;align-items:center;gap:8px}
+.ver{font-weight:500;color:var(--mut);font-size:14px;margin-left:6px}
+.drop-hint{display:none}
+@media (hover:hover) and (pointer:fine){.drop-hint{display:block}}
+#home.drag .hero{outline:2px dashed var(--acc);outline-offset:-10px;border-radius:20px}
+#size-list .opt input{flex:0 0 auto}
+.sheet ul.tips{list-style:disc}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+:focus-visible{outline:2px solid var(--acc2);outline-offset:2px}

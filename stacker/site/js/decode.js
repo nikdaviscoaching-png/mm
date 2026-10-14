@@ -2,7 +2,11 @@
 import exifr from '../vendor/exifr/exifr.mjs';
 
 export const PRORAW_TIP = 'Tip: Settings › Camera › Formats › ProRAW Format → “JPEG Lossless (Most Compatible)”.';
-const isDng = (f) => /\.dng$/i.test(f.name) || f.type === 'image/x-adobe-dng' || f.type === 'image/dng';
+// Every camera RAW format LibRaw reads (it is not limited to DNG)
+export const RAW_EXTENSIONS = ['dng', 'cr2', 'cr3', 'crw', 'nef', 'nrw', 'arw', 'srf', 'sr2', 'raf', 'orf', 'rw2', 'rwl', 'pef', 'srw', '3fr', 'erf', 'mef', 'mos', 'mrw', 'x3f', 'kdc', 'dcr', 'iiq', 'fff', 'raw'];
+const RAW_RE = new RegExp('\\.(' + RAW_EXTENSIONS.join('|') + ')$', 'i');
+export const isRaw = (f) => RAW_RE.test(f.name) || /x-adobe-dng|\/dng$/i.test(f.type);
+const isDng = (f) => /\.dng$/i.test(f.name) || /x-adobe-dng|\/dng$/i.test(f.type);
 const isHeic = (f) => /\.(heic|heif)$/i.test(f.name) || /heic|heif/i.test(f.type);
 
 export async function readExif(file) {
@@ -46,6 +50,17 @@ export function largestEmbeddedJpeg(buf) {
   return best ? new Blob([u8.subarray(best[0], best[0] + best[1])], { type: 'image/jpeg' }) : null;
 }
 
+// Fallback for any RAW container: scan for embedded JPEG streams (start FF D8 FF) and keep the largest one the browser can decode.
+export async function largestScannedJpeg(buf) {
+  const u8 = new Uint8Array(buf), starts = [];
+  for (let i = 0; i + 3 < u8.length && starts.length < 24; i++) if (u8[i] === 0xff && u8[i + 1] === 0xd8 && u8[i + 2] === 0xff) { starts.push(i); i += 2; }
+  let best = null;
+  for (let k = 0; k < starts.length; k++) {
+    const a = starts[k], b = k + 1 < starts.length ? starts[k + 1] : u8.length; if (b - a < 20000) continue; // thumbnails are not worth decoding
+    try { const bmp = await createImageBitmap(new Blob([u8.subarray(a, b)], { type: 'image/jpeg' })); const px = bmp.width * bmp.height; if (!best || px > best.px) { if (best) best.bmp.close(); best = { bmp, px }; } else bmp.close(); } catch (e) { /* not a complete image */ }
+  }
+  return best ? best.bmp : null;
+}
 let librawOk = null;
 async function decodeDngLibRaw(file) {
   if (!self.crossOriginIsolated || typeof SharedArrayBuffer === 'undefined') throw new Error('RAW engine needs cross-origin isolation');
@@ -63,15 +78,18 @@ async function decodeDngLibRaw(file) {
 // returns { name, bitmap | pixels, exif, head(ArrayBuffer|null), note }
 export async function decodeFile(file) {
   const exif = await readExif(file); let note = '';
-  if (isDng(file)) {
-    const jxl = exif.Compression === 52546; // DNG 1.7 JPEG XL (iPhone 16 Pro+ ProRAW option)
+  if (isRaw(file)) {
+    const jxl = isDng(file) && exif.Compression === 52546; // DNG 1.7 JPEG XL (iPhone 16 Pro+ ProRAW option)
     if (!jxl) {
       try { const r = await decodeDngLibRaw(file); librawOk = true; return { name: file.name, ...r, exif, head: null, note: '', raw: true }; }
-      catch (e) { note = 'RAW decode failed — used the embedded preview. ' + PRORAW_TIP; }
+      catch (e) { note = (self.crossOriginIsolated ? 'RAW decode failed' : 'RAW engine unavailable here') + ' — used the embedded preview.' + (isDng(file) ? ' ' + PRORAW_TIP : ''); }
     } else note = 'JPEG XL ProRAW — used the embedded preview. ' + PRORAW_TIP;
-    const prev = largestEmbeddedJpeg(await file.arrayBuffer());
-    if (!prev) throw new Error(`${file.name}: no decodable image inside this DNG. ${PRORAW_TIP}`);
-    return { name: file.name, bitmap: await bitmapFrom(prev), exif, head: null, note };
+    const buf = await file.arrayBuffer(); let bitmap = null;
+    const prev = (() => { try { return largestEmbeddedJpeg(buf); } catch (e) { return null; } })();
+    if (prev) { try { bitmap = await bitmapFrom(prev); } catch (e) { bitmap = null; } }
+    if (!bitmap) bitmap = await largestScannedJpeg(buf);
+    if (!bitmap) throw new Error(`${file.name}: no decodable image inside this RAW file.${isDng(file) ? ' ' + PRORAW_TIP : ''}`);
+    return { name: file.name, bitmap, exif, head: null, note };
   }
   let bitmap;
   try { bitmap = await bitmapFrom(file); }

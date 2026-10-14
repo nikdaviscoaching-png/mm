@@ -8,6 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Stacker">
+<meta name="stacker-version" content="1.2.0">
 <meta name="description" content="Focus and light stacking for tripod photos, on-device.">
 <title>Stacker</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -21,11 +22,11 @@
   <section id="home" class="screen active" aria-label="Start">
     <header class="top">
       <div class="brand"><img src="icons/icon-192.png" alt="" width="32" height="32"><span>Stacker</span></div>
-      <button class="ghost" data-open="tips">How to shoot</button>
+      <div class="top-actions"><button class="ghost" data-open="tips">How to shoot</button><button class="icon-btn" data-open="about" aria-label="About Stacker">ⓘ</button></div>
     </header>
     <div class="hero">
       <h1>The best of every shot,<br>merged into one.</h1>
-      <p>Import 2–10 tripod photos. Stacker aligns them, picks the sharpest and best-lit parts, and saves one high-quality JPEG to Photos.</p>
+      <p>Import 2–10 tripod photos. Stacker lines them up, takes the sharpest and cleanest-lit parts of each, and saves one full-resolution JPEG to Photos.</p>
     </div>
     <div class="modes">
       <button class="card primary" data-mode="auto">
@@ -41,6 +42,7 @@
       </div>
       <button class="card wide" data-mode="collage"><span class="ico">▦</span><span class="card-text"><b>Collage</b><small>2–9 photos side by side</small></span><span class="chev">›</span></button>
       <p class="fine">Everything runs on this device. Nothing is uploaded.</p>
+      <p class="fine drop-hint">Or drop photos anywhere on this screen.</p>
     </div>
     <input id="picker" type="file" accept="image/*,.dng,.DNG,.heic,.HEIC" multiple hidden>
   </section>
@@ -87,7 +89,7 @@
       </div>
     </div>
     <div class="actionbar">
-      <button class="big" id="btn-save"><span id="save-label">Save to Photos</span></button>
+      <button class="big" id="btn-save"><span id="save-label">Save to Photos</span><small id="save-sub"></small></button>
       <button class="icon-btn tall" id="btn-save-opts" aria-label="Save options">⋯</button>
     </div>
   </section>
@@ -127,12 +129,15 @@
   <div class="grab"></div><h2>Stack mode</h2>
   <div class="mode-list" id="mode-list"></div>
 </div>
-<div class="sheet" id="sheet-export" role="dialog" aria-label="Save options" hidden>
-  <div class="grab"></div><h2>Save options</h2>
-  <label class="opt"><input type="radio" name="size" value="12" checked><span><b>12 MP</b> <small id="ex-12">recommended</small></span></label>
-  <label class="opt"><input type="radio" name="size" value="full"><span><b>Full resolution</b> <small id="ex-full"></small></span></label>
-  <p class="warn" id="ex-warn" hidden></p>
-  <button class="big" id="ex-go">Save to Photos</button>
+<div class="sheet" id="sheet-export" role="dialog" aria-modal="true" aria-label="Save options" hidden>
+  <div class="grab"></div>
+  <div id="ex-choose">
+    <h2>Save options</h2>
+    <div id="size-list"></div>
+    <p class="warn" id="ex-warn" hidden></p>
+    <p class="small-note">JPEG, high quality (95), full colour detail, with the original camera details kept.</p>
+    <button class="big" id="ex-go">Save to Photos</button>
+  </div>
   <div id="ex-done" hidden>
     <h2 id="ex-ready">Your photo is ready</h2>
     <p class="small-note" id="ex-info"></p>
@@ -141,22 +146,33 @@
     <a class="ghost block" id="ex-download" download="stack.jpg">Download file instead</a>
   </div>
 </div>
+<div class="sheet" id="sheet-about" role="dialog" aria-modal="true" aria-label="About Stacker" hidden>
+  <div class="grab"></div><h2>Stacker <small id="app-version" class="ver"></small></h2>
+  <p class="small-note">Merges tripod photos into one: sharp from front to back, with glare and reflections removed, in full resolution. Everything happens on this device — nothing is uploaded, and it works offline once opened.</p>
+  <ul class="tips">
+    <li><b>Install it:</b> in Safari tap <b>Share</b> › <b>Add to Home Screen</b>. It then opens like an app.</li>
+    <li><b>Photos:</b> 2–10 shots of the same scene. JPEG, HEIC and camera RAW (DNG, CR2/CR3, NEF, ARW, RAF and more) are accepted.</li>
+    <li><b>Modes:</b> <i>Focus</i> merges shots focused at different depths. <i>Light</i> keeps your natural light and replaces glare and reflections. <i>Focus + Light</i> does both at once.</li>
+  </ul>
+  <button class="big" data-close>Close</button>
+</div>
 <div class="sheet" id="sheet-discard" role="dialog" aria-label="Start over" hidden>
   <div class="grab"></div><h2>Start over?</h2>
   <p class="small-note">This result will be discarded. Save it first if you want to keep it.</p>
   <button class="big danger" id="discard-yes">Start over</button>
   <button class="ghost block wide" data-close>Keep editing</button>
 </div>
-<div class="sheet tall" id="sheet-tips" role="dialog" aria-label="How to shoot" hidden>
+<div class="sheet tall" id="sheet-tips" role="dialog" aria-modal="true" aria-label="How to shoot" hidden>
   <div class="grab"></div><h2>How to shoot</h2>
   <ol class="tips">
-    <li><b>Using Stacker:</b> tap <b>Choose photos</b>, select your shots, wait for the result, tap <b>Save to Photos</b>. Drag the line on the picture to compare with the original.</li>
-    <li><b>Tripod + timer.</b> Use a 3 s timer or a remote so nothing moves between shots.</li>
-    <li><b>Focus in small steps.</b> Manual focus (Halide, ProCamera or the Camera app's tap-and-hold AE/AF Lock). Step from the nearest edge to the farthest so each shot overlaps the last by ~30–50%. 5 shots is usually enough; up to 10 for deep stones.</li>
-    <li><b>Lock exposure</b> for a focus stack (AE/AF Lock). For a light stack, change only the light or the exposure.</li>
+    <li><b>Using Stacker:</b> tap <b>Choose photos</b>, select 2–10 shots of the same scene, wait for the result, then tap <b>Save to Photos</b>. Drag the line on the picture to compare with the original.</li>
+    <li><b>Tripod + timer.</b> Use a 3 s timer or a remote so nothing moves between shots. Shoot at your camera’s highest quality — Stacker saves at the full resolution of your photos.</li>
+    <li><b>Focus stack:</b> focus manually in small steps from the nearest edge to the farthest (Halide, ProCamera, or tap-and-hold AE/AF Lock in the Camera app). Overlap each step with the last by ~30–50%. 5 shots is usually enough; up to 10 for deep stones. Keep exposure locked.</li>
+    <li><b>Light stack (glare and reflections):</b> keep the camera and focus fixed and move the light between shots so glare lands somewhere different each time (3–6 shots). Stacker keeps your natural light and replaces only the glare, coloured reflections and shadows. It picks the cleanest photo as the “natural light”; tap ★ on another photo to choose it yourself.</li>
+    <li><b>Both at once:</b> change the focus <i>and</i> the light as you go. Stacker takes each spot from a photo that is sharp <i>and</i> clean there.</li>
     <li><b>Glossy agates:</b> glare is best killed optically — a polarizing filter on the lens plus polarized light at 90° (cross-polarization), or a big diffuser. Light stacking helps when the glare moves between shots.</li>
-    <li><b>ProRAW:</b> set Settings › Camera › Formats › ProRAW &amp; Resolution Control → ProRAW Format → <b>JPEG Lossless (Most Compatible)</b>. JPEG XL ProRAW can’t be decoded in the browser; Stacker will use its embedded preview instead.</li>
-    <li><b>Translucent stones:</b> if the result looks patchy, try <i>See-through</i> in Adjust, or paint fixes with Retouch.</li>
+    <li><b>RAW:</b> camera RAW files (DNG, CR2/CR3, NEF, ARW, RAF …) are developed at full quality when your browser allows it. For iPhone ProRAW set Settings › Camera › Formats › ProRAW &amp; Resolution Control → ProRAW Format → <b>JPEG Lossless (Most Compatible)</b>; JPEG XL ProRAW can’t be decoded in the browser, so Stacker uses its embedded preview.</li>
+    <li><b>Translucent stones:</b> if a focus result looks patchy, try <i>See-through</i> in Adjust, or paint fixes with Touch up.</li>
   </ol>
   <button class="big" data-close>Got it</button>
 </div>
@@ -172,10 +188,7 @@
 </div>
 <div class="toast" id="toast" hidden></div>
 <div id="boot-fail" hidden><p>Stacker couldn’t start.</p><button onclick="location.reload()">Reload</button></div>
-<script>
-  // never get stuck: if the app module hasn't booted in 8 s, offer a reload
-  setTimeout(function () { if (!window.__stackerReady) { var b = document.getElementById('boot-fail'); if (b) b.hidden = false; } }, 8000);
-</script>
+<script src="js/boot.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>
