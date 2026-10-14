@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Development tooling for Stacker (the deployable app lives in site/). Nothing here ships in the release ZIP.",
   "scripts": {
-    "test": "node --test tests/unit",
+    "test": "node --test --test-concurrency=1 \"tests/unit/*.test.js\"",
     "bench": "node tests/bench/baseline.js"
   }
 }

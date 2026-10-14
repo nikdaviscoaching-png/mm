@@ -208,3 +208,19 @@ input[type=range]{height:44px}
 .sheet ul.tips{list-style:disc}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 :focus-visible{outline:2px solid var(--acc2);outline-offset:2px}
+
+/* ---- desktop: picture on the left, controls in a column on the right (same grid as the phone landscape layout) ---- */
+@media (min-width:900px) and (min-height:521px){
+  #result.screen.active,#collage.screen.active{display:grid;grid-template-columns:1fr minmax(360px,420px);grid-template-rows:auto auto auto 1fr auto;grid-template-areas:"view top" "view note" "view tabs" "view panel" "view act"}
+  #result .top,#collage .top{grid-area:top}
+  #result .viewer,#collage .cl-stage{grid-area:view}
+  #result .note-line{grid-area:note}
+  #result .tabs,#collage .tabs{grid-area:tabs}
+  #result .panel,#collage .panel{grid-area:panel;max-height:none;min-height:0}
+  #result .actionbar,#collage .actionbar{grid-area:act}
+  .sheet{left:50%;right:auto;width:min(560px,100%);transform:translateX(-50%)}
+  @keyframes up{from{opacity:.4}to{opacity:1}}
+  .toast{bottom:calc(var(--sab) + 24px)}
+  .progress{place-items:center}
+}
+.ico svg,.card-icon svg{width:1em;height:1em;display:block}

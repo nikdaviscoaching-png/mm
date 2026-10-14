@@ -66,8 +66,18 @@ function toast(msg, ms = 4200, action) { const t = $('#toast'); t.textContent = 
 // ---------------- navigation ----------------
 function show(id) { const prev = $('.screen.active') && $('.screen.active').id; $$('.screen').forEach((s) => s.classList.toggle('active', s.id === id)); if (id === 'result') requestAnimationFrame(() => viewer.resize()); if (id !== 'home' && prev === 'home') { try { history.pushState({ s: id }, ''); } catch (e) { } } }
 window.addEventListener('popstate', () => { const cur = $('.screen.active').id; if (cur === 'result') { try { history.pushState({ s: cur }, ''); } catch (e) { } closeSheets(); openSheet('sheet-discard'); } else if (cur === 'collage') show('home'); });
-function openSheet(id) { $('#scrim').hidden = false; $('#' + id).hidden = false; }
-function closeSheets() { $('#scrim').hidden = true; $$('.sheet').forEach((s) => (s.hidden = true)); }
+// Sheets: focus moves into the opened sheet and returns to what opened it; the page behind is inert (not clickable / focusable); Escape closes.
+let sheetOpener = null;
+function openSheet(id) {
+  const sh = $('#' + id); if ($('#scrim').hidden) sheetOpener = document.activeElement;
+  $('#scrim').hidden = false; sh.hidden = false; sh.setAttribute('tabindex', '-1'); try { $('#app').inert = true; } catch (e) { /* older browsers */ }
+  requestAnimationFrame(() => { const first = sh.querySelector('input:checked, button:not([hidden]), a[href]'); (first || sh).focus({ preventScroll: true }); });
+}
+function closeSheets() {
+  const wasOpen = !$('#scrim').hidden; $('#scrim').hidden = true; $$('.sheet').forEach((s) => (s.hidden = true)); try { $('#app').inert = false; } catch (e) { /* */ }
+  if (wasOpen && sheetOpener && sheetOpener.isConnected && typeof sheetOpener.focus === 'function') { sheetOpener.focus({ preventScroll: true }); } sheetOpener = null;
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#scrim').hidden) { e.preventDefault(); closeSheets(); } });
 $('#scrim').onclick = closeSheets; $$('[data-close]').forEach((b) => (b.onclick = closeSheets));
 $$('[data-open="tips"]').forEach((b) => (b.onclick = () => openSheet('sheet-tips')));
 
@@ -191,7 +201,7 @@ function renderStrips() {
     const el = document.createElement('div'); el.className = 'frame' + (f.include && f.status !== 'failed' ? '' : ' off') + (compact && st.rtFrame === i && !st.rtErase ? ' sel' : '');
     el.appendChild(thumbCanvas(st.thumbs[i]));
     const col = pal[i % pal.length]; const sw = document.createElement('i'); sw.className = 'sw'; sw.style.background = `rgb(${col})`; el.appendChild(sw);
-    const cap = document.createElement('div'); cap.className = 'cap'; const ev = -f.gainEV; cap.innerHTML = `<span>#${i + 1}${i === st.report.ref ? ' · base' : ''}</span><span>${Math.abs(ev) >= 0.05 ? (ev > 0 ? '+' : '') + ev.toFixed(1) + ' EV' : ''}</span>`; el.appendChild(cap);
+    const cap = document.createElement('div'); cap.className = 'cap'; const ev = -f.gainEV; cap.innerHTML = `<span>#${i + 1}</span><span>${Math.abs(ev) >= 0.05 ? (ev > 0 ? '+' : '') + ev.toFixed(1) + ' EV' : ''}</span>`; el.appendChild(cap);
     if (f.status === 'failed') { const b = document.createElement('div'); b.className = 'bad'; b.textContent = 'didn’t match'; el.appendChild(b); }
     if (!compact && f.status !== 'failed') {
       const t = document.createElement('button'); t.className = 'tog'; t.setAttribute('aria-label', (f.include ? 'Exclude' : 'Include') + ' frame ' + (i + 1)); t.textContent = f.include ? '✓' : '○';
@@ -222,7 +232,7 @@ $$('#result .tab').forEach((b) => b.onclick = () => setTab(b.dataset.tab));
 
 // mode sheet
 $('#mode-chip').onclick = () => {
-  const d = st.report.detect; const items = [['auto', `Auto (recommended) — ${MODE_LABEL[st.auto.mode]}`, 'Stacker decides: ' + plainReasons(d)], ['focus', 'Focus', 'Sharp from front to back'], ['light', 'Light', 'Less glare, even brightness'], ['both', 'Focus + Light', 'Sharp everywhere and even light']];
+  const d = st.report.detect; const items = [['auto', `Auto (recommended) — ${MODE_LABEL[st.auto.mode]}`, 'Stacker decides: ' + plainReasons(d)], ['focus', 'Focus', 'Sharp from front to back'], ['light', 'Light', 'Keeps your natural light, removes glare and reflections'], ['both', 'Focus + Light', 'Sharp everywhere, with glare and reflections removed']];
   $('#mode-list').innerHTML = items.map(([k, t, s]) => `<button class="mode-item ${st.mode === k ? 'on' : ''}" data-k="${k}"><b>${t}</b><small>${s}</small></button>`).join('');
   $$('#mode-list .mode-item').forEach((b) => b.onclick = () => { st.mode = b.dataset.k; st.method = null; closeSheets(); renderChrome(); restack(); });
   openSheet('sheet-mode');

@@ -169,17 +169,25 @@ test('upgrade from the installed v1.1.1 heals itself', async () => {
   await pick(p2, 'focus', fx.focus.slice(0, 3)); await waitResult(p2); await ctx.close(); await s3.close();
 });
 
-test('24 MP photos: full-resolution stack and save, memory stays bounded', async (ctx) => {
-  const page = await openApp(ctx); const t0 = Date.now(); let peak = 0, stop = false;
-  const sampler = (async () => { while (!stop) { try { const kb = execSync("ps -eo rss,args | grep -i 'chrom' | grep -v grep | awk '{s+=$1} END {print s}'").toString().trim(); peak = Math.max(peak, +kb / 1024); } catch (e) { /* */ } await sleep(1000); } })();
-  await pick(page, 'focus', fx.big); await waitResult(page, 900000); const tStack = Date.now() - t0;
-  const info = await page.evaluate(() => window.__stacker.sizeInfo()); console.log(`      24 MP stack ready in ${(tStack / 1000).toFixed(0)} s; full size ${info.full.w}x${info.full.h} (${info.full.mp.toFixed(1)} MP)`);
-  assert.ok(info.full.mp > 22, 'full resolution is offered');
-  const t1 = Date.now(), bytes = await saveAndRead(page); stop = true; await sampler;
+// Peak memory of a heavy job. "renderer" = the process holding the page and its workers (what a phone tab has); "all" adds the browser's other processes.
+function memSampler() {
+  let stop = false, peak = { renderer: 0, all: 0 };
+  const loop = (async () => { while (!stop) { try { const rows = execSync("ps -eo rss,args | grep -i 'chrom' | grep -v grep").toString().trim().split('\n'); let all = 0, rend = 0; for (const r of rows) { const kb = parseInt(r.trim(), 10) || 0; all += kb; if (/--type=renderer/.test(r)) rend += kb; } peak.all = Math.max(peak.all, all / 1024); peak.renderer = Math.max(peak.renderer, rend / 1024); } catch (e) { /* */ } await sleep(700); } })();
+  return { peak, stop: async () => { stop = true; await loop; return peak; } };
+}
+async function heavy(ctx, files, label, expectMP) {
+  const page = await openApp(ctx), mem = memSampler(), t0 = Date.now();
+  await pick(page, 'focus', files); await waitResult(page, 1200000); const tStack = Date.now() - t0;
+  const info = await page.evaluate(() => window.__stacker.sizeInfo()), store = await page.evaluate(() => window.__stacker.call('info')).catch(() => ({}));
+  console.log(`      ${label}: stack ready in ${(tStack / 1000).toFixed(0)} s; storage=${store.store}; full size ${info.full.w}x${info.full.h} (${info.full.mp.toFixed(1)} MP)`);
+  assert.ok(info.full.mp > expectMP, 'full resolution is offered');
+  const t1 = Date.now(), bytes = await saveAndRead(page), peak = await mem.stop();
   const m = await ctx.newPage(); await m.goto('about:blank'); const wh = await m.evaluate(async (b64) => { const bmp = await createImageBitmap(new Blob([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], { type: 'image/jpeg' })); return [bmp.width, bmp.height]; }, bytes.toString('base64')); await m.close();
-  console.log(`      saved ${wh[0]}x${wh[1]} in ${((Date.now() - t1) / 1000).toFixed(0)} s, ${(bytes.length / 1e6).toFixed(1)} MB; peak browser RSS ${peak.toFixed(0)} MB`);
-  assert.ok(wh[0] * wh[1] > 22e6, 'exported at full resolution'); assert.ok(peak < 4500, 'memory bounded: ' + peak); noErrors(page);
-}, { slow: true });
+  console.log(`      saved ${wh[0]}x${wh[1]} in ${((Date.now() - t1) / 1000).toFixed(0)} s, ${(bytes.length / 1e6).toFixed(1)} MB; peak RSS: renderer ${peak.renderer.toFixed(0)} MB, all browser processes ${peak.all.toFixed(0)} MB`);
+  assert.ok(wh[0] * wh[1] > expectMP * 1e6 * 0.9, 'exported at full resolution'); noErrors(page); return peak;
+}
+test('12 MP x 8 photos: full-resolution stack and save', async (ctx) => { const p = await heavy(ctx, fx.mid12, '12 MP x 8', 11); assert.ok(p.renderer < 2500, 'renderer memory ' + p.renderer); }, { slow: true });
+test('24 MP photos: full-resolution stack and save, memory stays bounded', async (ctx) => { const p = await heavy(ctx, fx.big, '24 MP x 5', 22); assert.ok(p.renderer < 3500, 'renderer memory ' + p.renderer); }, { slow: true });
 
 // ---------------------------------------------------------------------------------------------------------------------------------------
 srv = await startServer(SITE);

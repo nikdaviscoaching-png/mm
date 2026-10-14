@@ -14,6 +14,10 @@ export function buildFixtures(dir, { big = true } = {}) {
   { const s = standardLightingScenario(); out.light = s.frames.map((f, i) => { const p = `${dir}/light_${i}.jpg`; writeFileSync(p, jpg(up(f, W, H))); return p; }); s.clean.forEach((c, j) => savePng(`${dir}/light_truth_${j}.png`, up(c, W, H))); }
   { const s = makeCombinedSeries({ specs: standardSpecs(), seed: 3, frames: 8 }); out.both = s.frames.map((f, i) => { const p = `${dir}/both_${i}.jpg`; writeFileSync(p, jpg(up(f, W, H))); return p; }); s.clean.forEach((c, j) => savePng(`${dir}/both_truth_${j}.png`, up(c, W, H))); out.bothLights = s.lights; }
   { const s = makeFocusSeries({ seed: 3, breathing: 0, frames: 3 }); out.mid = s.frames.map((f, i) => { const p = `${dir}/mid_${i}.jpg`; writeFileSync(p, jpg(up(f, 3000, 2000))); return p; }); } // 6 MP: enough for the smaller save sizes to be offered
+  if (big) { // 12 MP x 8: a typical heavy phone job
+    const s = makeFocusSeries({ seed: 3, breathing: 0, frames: 8 });
+    out.mid12 = s.frames.map((f, i) => { const p = `${dir}/mid12_${i}.jpg`; writeFileSync(p, jpg(up(f, 4000, 3000), 92)); return p; });
+  }
   if (big) { // 24 MP: the focus scene enlarged
     const s = makeFocusSeries({ seed: 3, breathing: 0, frames: 5 }), BW = 6000, BH = 4000;
     out.big = s.frames.map((f, i) => { const p = `${dir}/big_${i}.jpg`; writeFileSync(p, jpg(up(f, BW, BH), 92)); return p; });
