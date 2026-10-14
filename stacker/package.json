@@ -1,0 +1,10 @@
+{
+  "name": "stacker-dev",
+  "private": true,
+  "type": "module",
+  "description": "Development tooling for Stacker (the deployable app lives in site/). Nothing here ships in the release ZIP.",
+  "scripts": {
+    "test": "node --test tests/unit",
+    "bench": "node tests/bench/baseline.js"
+  }
+}

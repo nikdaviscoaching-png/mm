@@ -406,3 +406,24 @@ export function featureAlign(T, I, w, h, initM) {
   return { M: fit(inliers) || bestM, inliers: inliers.length, total: matches.length };
 }
 export function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// ---------- morphology (square window of radius r, clipped at the image border; O(1) per pixel) ----------
+function slideMinMax(src, so, ss, n, r, dst, ds, isMax, dq) {
+  let head = 0, tail = 0, next = 0;
+  for (let i = 0; i < n; i++) {
+    const hi = i + r < n - 1 ? i + r : n - 1;
+    while (next <= hi) { const v = src[so + next * ss]; while (tail > head) { const u = src[so + dq[tail - 1] * ss]; if (isMax ? u <= v : u >= v) tail--; else break; } dq[tail++] = next++; }
+    const lo = i - r; while (dq[head] < lo) head++;
+    dst[i * ds] = src[so + dq[head] * ss];
+  }
+}
+function morph(p, w, h, r, isMax) {
+  if (r <= 0) return p.slice();
+  const tmp = new Float32Array(w * h), out = new Float32Array(w * h), dq = new Int32Array(Math.max(w, h));
+  const row = new Float32Array(w), col = new Float32Array(h);
+  for (let y = 0; y < h; y++) { slideMinMax(p, y * w, 1, w, r, row, 1, isMax, dq); tmp.set(row, y * w); }
+  for (let x = 0; x < w; x++) { slideMinMax(tmp, x, w, h, r, col, 1, isMax, dq); for (let y = 0; y < h; y++) out[y * w + x] = col[y]; }
+  return out;
+}
+export const dilate = (p, w, h, r) => morph(p, w, h, r, true);
+export const erode = (p, w, h, r) => morph(p, w, h, r, false);

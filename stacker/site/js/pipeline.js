@@ -1,20 +1,24 @@
 // pipeline.js — stacking session: ingest → analyse (align, normalise, detect) → weights → tiled render.
 import * as E from './engine.js';
+import { analyzeLighting, blendTile, proxyPixels } from './lightstack.js';
+import { sharpLogits } from './focusfuse.js';
+import { estimateNoise } from './focusmap.js';
 
 const LN2 = Math.LN2;
+const REFLECT_LEVELS = 5; // Laplacian bands of the reflection-aware blend (halo 4·2^5 = 128 px at any scale)
 const LIGHT_THR = 0.08, MOVHI_THR = 0.0025; // combined.md starting value; see proof/ for the measured separation
 export const PALETTE = [[255, 99, 71], [64, 160, 255], [80, 220, 120], [255, 200, 40], [190, 110, 255], [0, 220, 220], [255, 120, 200], [170, 200, 60], [255, 150, 60], [150, 150, 255]];
 
 // Auto mode → concrete mode/method (SPEC §3.1)
 export function autoSpec(d) {
-  if (!d) return { mode: 'focus', method: 'depth' };
+  if (!d) return { mode: 'focus', method: 'sharp' };
   if (d.kind === 'both') return { mode: 'both' };
   if (d.kind === 'light') {
-    if (d.lightKind === 'exposure') return { mode: 'light', method: d.light ? 'glare' : 'hdr' };
-    if (d.lightKind === 'direction') return { mode: 'light', method: 'glare' };
+    if (d.lightKind === 'exposure') return { mode: 'light', method: d.light ? 'reflect' : 'hdr' };
+    if (d.lightKind === 'direction') return { mode: 'light', method: 'reflect' };
     return { mode: 'light', method: 'average' };
   }
-  return { mode: 'focus', method: 'depth' };
+  return { mode: 'focus', method: 'sharp' };
 }
 
 export class Cancelled extends Error { constructor() { super('cancelled'); this.name = 'Cancelled'; } }
@@ -177,8 +181,32 @@ export class Session {
   normPlanes(i, norm = 'full', slot) {
     const f = this.frames[i], N = this.ww * this.wh; const pl = this.workPlanes(f, slot);
     if (norm === 'none') return pl;
+    if (norm === 'field') { // white balance + the smooth per-pixel lighting match of the lighting analysis (instead of one global gain)
+      applyNorm(pl, N, { a: 0, b: 1 }, f.wb); const g = this.fieldGainPlane(i);
+      if (g) for (let c = 0; c < 3; c++) { const p = pl[c]; for (let j = 0; j < N; j++) p[j] *= g[j]; }
+      return pl;
+    }
     applyNorm(pl, N, norm === 'wb' ? { a: 0, b: 1 } : f.gain, f.wb);
     return pl;
+  }
+  // smooth lighting-match gain of frame i (relative to the lighting base) at work resolution, or null for the base itself
+  fieldGainPlane(i) {
+    const L = this.light; if (!L) return null; const k = L.act.indexOf(i), gp = k >= 0 ? L.A.gains[k] : null; if (!gp) return null;
+    const w = this.ww, h = this.wh, xs = new Float32Array(w), ys = new Float32Array(h);
+    for (let x = 0; x < w; x++) xs[x] = (x + 0.5) / L.f - 0.5; for (let y = 0; y < h; y++) ys[y] = (y + 0.5) / L.f - 0.5;
+    return sampleSeparable(gp, L.pw, L.ph, xs, ys, w, h);
+  }
+  // the same gain over an output tile (any scale)
+  fieldGainTile(i, s, ax, ay, aw, ah) {
+    const L = this.light; if (!L) return null; const k = L.act.indexOf(i), gp = k >= 0 ? L.A.gains[k] : null; if (!gp) return null;
+    const { xs, ys } = this.proxyCoords(s, ax, ay, aw, ah); return sampleSeparable(gp, L.pw, L.ph, xs, ys, aw, ah);
+  }
+  // output-tile pixel → work pixel → proxy pixel (separable: computed once per column / row)
+  proxyCoords(s, ax, ay, aw, ah) {
+    const cr = this.crop, f = this.light.f, xs = new Float32Array(aw), ys = new Float32Array(ah);
+    for (let x = 0; x < aw; x++) xs[x] = ((cr.x + (ax + x + 0.5) / s - 0.5) + 0.5) / f - 0.5;
+    for (let y = 0; y < ah; y++) ys[y] = ((cr.y + (ay + y + 0.5) / s - 0.5) + 0.5) / f - 0.5;
+    return { xs, ys };
   }
 
   detectVariation() {
@@ -256,7 +284,7 @@ export class Session {
     const act = this.activeIdx(); const w = this.ww, h = this.wh, N = w * h; const sc = Math.max(w, h) / 2048;
     const qw = Math.ceil(w / 4), qh = Math.ceil(h / 4);
     const det = this.detect || {}; const mode = spec.mode;
-    const cfg = { space: 'gamma', norm: 'full', kSplit: 99, pixelOp: null, pmax: false, shift: null };
+    const cfg = { space: 'gamma', norm: 'full', kSplit: 99, pixelOp: null, pmax: false, shift: null, kind: null };
     this.wd = new Array(this.frames.length).fill(null); this.wb = new Array(this.frames.length).fill(null);
     this.qw = qw; this.qh = qh;
     const refP = (() => { const Y = lum(this.normPlanes(this.ref, 'full', 0), N); for (let i = 0; i < N; i++) Y[i] = E.gammaFast(Y[i]); return Y; })();
@@ -271,6 +299,9 @@ export class Session {
       cfg.space = 'srgb'; cfg.norm = 'none';
       act.forEach((i) => { this.wd[i] = mertensWeights(this.workPlanes(this.frames[i], 0), w, h, { wc: 1, ws: 1, we: 1 }); });
       normalize(this.wd, act, N); act.forEach((i) => { this.wb[i] = E.downArea(this.wd[i], w, h, 4).d; });
+    } else if (mode === 'light' && spec.method === 'reflect') { // base frame + donors (reflection-aware lighting stack)
+      cfg.kind = 'reflect'; cfg.norm = 'none';
+      await this.analyzeLight(act, spec); this.fillReflectMaps(act);
     } else if (mode === 'light' && ['hdr', 'lighten', 'darken', 'average'].includes(spec.method)) {
       cfg.pixelOp = spec.method; cfg.norm = spec.method === 'hdr' ? 'full' : 'wb';
       if (spec.method === 'darken') cfg.lift = this.darkenLift(act);
@@ -293,6 +324,9 @@ export class Session {
       const sm = this.softMin(act, maps, qw, qh);
       act.forEach((i, k) => { const b = E.downArea(this.wd[i], w, h, 4).d; for (let j = 0; j < b.length; j++) b[j] = (1 - g) * b[j] + g * sm[k][j]; this.wb[i] = b; });
       normalizeQ(this.wb, act);
+    } else if (mode === 'focus' && (spec.method || 'sharp') === 'sharp') { // multi-signal focus selection (per-pixel soft choice of the sharpest frame)
+      cfg.space = 'gamma'; cfg.norm = 'full';
+      await this.sharpWeights(act, spec, false);
     } else if (mode === 'focus') {
       cfg.space = 'gamma'; cfg.norm = 'full';
       const method = spec.method || 'depth';
@@ -311,51 +345,10 @@ export class Session {
       normalize(this.wd, act, N);
       act.forEach((i) => { this.wb[i] = E.downArea(this.wd[i], w, h, 4).d; });
       if (method === 'detail') cfg.pmax = true;
-    } else { // 'both' — combined.md §4.4 two-band fusion
-      const X = spec.x || {};
-      // moving light (speculars/shading that change between frames): hand mid frequencies to the base band so
-      // shading rims and glare are averaged by the soft-min instead of picked by the sharpness argmax
-      const movingLight = !!(det.light && (det.lightKind === 'direction' || (det.movHi || 0) > (X.movTh ?? 0.02)));
-      cfg.space = X.space || 'gamma'; cfg.norm = 'full'; cfg.kSplit = X.kSplit ?? (movingLight ? 2 : 4);
-      if (X.depth === undefined) X.depth = 1;
-      const maps = await this.sharedMaps(act, { needC: true, needW: true, keepC: !X.depth || act.length * N * 4 <= KEEPC_BYTES });
-      const gam = 0.5 + 2.5 * spec.glare; // highlight-avoidance exponent (default γ≈2)
-      const pp = X.p ?? p; const baseC = X.baseC ?? 1; if (X.depth === undefined) X.depth = 1;
-      let CsQ = null;
-      const csq = (C) => { const R = new Float32Array(N); for (let j = 0; j < N; j++) R[j] = C[j] / (maps.Cmax[j] + 1e-6); return E.downArea(E.boxBlur(R, w, h, Math.max(2, Math.round(16 * sc))), w, h, 4).d; };
-      if (X.depth) { // depth weights first (independent of the base band), computing CsQ from the same on-demand sharpness map
-        CsQ = baseC ? new Array(act.length) : null;
-        this.depthWeights(act, maps, w, h, sc, spec.detail, baseC ? (k, C) => { CsQ[k] = csq(C); } : null);
-      } else if (baseC) { // coarse focus evidence for the base band: relative sharpness smoothed to the base scale
-        CsQ = act.map((i, k) => csq(maps.C[k]));
-      }
-      act.forEach((i, k) => {
-        if (!X.depth) { // (with X.depth these are recomputed by depthWeights below, so skip the work and the memory)
-          const C = maps.C[k], Wd = new Float32Array(N);
-          for (let j = 0; j < N; j++) { const x = j % w, y = (j / w) | 0; const Hv = sampleQ(maps.H[k], maps.hw, maps.hh, x, y, 2); Wd[j] = (Math.pow(C[j] / (maps.Cmax[j] + 1e-6), pp) + 1e-4) * Math.pow(Hv, gam); }
-          this.wd[i] = Wd;
-        }
-        const Wb = new Float32Array(qw * qh); const Wq = maps.W[k];
-        for (let j = 0; j < qw * qh; j++) { const x = j % qw, y = (j / qw) | 0; Wb[j] = Wq[j] * Math.pow(sampleQ(maps.H[k], maps.hw, maps.hh, x * 4 + 1.5, y * 4 + 1.5, 2), gam) * (CsQ ? Math.pow(CsQ[k][j] + 1e-3, baseC) : 1) + 1e-6; }
-        this.wb[i] = Wb;
-      });
-      if (X.depth) { // detail weights from the consistency-filtered depth map (soft one-hot, computed above), times highlight avoidance
-        act.forEach((i, k) => { const D = this.wd[i]; for (let j = 0; j < N; j++) { const Hv = sampleQ(maps.H[k], maps.hw, maps.hh, j % w, (j / w) | 0, 2); D[j] *= Math.pow(Hv, gam); } });
-      }
-      maps.C = null; maps.Cmax = null; CsQ = null; // memory
-      normalize(this.wd, act, N); normalizeQ(this.wb, act);
-      if (movingLight && spec.glare > 0.3) {
-        const sm = this.softMin(act, maps, qw, qh); const g = (spec.glare - 0.3) / 0.7;
-        act.forEach((i, k) => { const b = this.wb[i]; for (let j = 0; j < b.length; j++) b[j] = (1 - g) * b[j] + g * sm[k][j]; });
-      }
-      // GFF-style smoothing: detail r=8, eps=1e-3 ; base r=45, eps=0.3 (scaled to 2K)
-      const r1 = Math.max(2, Math.round((4 + 8 * (1 - spec.detail)) * sc)); const st = E.guideStats(refP, w, h, r1);
-      act.forEach((i) => { this.wd[i] = E.guidedFilter(refP, this.wd[i], w, h, r1, 1e-3, st.meanI, st.varI); clampPos(this.wd[i]); });
-      normalize(this.wd, act, N);
-      const refQ = E.downArea(refP, w, h, 4).d; const r2 = Math.max(2, Math.round(45 * sc / 4)); const st2 = E.guideStats(refQ, qw, qh, r2);
-      act.forEach((i) => { this.wb[i] = E.guidedFilter(refQ, this.wb[i], qw, qh, r2, 0.3, st2.meanI, st2.varI); clampPos(this.wb[i]); });
-      normalizeQ(this.wb, act);
-      cfg.shift = {}; // tone: base taken from gain-normalised radiance (shift 0); brightness slider handles exposure
+    } else { // 'both': the same sharpness selection, gated by how trustworthy (glare-free, colour-true, well exposed) each frame is at each pixel,
+      // on frames matched to one smooth lighting scale. (Measured on frames that differ in focus AND lighting: +2.4 dB over the old two-band fusion.)
+      cfg.space = 'gamma'; cfg.norm = 'field';
+      await this.analyzeLight(act, spec); await this.sharpWeights(act, spec, true);
     }
     this.cfg = cfg; this._cf = null; this.progress('Weighing frames', 1);
     this.override = this.override && this.override.w === w ? this.override : null;
@@ -464,7 +457,7 @@ export class Session {
 
   // ---------------- global coarse base (work/8) ----------------
   computeCoarse() {
-    const cfg = this.cfg; if (cfg.pixelOp) { this.coarse = null; return; }
+    const cfg = this.cfg; if (cfg.pixelOp || cfg.kind === 'reflect') { this.coarse = null; return; }
     const w = this.ww, h = this.wh, N = w * h, F = 8; let cw = w, ch = h; for (let t = 0; t < 3; t++) { cw = (cw + 1) >> 1; ch = (ch + 1) >> 1; }
     const act = this.activeIdx(); const L = Math.max(1, Math.floor(Math.log2(Math.min(cw, ch))) - 2);
     const acc = [0, 1, 2].map(() => Array.from({ length: L + 1 }, (_, l) => null)); const ws = Array.from({ length: L + 1 }, () => null);
@@ -519,7 +512,8 @@ export class Session {
   // s: output pixels per work pixel. Output covers crop rect. Returns RGBA8 via writer(x,y,w,h,rgba)
   async render(s, { tile = 512, onTile = null, region = null, full = false } = {}) {
     const cr = this.crop; const OW = Math.max(1, Math.round(cr.w * s)), OH = Math.max(1, Math.round(cr.h * s));
-    const K = Math.max(1, Math.round(Math.log2(8 * s))); const step = 1 << K; tile = Math.max(step, Math.round(tile / step) * step);
+    const reflect = this.cfg.kind === 'reflect'; if (reflect) tile = Math.min(tile, 640);
+    const K = reflect ? REFLECT_LEVELS : Math.max(1, Math.round(Math.log2(8 * s))); const step = 1 << K; tile = Math.max(step, Math.round(tile / step) * step);
     const reg = region || { x: 0, y: 0, w: OW, h: OH };
     const tx0 = Math.floor(reg.x / tile) * tile, ty0 = Math.floor(reg.y / tile) * tile;
     const tiles = []; for (let y = ty0; y < reg.y + reg.h; y += tile) for (let x = tx0; x < reg.x + reg.w; x += tile) tiles.push([x, y]);
@@ -536,6 +530,7 @@ export class Session {
 
   async renderTile(s, K, X0, Y0, tw, th, full) {
     const cfg = this.cfg; const act = this.activeIdx(); const step = 1 << K;
+    if (cfg.kind === 'reflect') return this.renderTileReflect(s, K, X0, Y0, tw, th, full);
     const apron = cfg.pixelOp ? 0 : 4 * step;
     const ax = X0 - apron, ay = Y0 - apron, aw = tw + 2 * apron, ah = th + 2 * apron, AN = aw * ah;
     const cr = this.crop; const toWork = (X, Y) => [cr.x + (X + 0.5) / s - 0.5, cr.y + (Y + 0.5) / s - 0.5];
@@ -607,6 +602,77 @@ export class Session {
     return this.finish(out, aw, ah, apron, tw, th, X0, Y0);
   }
 
+  // ---------------- sharpness-selection weights ----------------
+  // One soft decision per pixel and frame, computed once at work resolution in tiles (logits are accumulated in the weight arrays themselves, so
+  // memory stays at n weight maps). `gated`: add the lighting-analysis trust of each frame as a gate and match lighting with smooth gain fields.
+  async sharpWeights(act, spec, gated) {
+    const w = this.ww, h = this.wh, N = w * h, n = act.length, T = 512, HALO = 32, enc = E.oetfFast;
+    const midY = lum(this.normPlanes(act[n >> 1], gated ? 'field' : 'full', 0), N); for (let j = 0; j < N; j++) midY[j] = enc(midY[j]);
+    const noiseSigma = estimateNoise(midY, w, h);
+    const options = { selectionPower: 4 + 8 * spec.detail, gatePower: 0.2 + 0.5 * spec.glare };
+    const maxL = new Float32Array(N).fill(-Infinity), L = this.light;
+    for (let k = 0; k < n; k++) {
+      const i = act[k], pl = this.normPlanes(i, gated ? 'field' : 'full', 0), u = new Float32Array(N); let gateFull = null;
+      if (gated) { // trust of this frame at work resolution (relative cleanliness is learned by the analysis; 0.1..0.5 is the useful range)
+        const xs = new Float32Array(w), ys = new Float32Array(h); for (let x = 0; x < w; x++) xs[x] = (x + 0.5) / L.f - 0.5; for (let y = 0; y < h; y++) ys[y] = (y + 0.5) / L.f - 0.5;
+        gateFull = sampleSeparable(L.A.clean[k], L.pw, L.ph, xs, ys, w, h); for (let j = 0; j < N; j++) gateFull[j] = E.smoothstep(0.1, 0.5, gateFull[j]);
+      }
+      for (let ty = 0; ty < h; ty += T) for (let tx = 0; tx < w; tx += T) {
+        const x0 = Math.max(0, tx - HALO), y0 = Math.max(0, ty - HALO), x1 = Math.min(w, tx + T + HALO), y1 = Math.min(h, ty + T + HALO), aw = x1 - x0, ah = y1 - y0, AN = aw * ah;
+        const e = [0, 1, 2].map((c) => { const o = new Float32Array(AN), src = pl[c]; for (let y = 0; y < ah; y++) { const so = (y0 + y) * w + x0, d = y * aw; for (let x = 0; x < aw; x++) o[d + x] = enc(src[so + x]); } return o; });
+        let g = null; if (gateFull) { g = new Float32Array(AN); for (let y = 0; y < ah; y++) g.set(gateFull.subarray((y0 + y) * w + x0, (y0 + y) * w + x1), y * aw); }
+        const lg = sharpLogits(e, aw, ah, { noiseSigma, gate: g, options });
+        const cx1 = Math.min(w, tx + T), cy1 = Math.min(h, ty + T);
+        for (let y = ty; y < cy1; y++) for (let x = tx; x < cx1; x++) { const v = lg[(y - y0) * aw + (x - x0)], j = y * w + x; u[j] = v; if (v > maxL[j]) maxL[j] = v; }
+        await this.tick();
+      }
+      this.wd[i] = u; this.progress('Weighing frames', (k + 1) / n * 0.9);
+    }
+    const sum = new Float32Array(N); // softmax over frames
+    for (const i of act) { const u = this.wd[i]; for (let j = 0; j < N; j++) { const e = Math.exp(u[j] - maxL[j]); u[j] = e; sum[j] += e; } }
+    for (const i of act) { const u = this.wd[i]; for (let j = 0; j < N; j++) u[j] /= sum[j]; this.wb[i] = E.downArea(u, w, h, 4).d; }
+  }
+
+  // ---------------- reflection-aware lighting stack ----------------
+  // Analysis at proxy resolution (≤ ~0.5 M px, shrinking with the frame count to bound memory); the blend runs per tile at any scale.
+  async analyzeLight(act, spec) {
+    const w = this.ww, h = this.wh, N = w * h, n = act.length;
+    const baseAbs = spec.base != null && act.includes(spec.base) ? spec.base : null, key = act.join(',') + '|' + baseAbs;
+    if (this.light && this.light.key === key) return;
+    const f = Math.max(1, Math.ceil(Math.sqrt(N / proxyPixels(n)))), pw = Math.ceil(w / f), ph = Math.ceil(h / f);
+    const prox = [];
+    for (const i of act) {
+      const pl = this.workPlanes(this.frames[i], 0), o = {};
+      for (let c = 0; c < 3; c++) { const d = E.downArea(pl[c], w, h, f).d; for (let j = 0; j < d.length; j++) d[j] = E.oetfFast(d[j]); o['rgb'[c]] = d; }
+      prox.push(o); await this.tick();
+    }
+    const A = await analyzeLighting(prox, pw, ph, { preferredBase: baseAbs == null ? null : act.indexOf(baseAbs) }, { tick: async (fr) => { this.progress('Weighing frames', 0.05 + 0.85 * fr); await this.tick(); } });
+    this.light = { key, A, f, pw, ph, act: act.slice(), baseFrame: act[A.base] };
+  }
+  // per-frame weight maps at work resolution (for the Sources map and retouch); the base frame carries 1 − Σ donors
+  fillReflectMaps(act) {
+    const L = this.light, w = this.ww, h = this.wh;
+    act.forEach((i, k) => { this.wd[i] = E.resizeBilinear(L.A.weights[k], L.pw, L.ph, w, h); });
+  }
+  async renderTileReflect(s, L, X0, Y0, tw, th, full) {
+    const act = this.activeIdx(), step = 1 << L, apron = 4 * step, ax = X0 - apron, ay = Y0 - apron, aw = tw + 2 * apron, ah = th + 2 * apron, AN = aw * ah, cr = this.crop, LS = this.light;
+    // output pixel → work pixel → proxy pixel (separable, so the coordinates are computed once per column / row)
+    const { xs, ys } = this.proxyCoords(s, ax, ay, aw, ah);
+    const up = (plane) => sampleSeparable(plane, LS.pw, LS.ph, xs, ys, aw, ah);
+    let override = null; const ov = this.override && this.override.any ? this.override : null;
+    if (ov) { // retouch: painted regions take their frame (alpha-mixed), in the tile's coordinates
+      const a = new Float32Array(AN), k = new Int16Array(AN), kOf = new Int16Array(this.frames.length).fill(-1); act.forEach((i, q) => { kOf[i] = q; });
+      for (let y = 0; y < ah; y++) for (let x = 0; x < aw; x++) {
+        const u = cr.x + (ax + x + 0.5) / s - 0.5, v = cr.y + (ay + y + 0.5) / s - 0.5, j = y * aw + x;
+        a[j] = E.sampleBilinear(ov.a, this.ww, this.wh, u, v); const xi = Math.min(this.ww - 1, Math.max(0, Math.round(u))), yi = Math.min(this.wh - 1, Math.max(0, Math.round(v))); k[j] = kOf[ov.f[yi * this.ww + xi]] ?? -1;
+      }
+      override = { a, k };
+    }
+    const frameLin = async (q) => (await this.frameTile(act[q], s, ax, ay, aw, ah, full, 'none', false)).norm;
+    const out = await blendTile(LS.A, L, aw, ah, frameLin, up, { override });
+    return this.finish([out.r, out.g, out.b], aw, ah, apron, tw, th, X0, Y0);
+  }
+
   // tone + OETF + dither → RGBA8 for the core region
   finish(planes, aw, ah, apron, tw, th, X0, Y0) {
     const rgba = new Uint8ClampedArray(tw * th * 4); const t = this.tone; const rnd = E.mulberry((X0 * 73856093) ^ (Y0 * 19349663));
@@ -640,7 +706,8 @@ export class Session {
       }
     } else planes = await this.fullResTile(f, s, ax, ay, aw, ah);
     let raw = null; if (wantRaw) raw = planes.map((p) => Float32Array.from(p));
-    if (norm !== 'none') applyNorm(planes, AN, norm === 'wb' ? { a: 0, b: 1 } : f.gain, f.wb);
+    if (norm === 'field') { applyNorm(planes, AN, { a: 0, b: 1 }, f.wb); const g = this.fieldGainTile(i, s, ax, ay, aw, ah); if (g) for (let c = 0; c < 3; c++) { const p = planes[c]; for (let j = 0; j < AN; j++) p[j] *= g[j]; } }
+    else if (norm !== 'none') applyNorm(planes, AN, norm === 'wb' ? { a: 0, b: 1 } : f.gain, f.wb);
     return { norm: planes, raw };
   }
 
@@ -751,6 +818,16 @@ export class Session {
 }
 
 // ---------------- helpers ----------------
+// bilinear resample of a (pw × ph) plane at the separable coordinates xs[x], ys[y] (edge clamped) → aw × ah
+function sampleSeparable(src, pw, ph, xs, ys, aw, ah) {
+  const out = new Float32Array(aw * ah), x0 = new Int32Array(aw), x1 = new Int32Array(aw), fx = new Float32Array(aw);
+  for (let x = 0; x < aw; x++) { let u = xs[x]; u = u < 0 ? 0 : u > pw - 1 ? pw - 1 : u; const i = u | 0; x0[x] = i; x1[x] = i + 1 < pw ? i + 1 : i; fx[x] = u - i; }
+  for (let y = 0; y < ah; y++) {
+    let v = ys[y]; v = v < 0 ? 0 : v > ph - 1 ? ph - 1 : v; const j = v | 0, j1 = j + 1 < ph ? j + 1 : j, fy = v - j, r0 = j * pw, r1 = j1 * pw, o = y * aw;
+    for (let x = 0; x < aw; x++) { const a = src[r0 + x0[x]], b = src[r0 + x1[x]], c = src[r1 + x0[x]], d = src[r1 + x1[x]], t = fx[x], top = a + (b - a) * t; out[o + x] = top + ((c + (d - c) * t) - top) * fy; }
+  }
+  return out;
+}
 // E.sampleBilinear over lut[u16[off + i]] (same arithmetic → same result as on the decoded float plane)
 function sampleBilinearU16(src, off, lut, w, h, x, y, rb = 0) {
   if (x < 0) x = 0; if (y < 0) y = 0; if (x > w - 1) x = w - 1; if (y > h - 1) y = h - 1;
