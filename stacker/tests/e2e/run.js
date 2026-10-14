@@ -10,7 +10,7 @@ import { startServer } from './server.js';
 import { buildFixtures } from './fixtures.js';
 
 const { chromium } = createRequire(process.env.PW_NODE_MODULES || '/opt/node22/lib/node_modules/')('playwright');
-const ROOT = new URL('../../', import.meta.url).pathname, SITE = ROOT + 'site', FIX = ROOT + 'tests/out/fixtures', OUT = ROOT + 'tests/out/e2e';
+const ROOT = new URL('../../', import.meta.url).pathname, SITE = (process.env.STACKER_SITE || ROOT + 'site').replace(/\/$/, ''), FIX = ROOT + 'tests/out/fixtures', OUT = ROOT + 'tests/out/e2e';
 mkdirSync(OUT, { recursive: true });
 if (!existsSync(FIX + '/fixtures.json')) buildFixtures(FIX);
 const fx = JSON.parse(readFileSync(FIX + '/fixtures.json', 'utf8'));
