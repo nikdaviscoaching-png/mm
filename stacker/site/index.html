@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b0c0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Stacker">
+<meta name="description" content="Focus and light stacking for tripod photos, on-device.">
+<title>Stacker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <!-- HOME -->
+  <section id="home" class="screen active" aria-label="Start">
+    <header class="top">
+      <div class="brand"><img src="icons/icon-192.png" alt="" width="32" height="32"><span>Stacker</span></div>
+      <button class="ghost" data-open="tips">How to shoot</button>
+    </header>
+    <div class="hero">
+      <h1>The best of every shot,<br>merged into one.</h1>
+      <p>Import 2–10 tripod photos. Stacker aligns them, picks the sharpest and best-lit parts, and saves one high-quality JPEG to Photos.</p>
+    </div>
+    <div class="modes">
+      <button class="card primary" data-mode="auto">
+        <span class="card-icon">✦</span>
+        <span class="card-text"><b>Choose photos</b><small>Pick 2–10 tripod shots. Stacker does the rest.</small></span>
+        <span class="chev">›</span>
+      </button>
+      <p class="or">or choose what to fix</p>
+      <div class="row3">
+        <button class="card small" data-mode="focus"><span class="ico">◎</span><b>Focus</b><small>Sharp front to back</small></button>
+        <button class="card small" data-mode="light"><span class="ico">☀</span><b>Light</b><small>Less glare, even light</small></button>
+        <button class="card small" data-mode="both"><span class="ico">◐</span><b>Both</b><small>Sharp + even light</small></button>
+      </div>
+      <button class="card wide" data-mode="collage"><span class="ico">▦</span><span class="card-text"><b>Collage</b><small>2–9 photos side by side</small></span><span class="chev">›</span></button>
+      <p class="fine">Everything runs on this device. Nothing is uploaded.</p>
+    </div>
+    <input id="picker" type="file" accept="image/*,.dng,.DNG,.heic,.HEIC" multiple hidden>
+  </section>
+
+  <!-- RESULT -->
+  <section id="result" class="screen" aria-label="Result">
+    <header class="top">
+      <button class="icon-btn" id="btn-new" aria-label="Start over">✕</button>
+      <button class="chip mode-chip" id="mode-chip" aria-haspopup="dialog"><span id="mode-chip-text">Auto</span> ▾</button>
+      <button class="icon-btn" id="btn-help" aria-label="Help" data-open="tips">?</button>
+    </header>
+    <div class="viewer" id="viewer">
+      <canvas id="view-canvas"></canvas>
+      <div class="split-handle" id="split-handle" aria-hidden="true"><span>‹ ›</span></div>
+      <div class="tag tag-l" id="tag-before">Before</div><div class="tag tag-r" id="tag-after">After</div>
+      <div class="hint" id="view-hint"></div>
+    </div>
+    <div class="note-line" id="note-line" hidden></div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="adjust" role="tab">Adjust</button>
+      <button class="tab" data-tab="frames" role="tab">Photos</button>
+      <button class="tab" data-tab="retouch" role="tab">Touch up</button>
+      <button class="tab" data-tab="map" role="tab">Sources</button>
+    </nav>
+    <div class="panel">
+      <div class="pane active" id="pane-adjust">
+        <div class="seg" id="method-seg"></div>
+        <div id="sliders"></div>
+      </div>
+      <div class="pane" id="pane-frames">
+        <p class="reasons" id="reasons"></p>
+        <div class="strip" id="strip"></div>
+      </div>
+      <div class="pane" id="pane-retouch">
+        <p class="small-note">Tap a photo below, then paint over the spot where it should show. Pinch to zoom.</p>
+        <div class="strip compact" id="rt-strip"></div>
+        <div class="slider-row"><label>Brush</label><input type="range" id="rt-size" min="8" max="200" value="60"><span id="rt-size-v">60</span></div>
+        <div class="slider-row"><label>Softness</label><input type="range" id="rt-feather" min="0" max="100" value="60"><span id="rt-feather-v">60%</span></div>
+        <div class="btn-row"><button class="ghost" id="rt-erase">Erase</button><button class="ghost" id="rt-undo">Undo</button><button class="ghost" id="rt-clear">Reset</button></div>
+      </div>
+      <div class="pane" id="pane-map">
+        <p class="small-note">Each colour shows which photo that area came from.</p>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+    <div class="actionbar">
+      <button class="big" id="btn-save"><span id="save-label">Save to Photos</span></button>
+      <button class="icon-btn tall" id="btn-save-opts" aria-label="Save options">⋯</button>
+    </div>
+  </section>
+
+  <!-- COLLAGE -->
+  <section id="collage" class="screen" aria-label="Collage">
+    <header class="top">
+      <button class="icon-btn" id="cl-back" aria-label="Back">‹</button>
+      <span class="title">Collage</span>
+      <span class="spacer"></span>
+    </header>
+    <div class="cl-stage" id="cl-stage"><canvas id="cl-canvas"></canvas><div class="hint" id="cl-hint">Drag a photo onto another to swap · pinch to zoom</div><button class="empty" id="cl-empty" hidden><b>＋</b><span>Add 2–9 photos</span></button></div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-ctab="layout">Layout</button>
+      <button class="tab" data-ctab="ratio">Size</button>
+      <button class="tab" data-ctab="style">Style</button>
+      <button class="tab" data-ctab="photos">Photos</button>
+    </nav>
+    <div class="panel">
+      <div class="cpane active" id="cpane-layout"><div class="tpl-strip" id="tpl-strip"></div></div>
+      <div class="cpane" id="cpane-ratio"><div class="seg" id="ratio-seg"></div></div>
+      <div class="cpane" id="cpane-style">
+        <div class="slider-row"><label>Border</label><input type="range" id="cl-border" min="0" max="60" value="12"><span id="cl-border-v">12</span></div>
+        <div class="slider-row"><label>Corners</label><input type="range" id="cl-radius" min="0" max="80" value="16"><span id="cl-radius-v">16</span></div>
+        <div class="swatches" id="cl-swatches"></div>
+      </div>
+      <div class="cpane" id="cpane-photos"><div class="btn-row"><button class="ghost" id="cl-add">Choose photos</button><button class="ghost" id="cl-shuffle">Shuffle</button></div></div>
+    </div>
+    <div class="actionbar"><button class="big" id="cl-save">Save to Photos</button></div>
+    <input id="cl-picker" type="file" accept="image/*" multiple hidden>
+  </section>
+</div>
+
+<!-- sheets & overlays -->
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet-mode" role="dialog" aria-label="Mode" hidden>
+  <div class="grab"></div><h2>Stack mode</h2>
+  <div class="mode-list" id="mode-list"></div>
+</div>
+<div class="sheet" id="sheet-export" role="dialog" aria-label="Save options" hidden>
+  <div class="grab"></div><h2>Save options</h2>
+  <label class="opt"><input type="radio" name="size" value="12" checked><span><b>12 MP</b> <small id="ex-12">recommended</small></span></label>
+  <label class="opt"><input type="radio" name="size" value="full"><span><b>Full resolution</b> <small id="ex-full"></small></span></label>
+  <p class="warn" id="ex-warn" hidden></p>
+  <button class="big" id="ex-go">Save to Photos</button>
+  <div id="ex-done" hidden>
+    <h2 id="ex-ready">Your photo is ready</h2>
+    <p class="small-note" id="ex-info"></p>
+    <button class="big" id="ex-share">Save Image…</button>
+    <p class="small-note">In the menu that opens, tap <b>Save Image</b>.</p>
+    <a class="ghost block" id="ex-download" download="stack.jpg">Download file instead</a>
+  </div>
+</div>
+<div class="sheet" id="sheet-discard" role="dialog" aria-label="Start over" hidden>
+  <div class="grab"></div><h2>Start over?</h2>
+  <p class="small-note">This result will be discarded. Save it first if you want to keep it.</p>
+  <button class="big danger" id="discard-yes">Start over</button>
+  <button class="ghost block wide" data-close>Keep editing</button>
+</div>
+<div class="sheet tall" id="sheet-tips" role="dialog" aria-label="How to shoot" hidden>
+  <div class="grab"></div><h2>How to shoot</h2>
+  <ol class="tips">
+    <li><b>Using Stacker:</b> tap <b>Choose photos</b>, select your shots, wait for the result, tap <b>Save to Photos</b>. Drag the line on the picture to compare with the original.</li>
+    <li><b>Tripod + timer.</b> Use a 3 s timer or a remote so nothing moves between shots.</li>
+    <li><b>Focus in small steps.</b> Manual focus (Halide, ProCamera or the Camera app's tap-and-hold AE/AF Lock). Step from the nearest edge to the farthest so each shot overlaps the last by ~30–50%. 5 shots is usually enough; up to 10 for deep stones.</li>
+    <li><b>Lock exposure</b> for a focus stack (AE/AF Lock). For a light stack, change only the light or the exposure.</li>
+    <li><b>Glossy agates:</b> glare is best killed optically — a polarizing filter on the lens plus polarized light at 90° (cross-polarization), or a big diffuser. Light stacking helps when the glare moves between shots.</li>
+    <li><b>ProRAW:</b> set Settings › Camera › Formats › ProRAW &amp; Resolution Control → ProRAW Format → <b>JPEG Lossless (Most Compatible)</b>. JPEG XL ProRAW can’t be decoded in the browser; Stacker will use its embedded preview instead.</li>
+    <li><b>Translucent stones:</b> if the result looks patchy, try <i>See-through</i> in Adjust, or paint fixes with Retouch.</li>
+  </ol>
+  <button class="big" data-close>Got it</button>
+</div>
+<div class="progress" id="progress" hidden role="status" aria-live="polite">
+  <div class="pbox">
+    <div class="stage" id="p-stage">Working…</div>
+    <div class="bar"><i id="p-bar"></i></div>
+    <div class="steps" id="p-steps"></div>
+    <div class="detail" id="p-detail"></div>
+    <div class="eta" id="p-eta"></div>
+    <button class="ghost" id="p-cancel">Cancel</button>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<div id="boot-fail" hidden><p>Stacker couldn’t start.</p><button onclick="location.reload()">Reload</button></div>
+<script>
+  // never get stuck: if the app module hasn't booted in 8 s, offer a reload
+  setTimeout(function () { if (!window.__stackerReady) { var b = document.getElementById('boot-fail'); if (b) b.hidden = false; } }, 8000);
+</script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
