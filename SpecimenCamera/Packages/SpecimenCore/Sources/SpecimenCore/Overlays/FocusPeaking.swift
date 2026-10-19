@@ -281,7 +281,7 @@ public struct PeakingGPUParams: Sendable {
 }
 
 /// How the ridges are drawn: as hairline segments at SCREEN resolution. Each ridge pixel becomes a short segment along the
-/// edge direction (about 1.2 screen pixels wide, whatever the magnification), so neighbouring ridge pixels join into a
+/// edge direction (about 1 screen pixel wide, whatever the magnification), so neighbouring ridge pixels join into a
 /// fine continuous contour that follows the edge. This is the reference for the Metal fragment shader.
 public enum PeakingRenderer {
     /// Segment half length in source pixels (a little over half a pixel so diagonal ridge pixels still join).
@@ -289,7 +289,7 @@ public enum PeakingRenderer {
 
     /// Line half width in screen pixels, thinner as the view gets more magnified (`viewScale` = screen px per source px).
     public static func lineHalfWidth(viewScale: Float) -> Float {
-        0.65 + 0.25 * min(max(1 - (viewScale - 1) / 3, 0), 1)
+        0.5 + 0.2 * min(max(1 - (viewScale - 1) / 3, 0), 1)
     }
 
     @inline(__always) static func smoothstep(_ e0: Float, _ e1: Float, _ x: Float) -> Float {

@@ -10,7 +10,7 @@ import Foundation
 ///    (flag, edge direction) per pixel. When magnified, only the visible part of the frame is analysed.
 ///  * `peakFinish` — keeps ridge pixels that have a ridge neighbour (noise is speckle, edges are lines) and draws zebras.
 ///  * `fsMain` — presents the result at SCREEN resolution: every ridge pixel becomes a short segment along its edge, about
-///    1.2 screen pixels wide at any magnification, so 4×/8× shows fine contours instead of blocks. For the magnifier it also
+///    1 screen pixel wide at any magnification, so 4×/8× shows fine contours instead of blocks. For the magnifier it also
 ///    draws the live video through a region-of-interest transform.
 ///
 /// `struct Params` must match `SpecimenCore.PeakingGPUParams` field for field (96 bytes).

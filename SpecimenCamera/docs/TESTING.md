@@ -67,7 +67,7 @@ Check the Xcode console / *Console.app* (subsystem `app.specimencamera`) for the
 | 2 | Physical lenses match hardware | Open the lens menu. | Exactly the rear modules your phone has, named with focal length (e.g. "Ultra Wide 13 mm", "Main 24 mm", "Telephoto 5× 120 mm"). No lens your phone lacks. |
 | 3 | ISO changes the exposure config | ISO tab → pick 64, then 800. Watch the live-info bar. | `ISO` value follows; with shutter AUTO the shutter changes to compensate; with shutter manual the picture brightens/darkens. |
 | 4 | Shutter changes exposure duration | SHUTTER tab → 1/250 then 1/15. | Info bar shows the value; image brightness changes accordingly. |
-| 5 | Manual focus moves the lens | FOCUS tab → MF; drag the dial. | The lens-position number changes and the image goes in/out of focus; press-and-hold then drag moves in 25× finer steps (FINE badge). |
+| 5 | Manual focus moves the lens | FOCUS tab → MF; drag the dial. | The lens-position number changes and the image goes in/out of focus; the dial follows your finger smoothly and evenly. |
 | 6 | Red peaking tracks focus | Peaking Medium; drag focus through a banded face. | Red marks appear only on in-focus edges, move across the stone as you focus, almost none on blur or flat areas. Try Low/High. |
 | 7 | 4× assist without changing framing | Tap 4×, pan with one finger, then shoot a single. | Magnified, pannable inspection; the saved photo has the normal full framing. Double-tap returns to 1×. |
 | 8 | 5-frame focus stack captures automatically | FOCUS mode → SET NEAR / SET FAR → frame count 5 → START STACK. | Five frames captured without touching the phone; status shows "CAPTURING FOCUS FRAME i/5". |
@@ -101,7 +101,7 @@ Check the Xcode console / *Console.app* (subsystem `app.specimencamera`) for the
 | # | Check | Pass when |
 |---|---|---|
 | B1 | SINGLE mode, choose RAW / ProRAW, press the shutter repeatedly. | The button is never dead; each press saves (toast "Saved to …") or shows an error message saying why. |
-| B2 | FOCUS tab, drag the slider quickly, then slowly. | Quick = whole range; slow = tiny steps, badge FINE. ± repeats while held. |
+| B2 | FOCUS tab, drag the slider quickly, then slowly. | Same smooth, constant feel at any speed. ± repeats while held. |
 | B3 | Peaking on, tap 4× then 8×, pan around. | Thin red lines on in-focus edges only; the picture stays sharp (full-size buffers); the phone does not warm quickly. |
 | B4 | Set ISO and SHUTTER to manual with a slow shutter (e.g. 1/4 s). LIVE VIEW = MATCH. | The live view is bright and smooth; the saved photo has exactly your ISO/shutter (check the EXIF in the library details). |
 | B5 | Run a 4–5 frame focus stack **hand-held** (small movements). | Processing finishes without an "alignment uncertain" warning; the processing screen shows elapsed time and moves through ALIGNING and BLENDING. |
