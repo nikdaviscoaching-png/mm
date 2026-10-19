@@ -122,7 +122,7 @@ struct MagnifierNavigator: View {
     let zoom: Double
     let center: CGPoint          // normalised (0…1)
     let onPick: (CGPoint) -> Void
-    private let longEdge: CGFloat = 132
+    private let longEdge: CGFloat = 92
 
     var body: some View {
         let a = max(aspect, 0.1)

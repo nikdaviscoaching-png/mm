@@ -162,12 +162,14 @@ struct TopBar: View {
                     Text(library.activeCollection.name).font(.system(size: 13, weight: .heavy)).foregroundColor(Theme.accent).lineLimit(1)
                 }.frame(maxWidth: .infinity, alignment: .leading).frame(minHeight: 40)
             }.buttonStyle(.plain)
-            Menu {
-                ForEach(camera.availableFormats, id: \.self) { f in Button(f.title + (f == camera.captureFormat ? "  ✓" : "")) { camera.captureFormat = f } }
-            } label: { Text(camera.captureFormat.title).frame(minWidth: 44) }.buttonStyle(ChipStyle()).disabled(camera.userControlsLocked)
-            Menu {
-                ForEach(camera.capabilities.lenses) { l in Button(l.name + (l.id == camera.activeLensID ? "  ✓" : "")) { Task { await camera.selectLens(l.id) } } }
-            } label: { Text(shortLens).frame(minWidth: 52) }.buttonStyle(ChipStyle()).disabled(camera.userControlsLocked)
+            let formats = camera.availableFormats
+            ChoiceMenu(label: camera.captureFormat.title, minWidth: 44, options: formats.map { $0.title },
+                       selectedIndex: formats.firstIndex(of: camera.captureFormat), disabled: camera.userControlsLocked,
+                       onPick: { i in if formats.indices.contains(i) { camera.captureFormat = formats[i] } }).equatable()
+            let lenses = camera.capabilities.lenses
+            ChoiceMenu(label: shortLens, minWidth: 52, options: lenses.map { $0.name },
+                       selectedIndex: lenses.firstIndex(where: { $0.id == camera.activeLensID }), disabled: camera.userControlsLocked,
+                       onPick: { i in if lenses.indices.contains(i) { let id = lenses[i].id; Task { await camera.selectLens(id) } } }).equatable()
             Button { settings.histogram = next(settings.histogram) } label: { Image(systemName: "chart.bar.fill") }.buttonStyle(ChipStyle(selected: settings.histogram != .off))
             Button { showSettings = true } label: { Image(systemName: "gearshape.fill") }.buttonStyle(ChipStyle())
         }.padding(.horizontal, 8).padding(.vertical, 4).background(Theme.panel)
@@ -184,6 +186,30 @@ struct TopBar: View {
     }
 
     private func next(_ h: HistogramMode) -> HistogramMode { switch h { case .off: return .luma; case .luma: return .rgb; case .rgb: return .off } }
+}
+
+/// A chip menu that only redraws when its own values change. The top bar is redrawn many times a second by the live
+/// exposure readout, and a SwiftUI Menu rebuilt that often can swallow taps (it "needed a second tap" to open or pick).
+struct ChoiceMenu: View, Equatable {
+    let label: String
+    let minWidth: CGFloat
+    let options: [String]
+    let selectedIndex: Int?
+    let disabled: Bool
+    let onPick: (Int) -> Void
+
+    nonisolated static func == (a: ChoiceMenu, b: ChoiceMenu) -> Bool {
+        a.label == b.label && a.minWidth == b.minWidth && a.options == b.options && a.selectedIndex == b.selectedIndex && a.disabled == b.disabled
+    }
+
+    var body: some View {
+        Menu {
+            ForEach(Array(options.enumerated()), id: \.offset) { i, title in
+                Button(title + (i == selectedIndex ? "  ✓" : "")) { onPick(i) }
+            }
+        } label: { Text(label).frame(minWidth: minWidth) }
+        .buttonStyle(ChipStyle()).disabled(disabled)
+    }
 }
 
 // MARK: - Live info

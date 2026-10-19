@@ -38,11 +38,18 @@ struct SettingsView: View {
                 } header: { Text("Stacks") } footer: {
                     Text("Off (default): source frames and every intermediate are deleted once the final image is saved and verified, leaving one image. On: sources are kept in an organised folder in the app.")
                 }
-                Section("Stack output") {
+                Section {
                     Picker("Default Final Format", selection: $settings.defaultFinalFormat) { ForEach(FinalFormat.stackFormats, id: \.self) { Text($0.title).tag($0) } }
                     Picker("Default Stack Quality", selection: $settings.stackQuality) { ForEach(StackQuality.allCases, id: \.self) { Text($0.title).tag($0) } }
-                    Picker("Focus step density", selection: $settings.stackDensity) { ForEach(StackDensity.allCases, id: \.self) { Text($0.title).tag($0) } }
+                    Picker("AUTO frame spacing", selection: $settings.stackDensity) { ForEach(StackDensity.allCases, id: \.self) { Text($0.title).tag($0) } }
                     Picker("Save Final To", selection: $settings.saveDestination) { ForEach(SaveDestination.allCases, id: \.self) { Text($0.title).tag($0) } }
+                } header: { Text("Stack output") } footer: {
+                    Text("AUTO frame spacing: how many frames AUTO takes between NEAR and FAR. Fine and Extra fine take more, tighter frames for maximum sharpness; Fast takes fewer.")
+                }
+                Section {
+                    Picker("Viewfinder brightness assist", selection: $settings.previewAssist) { ForEach(PreviewAssist.allCases, id: \.self) { Text($0 == .off ? "OFF (as shot)" : $0.title).tag($0) } }
+                } header: { Text("Viewfinder") } footer: {
+                    Text("Only when ISO and shutter are both manual. Brightens or smooths the LIVE VIEW so you can see and focus with a slow shutter; the photo always uses your own ISO and shutter. MATCH shows the photo's real brightness. +1/+2/+3 EV look brighter than the photo will be. Same as the sun chip at the top right of the preview. \(settings.previewAssist.explanation)")
                 }
                 Section("Camera") {
                     LabeledContent("Rear cameras", value: camera.capabilities.lenses.map { $0.name }.joined(separator: ", "))

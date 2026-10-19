@@ -136,17 +136,8 @@ struct StackPanel: View {
     }
 
     @ViewBuilder private var countMenu: some View {
-        Menu {
-            Button("AUTO") { stack.frameCountChoice = .auto }
-            ForEach(StackSessionModel.presets, id: \.self) { n in Button("\(n) frames") { stack.frameCountChoice = .manual(n) } }
-            Button("Custom…") { stack.frameCountChoice = .manual(stack.plan?.count ?? 10) }
-        } label: {
-            HStack {
-                Text("FRAMES:").font(.system(size: 10, weight: .bold)).foregroundColor(.gray)
-                Text(countLabel).font(.system(size: 13, weight: .heavy, design: .monospaced)).foregroundColor(.white)
-                Image(systemName: "chevron.down").font(.caption2).foregroundColor(.gray)
-            }.padding(.horizontal, 10).frame(minHeight: 44).background(Theme.chip).clipShape(RoundedRectangle(cornerRadius: 8))
-        }
+        FrameCountMenu(label: countLabel, presets: StackSessionModel.presets, customStart: stack.plan?.count ?? 10,
+                       onPick: { stack.frameCountChoice = $0 }).equatable()
         if case .manual(let n) = stack.frameCountChoice {
             Stepper("", value: Binding(get: { n }, set: { stack.frameCountChoice = .manual($0) }), in: 2...FocusStepPlanner.maximumFrames).labelsHidden()
         }
@@ -208,6 +199,33 @@ struct StackPanel: View {
                 EmptyView()
             }
             HStack { Spacer(); Button("CANCEL STACK") { Task { await stack.cancelStack() } }.buttonStyle(ActionStyle(color: Theme.danger, prominent: false)) }
+        }
+    }
+}
+
+/// Frame-count menu that only redraws when its own values change (the stack panel is redrawn many times a second by the
+/// live camera readout, which made the menu swallow taps).
+struct FrameCountMenu: View, Equatable {
+    let label: String
+    let presets: [Int]
+    let customStart: Int
+    let onPick: (FrameCountChoice) -> Void
+
+    nonisolated static func == (a: FrameCountMenu, b: FrameCountMenu) -> Bool {
+        a.label == b.label && a.presets == b.presets && a.customStart == b.customStart
+    }
+
+    var body: some View {
+        Menu {
+            Button("AUTO") { onPick(.auto) }
+            ForEach(presets, id: \.self) { n in Button("\(n) frames") { onPick(.manual(n)) } }
+            Button("Custom…") { onPick(.manual(customStart)) }
+        } label: {
+            HStack {
+                Text("FRAMES:").font(.system(size: 10, weight: .bold)).foregroundColor(.gray)
+                Text(label).font(.system(size: 13, weight: .heavy, design: .monospaced)).foregroundColor(.white)
+                Image(systemName: "chevron.down").font(.caption2).foregroundColor(.gray)
+            }.padding(.horizontal, 10).frame(minHeight: 44).background(Theme.chip).clipShape(RoundedRectangle(cornerRadius: 8))
         }
     }
 }

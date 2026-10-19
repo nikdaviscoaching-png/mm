@@ -23,11 +23,26 @@ public struct FocusDistanceModel: Sendable, Equatable {
     public func lensPosition(diopters d: Double) -> Double { 1 - min(max(d / (1000 / effectiveMinimumMM), 0), 1) }
 }
 
+/// How tightly AUTO spaces focus frames. Declared fewest → most frames (that is the order shown in Settings).
+/// Raw values are stored in user settings, so existing ones never change.
 public enum StackDensity: String, Codable, Sendable, CaseIterable {
-    case conservative, normal, economical
-    /// Step as a fraction of the estimated total depth of field.
-    var stepFraction: Double { switch self { case .conservative: return 0.35; case .normal: return 0.5; case .economical: return 0.7 } }
-    public var title: String { rawValue.capitalized }
+    case economical, normal, conservative, extraFine
+    /// Step as a fraction of the estimated total depth of field (smaller = more, tighter frames).
+    var stepFraction: Double {
+        switch self { case .economical: return 0.7; case .normal: return 0.5; case .conservative: return 0.35; case .extraFine: return 0.25 }
+    }
+    public var title: String {
+        switch self {
+        case .economical: return "Fast (fewer frames)"
+        case .normal: return "Normal"
+        case .conservative: return "Fine (more frames)"
+        case .extraFine: return "Extra fine (most frames)"
+        }
+    }
+    /// Lower-case name used inside sentences.
+    public var shortName: String {
+        switch self { case .economical: return "fast"; case .normal: return "normal"; case .conservative: return "fine"; case .extraFine: return "extra fine" }
+    }
 }
 
 public struct FocusPlan: Sendable, Equatable {
@@ -99,11 +114,11 @@ public enum FocusStepPlanner {
             dof = d; used = true
             let step = max(d * density.stepFraction, 1e-4)
             count = Int(ceil(dSpan / step)) + 1
-            note = "estimated from depth of field (\(String(format: "%.2f", d)) D) with \(density.title.lowercased()) overlap"
+            note = "estimated from depth of field (\(String(format: "%.2f", d)) D) with \(density.shortName) spacing"
         } else {
             // Empirical fallback: lens position distance per frame ~0.045 conservative … 0.08 economical.
             let perFrame: Double = {
-                switch density { case .conservative: return 0.03; case .normal: return 0.045; case .economical: return 0.065 }
+                switch density { case .extraFine: return 0.022; case .conservative: return 0.03; case .normal: return 0.045; case .economical: return 0.065 }
             }()
             count = Int(ceil(span / perFrame)) + 1
             note = "empirical stepping (device optics not fully known)"

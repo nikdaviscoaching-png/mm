@@ -105,8 +105,13 @@ final class CameraController: ObservableObject {
 
     // MARK: Lens
 
+    /// True while a lens switch is in progress; extra taps during a switch are ignored instead of queueing more switches.
+    private var lensSwitchInFlight = false
+
     func selectLens(_ id: String) async {
-        guard !userControlsLocked, id != activeLensID, capabilities.lens(id: id) != nil else { return }
+        guard !userControlsLocked, !lensSwitchInFlight, id != activeLensID, capabilities.lens(id: id) != nil else { return }
+        lensSwitchInFlight = true
+        defer { lensSwitchInFlight = false }
         do {
             try await engine.setLens(id)
             activeLensID = id
