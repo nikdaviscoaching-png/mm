@@ -22,7 +22,7 @@ struct SettingsView: View {
                 }
                 Section {
                     Picker("Shutter delay", selection: $settings.shutterDelaySeconds) {
-                        Text("Off").tag(0); Text("2 seconds").tag(2); Text("5 seconds").tag(5)
+                        Text("Off").tag(0); Text("2 seconds").tag(2); Text("5 seconds").tag(5); Text("10 seconds").tag(10)
                     }
                 } header: { Text("Shutter") } footer: {
                     Text("Waits after you press the shutter so the phone stops shaking before the exposure. Applies to single photos, the first frame of a stack and each lighting frame. Recommended on a tripod or stand.")
