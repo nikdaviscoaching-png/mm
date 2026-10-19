@@ -113,3 +113,43 @@ struct HistogramView: View {
         }
     }
 }
+
+/// Magnifier navigator: live full-frame thumbnail with a box showing the magnified region. Tap or drag on it to move the
+/// magnified view (and focus peaking) to that part of the frame.
+struct MagnifierNavigator: View {
+    let image: CGImage?
+    let aspect: CGFloat          // width / height of the upright frame
+    let zoom: Double
+    let center: CGPoint          // normalised (0…1)
+    let onPick: (CGPoint) -> Void
+    private let longEdge: CGFloat = 132
+
+    var body: some View {
+        let a = max(aspect, 0.1)
+        let size = a >= 1 ? CGSize(width: longEdge, height: longEdge / a) : CGSize(width: longEdge * a, height: longEdge)
+        let z = CGFloat(max(zoom, 1))
+        let ox = min(max(center.x - 0.5 / z, 0), 1 - 1 / z)
+        let oy = min(max(center.y - 0.5 / z, 0), 1 - 1 / z)
+        ZStack(alignment: .topLeading) {
+            if let image {
+                Image(decorative: image, scale: 1).resizable().frame(width: size.width, height: size.height)
+            } else {
+                Color.black.opacity(0.6).frame(width: size.width, height: size.height)
+            }
+            Rectangle()
+                .stroke(Theme.accent, lineWidth: 1.5)
+                .background(Theme.accent.opacity(0.15))
+                .frame(width: max(size.width / z, 6), height: max(size.height / z, 6))
+                .offset(x: ox * size.width, y: oy * size.height)
+        }
+        .frame(width: size.width, height: size.height, alignment: .topLeading)
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.white.opacity(0.7), lineWidth: 1))
+        .contentShape(Rectangle())
+        .gesture(DragGesture(minimumDistance: 0).onChanged { v in
+            onPick(CGPoint(x: min(max(v.location.x / size.width, 0), 1),
+                           y: min(max(v.location.y / size.height, 0), 1)))
+        })
+        .shadow(color: .black.opacity(0.5), radius: 3)
+    }
+}

@@ -99,6 +99,15 @@ struct RootView: View {
                         }
                     }.padding(6)
                     Spacer()
+                    if overlay.config.zoom > 1.001 {
+                        HStack {
+                            MagnifierNavigator(image: overlay.miniMap, aspect: overlay.bufferAspect,
+                                               zoom: overlay.config.zoom, center: overlay.config.center,
+                                               onPick: { p in jumpMagnifier(to: p) })
+                            Spacer()
+                        }
+                        .padding(.leading, 8).padding(.bottom, 6)
+                    }
                     if settings.showLiveInfo { LiveInfoBar() }
                 }
                 if let msg = camera.interruption {
@@ -117,6 +126,14 @@ struct RootView: View {
         let z = c.zoom
         let ox = min(max(c.center.x - 0.5 / z, 0), 1 - 1 / z), oy = min(max(c.center.y - 0.5 / z, 0), 1 - 1 / z)
         c.center = CGPoint(x: ox + p.x / z, y: oy + p.y / z)
+        overlay.config = c
+    }
+
+    /// Navigator tap/drag: centre the magnified view on that point of the full frame (kept inside the frame).
+    private func jumpMagnifier(to p: CGPoint) {
+        var c = overlay.config
+        let half = CGFloat(0.5 / max(c.zoom, 1))
+        c.center = CGPoint(x: min(max(p.x, half), 1 - half), y: min(max(p.y, half), 1 - half))
         overlay.config = c
     }
 

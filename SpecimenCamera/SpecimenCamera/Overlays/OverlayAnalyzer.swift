@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import CoreVideo
+import CoreImage
 import SwiftUI
 import SpecimenCore
 
@@ -12,7 +13,14 @@ final class OverlayAnalyzer: ObservableObject {
     @Published private(set) var bufferAspect: CGFloat = 3.0 / 4.0       // width / height of the (upright) video buffer
     @Published private(set) var cpuOverlay: CGImage?
     @Published private(set) var usingGPU = true
-    @Published var config = OverlayConfig() { didSet { box.set(config) } }
+    /// Small live full-frame thumbnail shown as a navigator while magnified (nil when not magnified).
+    @Published private(set) var miniMap: CGImage?
+    @Published var config = OverlayConfig() {
+        didSet {
+            box.set(config)
+            if config.zoom <= 1.001, miniMap != nil { miniMap = nil }
+        }
+    }
 
     private let box = ConfigBox()
     let renderer: OverlayRenderer?
@@ -45,6 +53,18 @@ final class OverlayAnalyzer: ObservableObject {
             } else { CVPixelBufferUnlockBaseAddress(pb, .readOnly) }
         }
         if rendererForVideoQueue == nil, cfg.peaking != .off, n % 3 == 0 { cpuFallback(pb, cfg) }
+        if cfg.zoom > 1.001, n % 5 == 0 { makeMiniMap(pb) }
+    }
+
+    /// Downscaled (~240 px long edge) full-frame thumbnail for the magnifier navigator, a few times per second.
+    private nonisolated func makeMiniMap(_ pb: CVPixelBuffer) {
+        guard box.beginThumb() else { return }
+        let w = CVPixelBufferGetWidth(pb), h = CVPixelBufferGetHeight(pb)
+        let s = 240.0 / Double(max(w, h, 1))
+        let ci = CIImage(cvPixelBuffer: pb).transformed(by: CGAffineTransform(scaleX: s, y: s))
+        let img = box.ciContext.createCGImage(ci, from: ci.extent.integral)
+        box.endThumb()
+        Task { @MainActor in if self.config.zoom > 1.001 { self.miniMap = img } }
     }
 
     // The renderer is created once on init and never replaced, so reading it from the video queue is safe.
@@ -99,4 +119,9 @@ private final class ConfigBox: @unchecked Sendable {
     func nextFrame() -> Int { lock.lock(); defer { lock.unlock() }; frames += 1; return frames }
     func beginCPU() -> Bool { lock.lock(); defer { lock.unlock() }; if cpuBusy { return false }; cpuBusy = true; return true }
     func endCPU() { lock.lock(); cpuBusy = false; lock.unlock() }
+    // Magnifier navigator thumbnail (CIContext is thread-safe; one shared instance).
+    let ciContext = CIContext(options: [.cacheIntermediates: false])
+    private var thumbBusy = false
+    func beginThumb() -> Bool { lock.lock(); defer { lock.unlock() }; if thumbBusy { return false }; thumbBusy = true; return true }
+    func endThumb() { lock.lock(); thumbBusy = false; lock.unlock() }
 }
