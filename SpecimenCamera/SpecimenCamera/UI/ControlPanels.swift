@@ -96,23 +96,19 @@ struct FocusControl: View {
     }
 }
 
-/// Focus slider. Drag anywhere on it with your thumb: a quick swipe moves across the whole range, and the slower you move the
-/// finer it gets (down to ~4 % of the finger travel) — so you can sweep to the area and then creep onto the exact plane without
-/// switching modes. The logic lives in `FocusDragTracker` (unit-tested); this view only feeds it positions and times.
+/// Focus slider. Drag anywhere on it with your thumb: the lens follows your finger one-to-one across the whole range, at a
+/// constant sensitivity (no speed-dependent slow-down), so the feel is the same whether you sweep or creep. The ± buttons
+/// next to it are for single-step nudges.
 struct FocusDial: View {
     @EnvironmentObject var camera: CameraController
-    @State private var tracker = FocusDragTracker()
     @State private var lastX: CGFloat?
-    @State private var lastTime: TimeInterval = 0
     @State private var dragging = false
-    @State private var gain = 1.0
 
     var body: some View {
         GeometryReader { g in
-            let fine = dragging && gain < 0.35
             let x = CGFloat(ManualFocusMapping.control(lensPosition: camera.displayedLensPosition)) * g.size.width
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 8).fill(fine ? Theme.accent.opacity(0.22) : Theme.chip)
+                RoundedRectangle(cornerRadius: 8).fill(Theme.chip)
                 Path { p in
                     for i in 0...20 {
                         let tx = g.size.width * CGFloat(i) / 20
@@ -121,31 +117,24 @@ struct FocusDial: View {
                 }.stroke(Color.gray.opacity(0.6), lineWidth: 1)
                 Capsule().fill(Theme.accent).frame(width: dragging ? 8 : 5, height: g.size.height - 8)
                     .offset(x: min(max(x - 3, 2), g.size.width - 10))
-                if dragging {
-                    Text(fine ? "FINE" : (gain < 0.7 ? "MEDIUM" : "FULL RANGE")).font(.system(size: 10, weight: .heavy)).foregroundColor(Theme.accent)
-                        .padding(.leading, 8).frame(maxHeight: .infinity, alignment: .top).padding(.top, 3)
-                } else {
-                    Text("DRAG · slow = fine").font(.system(size: 9, weight: .semibold)).foregroundColor(.gray.opacity(0.8))
+                if !dragging {
+                    Text("DRAG TO FOCUS").font(.system(size: 9, weight: .semibold)).foregroundColor(.gray.opacity(0.8))
                         .padding(.leading, 8).frame(maxHeight: .infinity, alignment: .top).padding(.top, 3)
                 }
             }
             .contentShape(Rectangle())
             .gesture(DragGesture(minimumDistance: 0)
                 .onChanged { v in
-                    let now = Date().timeIntervalSinceReferenceDate
                     guard dragging, let lx = lastX else {
-                        dragging = true; lastX = v.location.x; lastTime = now; tracker.reset(); gain = 1
+                        dragging = true; lastX = v.location.x
                         UISelectionFeedbackGenerator().selectionChanged()
                         return
                     }
-                    let dx = v.location.x - lx, dt = now - lastTime
-                    guard dt > 0.001 else { return }
-                    lastX = v.location.x; lastTime = now
-                    let move = tracker.update(dragFraction: Double(dx / max(g.size.width, 1)), dt: dt)
-                    gain = FocusDragTracker.gain(forSpeed: tracker.smoothedSpeed)
-                    if move != 0 { camera.setLensPosition(ManualFocusMapping.apply(drag: move, to: camera.displayedLensPosition, fine: false)) }
+                    let dx = v.location.x - lx
+                    lastX = v.location.x
+                    if dx != 0 { camera.setLensPosition(ManualFocusMapping.apply(drag: Double(dx / max(g.size.width, 1)), to: camera.displayedLensPosition, fine: false)) }
                 }
-                .onEnded { _ in dragging = false; lastX = nil; tracker.reset() })
+                .onEnded { _ in dragging = false; lastX = nil })
         }.frame(height: 48)
     }
 }
