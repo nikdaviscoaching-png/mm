@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#173c36"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Seller Hub">
+<title>Seller Hub · Mineral Murals</title>
+<link rel="icon" href="/assets/favicon-32.png"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png"><link rel="manifest" href="/seller/manifest.webmanifest"><link rel="stylesheet" href="/seller/style.css?v=20261021-payments">
+</head>
+<body>
+<a href="#content" class="skip-link">Skip to workspace</a>
+<div id="login" class="login" hidden>
+<img src="/assets/logo-mark.png" alt="Mineral Murals"><p class="eyebrow">OWNER ACCESS</p><h1>Welcome to the bench.</h1><p>The Seller Hub is your private workspace. Customers shop the public storefront.</p>
+<a class="primary btn" id="hosted-signin" href="/signin-with-chatgpt?return_to=%2Fseller" target="_top">Sign in to Seller Hub</a><p id="login-error" role="alert"></p><small>Use the ChatGPT account that owns this private workspace. Customers can browse the public shop without signing in.</small><a href="/">Go to the public storefront →</a>
+</div>
+<div id="app" hidden>
+<aside>
+<a class="brand" href="/seller#home"><img src="/assets/logo-mark.png" alt=""><span>Mineral Murals<small>PRIVATE SELLER HUB</small></span></a>
+<nav id="nav" aria-label="Seller workspace">
+<button data-view="home"><span class="nav-icon" aria-hidden="true">⌂</span><span>Home</span></button>
+<button data-view="video"><span class="nav-icon" aria-hidden="true">▷</span><span>Video</span></button>
+<button data-view="quick"><span class="nav-icon" aria-hidden="true">＋</span><span>Add one</span></button>
+<button data-view="inventory"><span class="nav-icon" aria-hidden="true">▦</span><span>Inventory</span></button>
+<button data-view="connections"><span class="nav-icon" aria-hidden="true">⇄</span><span>Connections</span></button>
+</nav>
+<div class="aside-foot"><button class="quiet" data-view="orders">Orders & shipments</button><button class="quiet" data-view="ai">AI & settings</button><a href="/">Public storefront ↗</a><button id="logout" class="quiet">Sign out</button></div>
+</aside>
+<div class="workspace">
+<header><div class="page-heading"><button id="back" class="icon-button" aria-label="Back to Seller Hub home" hidden>←</button><div><span class="eyebrow">MINERAL MURALS · OWNER ONLY</span><h1 id="heading" tabindex="-1">The bench</h1></div></div><div class="header-tools"><a class="store-link" href="/" aria-label="Switch to public storefront">Storefront ↗</a><button id="settings-link" class="icon-button" aria-label="AI and settings">⚙</button><button id="header-logout" class="quiet">Sign out</button></div></header>
+<div id="environment-note" class="local-note" role="status">Checking workspace status…</div>
+<div id="connection-banner" class="network-banner" role="status" hidden>Connection lost. Your open work stays here. Reconnect to save or publish.</div>
+<main id="content" tabindex="-1"></main>
+</div>
+</div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<dialog id="editor" aria-labelledby="editor-title"><div id="editor-body"></div></dialog>
+<script src="/seller/app.js?v=20261021-payments" defer></script>
+</body>
+</html>

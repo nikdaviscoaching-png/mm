@@ -1,0 +1,13 @@
+import {readFile,writeFile,mkdir,readdir,copyFile,rm} from 'node:fs/promises';
+import path from 'node:path';
+const root=process.cwd(),staticDir=path.join(root,'source-public'),assets={};
+const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.svg':'image/svg+xml','.webmanifest':'application/manifest+json'};
+async function scan(dir){for(const f of await readdir(dir,{withFileTypes:true})){const abs=path.join(dir,f.name),rel='/'+path.relative(staticDir,abs).split(path.sep).join('/');if(f.isDirectory()){if(rel!=='/data')await scan(abs);}else if(rel.startsWith('/assets/brand/')&&!rel.endsWith('mineral-murals-logo.png'))continue;else{assets[rel]={type:mime[path.extname(f.name)]||'application/octet-stream',body:(await readFile(abs)).toString('base64')};}}}
+await scan(staticDir);await writeFile('cloud/static-assets.js','export const ASSETS='+JSON.stringify(assets)+';\n');
+const modules=[['store','Store'],['facts','Facts'],['gallery','Gallery'],['static-assets','StaticAssets'],['maintenance','Maintenance'],['marketplaces','Marketplaces'],['operations','Operations'],['payments','Payments'],['core','Core']];const names=Object.fromEntries(modules.map(([file,name])=>[file,name]));
+function imports(source){return source.replace(/import\s*\{([^}]+)\}\s*from\s*['"]\.\/([^'"]+)\.js['"];?/g,(_,list,file)=>`const {${list}}=${names[file]};`);}
+let out='// Mineral Murals hosted build. Generated from cloud modules and retained source-public.\n';
+for(const [file,name]of modules){let s=await readFile('cloud/'+file+'.js','utf8');const exported=[...s.matchAll(/export\s+(?:async\s+)?(?:function|class|const|let)\s+(\w+)/g)].map(m=>m[1]);s=imports(s).replace(/export\s+(?=(?:async\s+)?(?:function|class|const|let))/g,'');out+=`const ${name}=(()=>{\n${s}\nreturn {${exported.join(',')}};})();\n`;}
+out+=imports(await readFile('cloud/router.js','utf8'));await writeFile('worker/index.js',out);await rm('dist',{recursive:true,force:true});await mkdir('dist/server',{recursive:true});await mkdir('dist/.openai',{recursive:true});await copyFile('worker/index.js','dist/server/index.js');await copyFile('.openai/hosting.json','dist/.openai/hosting.json');
+async function cpDir(from,to){await mkdir(to,{recursive:true});for(const f of await readdir(from,{withFileTypes:true})){if(f.isDirectory())await cpDir(path.join(from,f.name),path.join(to,f.name));else await copyFile(path.join(from,f.name),path.join(to,f.name));}}
+await cpDir('drizzle','dist/.openai/drizzle');console.log(JSON.stringify({embedded_assets:Object.keys(assets).length,worker_bytes:Buffer.byteLength(out)}));

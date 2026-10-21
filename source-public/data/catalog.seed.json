@@ -1,0 +1,3010 @@
+{
+ "schema": 1,
+ "rev": 0,
+ "updated": "2026-10-15T12:00:00Z",
+ "settings": {
+  "hero_title": "One-of-one agates, cut and polished",
+  "hero_text": "Kentucky, Chihuahua, Patagonia, Montana and Ohio’s Flint Ridge. Every photo shows the exact stone you receive.",
+  "about_text": "Mineral Murals offers collector-grade agates and minerals: Kentucky agate, Laguna agate from Chihuahua, Condor agate from Argentina, Montana and Black Hills material, Ohio flint from Flint Ridge, geodes, and select mineral specimens like malachite, fluorite and Ethiopian opal.\n\nThe shop is based in Northeast Ohio. Every piece listed is one-of-one: the photographs show the exact specimen you will receive, and any fractures, repairs or treatments are disclosed in the listing.\n\nOrders ship within 1–2 days, packed to survive the trip.",
+  "contact_email": "",
+  "ebay_store_url": "https://www.ebay.com/usr/mineralmurals",
+  "etsy_store_url": "https://www.etsy.com/shop/Mineralmurals",
+  "ships_note": "Ships within 1–2 days, packed to survive the trip. You receive the exact specimen pictured.",
+  "announcement": "",
+  "shipping_flat": 8.0,
+  "free_shipping_over": 150.0,
+  "allowed_countries": [
+   "US"
+  ],
+  "stripe_tax": false,
+  "museum_intro": "Pieces from my own collection. Not for sale, just worth seeing.",
+  "show_builds": false,
+  "builds_intro": "Plans and build notes for the lapidary machines I build in the shop, starting with reciprocating flat laps. Coming soon.",
+  "logo_url": "/assets/logo-mark.png"
+ },
+ "sections": [
+  {
+   "id": "kentucky-agate",
+   "name": "Kentucky Agate",
+   "group": "USA"
+  },
+  {
+   "id": "black-hills-teepee-canyon",
+   "name": "Black Hills — Teepee Canyon",
+   "group": "USA"
+  },
+  {
+   "id": "montana-dryhead-agate",
+   "name": "Montana — Dryhead Agate",
+   "group": "USA"
+  },
+  {
+   "id": "ohio-flint-and-flint-ridge",
+   "name": "Ohio Flint & Flint Ridge",
+   "group": "USA"
+  },
+  {
+   "id": "thunder-eggs",
+   "name": "Thunder Eggs",
+   "group": "USA"
+  },
+  {
+   "id": "laguna-and-mexican-agates",
+   "name": "Laguna & Mexican Agates",
+   "group": "Mexico"
+  },
+  {
+   "id": "condor-agate",
+   "name": "Condor Agate",
+   "group": "Argentina"
+  },
+  {
+   "id": "moroccan-agates",
+   "name": "Moroccan Agates",
+   "group": "Morocco"
+  },
+  {
+   "id": "geodes",
+   "name": "Geodes",
+   "group": ""
+  },
+  {
+   "id": "minerals-and-crystals",
+   "name": "Minerals & Crystals",
+   "group": ""
+  },
+  {
+   "id": "rough-rock",
+   "name": "Rough Rock",
+   "group": ""
+  }
+ ],
+ "listings": [
+  {
+   "id": "eb-168731515636",
+   "title": "Teepee Canyon Agate Half Nodule 10.5 Oz Full Face Mirror Polished Black Hills",
+   "price": 90.0,
+   "status": "available",
+   "section": "black-hills-teepee-canyon",
+   "locality": "Teepee Canyon, Black Hills, South Dakota, USA",
+   "material": "Teepee Canyon agate",
+   "form": "Polished half",
+   "size": "",
+   "weight": "",
+   "description": "Teepee Canyon agate from the Black Hills of South Dakota — a substantial full half nodule at 10.5 oz, which you don't see offered nearly as often as the smaller slabs and fragments from this locality. The cut face is mirror-polished, bringing out vivid orange, red, cream, and gray fortification banding with a small druzy center. The natural exterior is left intact for a great display-specimen look.\n\nDisclosure: natural fractures and healed features are present in the host material, as shown in the photos. You will receive the exact specimen pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168731515636/01.webp",
+     "w": 1017,
+     "h": 1006
+    },
+    {
+     "src": "/photos/EB-168731515636/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168731515636/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168731515636/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168731515636/05.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168731515636",
+   "etsy_url": "https://www.etsy.com/listing/4591562826",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-15T12:00:00Z",
+   "updated": "2026-10-15T12:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168721246774",
+   "title": "Botryoidal Malachite Freeform 3.5 Lb Polished Green Mineral Specimen Congo",
+   "price": 419.0,
+   "status": "available",
+   "section": "minerals-and-crystals",
+   "locality": "Not specified in listing",
+   "material": "Malachite",
+   "form": "Polished freeform",
+   "size": "",
+   "weight": "",
+   "description": "XL malachite freeform from the Congo — 3.5 pounds of deep green botryoidal pattern, selectively polished. Individual botryoidal formations were cut and polished while the original matrix was left between them, giving it a sculptural, three-dimensional look you don't get from a conventional slab.\n\nTight concentric bull's-eyes run from deep forest green and black-green to bright emerald banding, with sharp dense rings on the largest eyes. The contrast between the polished formations and the rough natural matrix makes each polished area stand out. Partially polished, partially natural — more organic than a fully finished piece.\n\nMeasures about 15.6 x 11.1 x 8.4 as listed. A major cabinet specimen, and the exact piece pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168721246774/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168721246774/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168721246774/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168721246774/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168721246774/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168721246774/06.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168721246774/07.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168721246774/08.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168721246774/09.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168721246774/10.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168721246774",
+   "etsy_url": "https://www.etsy.com/listing/4591649248",
+   "featured": true,
+   "notes": "",
+   "created": "2026-10-15T06:00:00Z",
+   "updated": "2026-10-15T06:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168706345315",
+   "title": "Condor Agate Pair Argentina Red Orange Mirror Polished Halves Patagonia",
+   "price": 299.0,
+   "status": "available",
+   "section": "condor-agate",
+   "locality": "Patagonia, Argentina",
+   "material": "Condor agate",
+   "form": "Polished pair (2 halves)",
+   "size": "",
+   "weight": "",
+   "description": "Both matching halves of an exceptional Condor agate from Argentina. Vivid red and fiery orange banding wraps around tighter olive, charcoal, and darker fortifications, set in a translucent blue-gray to lavender chalcedony body — a color combination you don't see in typical red-dominant Condors. Thin red and white banding runs along the natural outer edge, with small crystalline areas in the face.\n\nHigh-gloss mirror polish with the natural exterior retained. You get both halves — the complete nodule exactly as it was cut, and the exact specimen pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168706345315/01.webp",
+     "w": 1164,
+     "h": 1045
+    },
+    {
+     "src": "/photos/EB-168706345315/02.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168706345315/03.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168706345315/04.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168706345315/05.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168706345315/06.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168706345315/07.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168706345315/08.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168706345315/09.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168706345315/10.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168706345315/11.webp",
+     "w": 1600,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168706345315",
+   "etsy_url": "https://www.etsy.com/listing/4590931943",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-15T00:00:00Z",
+   "updated": "2026-10-15T00:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168704471321",
+   "title": "Teepee Canyon Agate 2 Lb Display Specimen Mirror Polished Stand Black Hills",
+   "price": 499.0,
+   "status": "available",
+   "section": "black-hills-teepee-canyon",
+   "locality": "Teepee Canyon, Black Hills, South Dakota, USA",
+   "material": "Teepee Canyon agate",
+   "form": "Polished display specimen with stand",
+   "size": "",
+   "weight": "",
+   "description": "About 1.93 lb of Teepee Canyon agate from the Black Hills of South Dakota (Custer County), cut and finished to a true mirror polish. Tight fortification banding in vivid red, orange, yellow, cream, and white with subtle gray and lavender — two connected, strongly defined fortification areas with crisp band separation, set in natural tan host material. Substantial natural exterior preserved.\n\nIncludes the black display stand as shown. Disclosure: the stand is lightly adhered to the specimen and can be removed. You will receive the exact specimen pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168704471321/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168704471321/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168704471321/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168704471321/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168704471321/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168704471321/06.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168704471321/07.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168704471321/08.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168704471321",
+   "etsy_url": "https://www.etsy.com/listing/4591639193",
+   "featured": true,
+   "notes": "",
+   "created": "2026-10-14T18:00:00Z",
+   "updated": "2026-10-14T18:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168704122783",
+   "title": "Chihuahua Laguna Agate Pair Smoker Parallax Mirror Polished Halves Mexico",
+   "price": 259.0,
+   "status": "available",
+   "section": "laguna-and-mexican-agates",
+   "locality": "Chihuahua, Mexico",
+   "material": "Laguna agate",
+   "form": "Polished pair (half nodules)",
+   "size": "",
+   "weight": "",
+   "description": "A cut-matched pair of Laguna agate halves from Mexico, both taken to a true mirror polish. The faces run about 2 inches across and show extremely tight fortification banding in cream, white, caramel, tan, and golden brown, with the kind of deep parallax that makes the layers look three-dimensional as the light moves.\n\nOne half keeps a deep, complete natural rind; the matching half is shallower but the rind is complete with no windows. Multiple tight bands wrap the centers of both halves, and the pair sits together the way they came out of the nodule.\n\nLaguna agate from Chihuahua, Mexico is one of the most collected agate localities in the world, and matched polished pairs with this level of banding density don't surface often. You will receive the exact pair pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168704122783/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168704122783/02.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168704122783/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168704122783/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168704122783/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168704122783/06.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168704122783/07.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168704122783/08.webp",
+     "w": 900,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168704122783",
+   "etsy_url": "https://www.etsy.com/listing/4590942642",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-14T12:00:00Z",
+   "updated": "2026-10-14T12:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168690321664",
+   "title": "Teepee Canyon Agate Slab 10x8 Lapidary Rough Cab Cutting Black Hills",
+   "price": 46.0,
+   "status": "available",
+   "section": "rough-rock",
+   "locality": "Teepee Canyon, Black Hills, South Dakota, USA",
+   "material": "Teepee Canyon agate",
+   "form": "Slab (lapidary rough)",
+   "size": "",
+   "weight": "",
+   "description": "Large clean-cut Teepee Canyon agate slab, about 10 x 8 inches — full-pattern lapidary rough for cutting custom cabochons, or keep it whole as a specimen slab. Striking color and pattern from the Black Hills of South Dakota.\n\nCut faces unpolished, as shown. You will receive the exact slab pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168690321664/01.webp",
+     "w": 1600,
+     "h": 1200
+    },
+    {
+     "src": "/photos/EB-168690321664/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168690321664/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168690321664/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168690321664/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168690321664/06.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168690321664/07.webp",
+     "w": 1600,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168690321664",
+   "etsy_url": "https://www.etsy.com/listing/4591660207",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-14T06:00:00Z",
+   "updated": "2026-10-14T06:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168685839684",
+   "title": "Kentucky Agate Half Red Purple Yellow Old Stock Mirror Polished Specimen",
+   "price": 99.0,
+   "status": "available",
+   "section": "kentucky-agate",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Polished half",
+   "size": "",
+   "weight": "",
+   "description": "Rare old-stock Kentucky agate half with vivid red, purple, and yellow banding across a mirror-polished face. Old-stock Kentucky material with this color range is getting harder to find, and the contrast between the warm reds and yellows against the purple zones makes this one stand out on the shelf.\n\nHalf-nodule form with natural exterior. You will receive the exact piece pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168685839684/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168685839684/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168685839684/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168685839684/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168685839684/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168685839684/06.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168685839684",
+   "etsy_url": "https://www.etsy.com/listing/4590932847",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-14T00:00:00Z",
+   "updated": "2026-10-14T00:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168677400158",
+   "title": "Amethyst Geode Pair Las Choyas Coconut 2 Lb Banded Mirror Polished Mexico",
+   "price": 349.0,
+   "status": "available",
+   "section": "laguna-and-mexican-agates",
+   "locality": "Las Choyas, Chihuahua, Mexico",
+   "material": "Las Choyas geode (amethyst)",
+   "form": "Polished geode pair",
+   "size": "",
+   "weight": "",
+   "description": "Exceptional old-stock Las Choyas \"coconut\" geode matched pair from Chihuahua, Mexico — 2 lb 2 oz combined, both original halves. Clean, symmetrical agate formation with a rich dark purple crystalline center, soft lavender-gray chalcedony, and sharp cream banding. Exceptionally round, with thick deep natural husks.\n\nMirror-polished faces. No fractures through the polished faces. A top-shelf matched geode pair, and the exact two halves pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168677400158/01.webp",
+     "w": 1599,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168677400158/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168677400158/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168677400158/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168677400158/05.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168677400158",
+   "etsy_url": "https://www.etsy.com/listing/4591638507",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-13T18:00:00Z",
+   "updated": "2026-10-13T18:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168677213672",
+   "title": "Las Choyas Geode Pair 9 Lb Blue Banded Solid Agate Mirror Polished Mexico",
+   "price": 229.0,
+   "status": "available",
+   "section": "laguna-and-mexican-agates",
+   "locality": "Las Choyas, Chihuahua, Mexico",
+   "material": "Las Choyas geode",
+   "form": "Polished geode pair",
+   "size": "",
+   "weight": "",
+   "description": "A very large, very heavy matched pair — nearly 9 pounds combined — cut from the same solid Las Choyas coconut geode nodule from Mexico and kept together. Both cut faces are mirror-polished and show excellent blue-gray, white, and translucent agate banding with multiple tight fortification layers in a clean, balanced pattern.\n\nUnlike hollow geodes, this nodule is almost completely solid agate inside, which gives the pair its substantial weight and makes the mirrored banding especially impressive. Both halves retain deep, complete natural husks with a thick old-weathered rind, so they display well from every angle — set them together and you can see just how large the original coconut was.\n\nA genuine centerpiece pair for a serious shelf. You will receive both halves pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168677213672/01.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168677213672/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168677213672/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168677213672/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168677213672/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168677213672/06.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168677213672/07.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168677213672/08.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168677213672/09.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168677213672",
+   "etsy_url": "https://www.etsy.com/listing/4591558724",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-13T12:00:00Z",
+   "updated": "2026-10-13T12:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168674811648",
+   "title": "Dryhead Agate Slab End Cut Montana Polished Pryor Mountains Collector",
+   "price": 51.0,
+   "status": "available",
+   "section": "montana-dryhead-agate",
+   "locality": "Pryor Mountains, Montana, USA",
+   "material": "Dryhead agate",
+   "form": "Polished end-cut slab",
+   "size": "",
+   "weight": "",
+   "description": "Really nice polished Dryhead agate end-cut slab from Montana with great color. Mirror-polished face.\n\nDisclosure: natural fractures have been healed, as shown. Dryhead from the Pryor Mountains is a premier Montana agate locality. You will receive the exact slab pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168674811648/01.webp",
+     "w": 984,
+     "h": 774
+    },
+    {
+     "src": "/photos/EB-168674811648/02.webp",
+     "w": 1137,
+     "h": 1415
+    },
+    {
+     "src": "/photos/EB-168674811648/03.webp",
+     "w": 1010,
+     "h": 1144
+    },
+    {
+     "src": "/photos/EB-168674811648/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168674811648/05.webp",
+     "w": 1200,
+     "h": 1083
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168674811648",
+   "etsy_url": "https://www.etsy.com/listing/4592003322",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-13T06:00:00Z",
+   "updated": "2026-10-13T06:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168668395314",
+   "title": "Kentucky Agate Rough Chunk Imperial Purple Red Yellow Sharp Banding Natural",
+   "price": 112.0,
+   "status": "available",
+   "section": "rough-rock",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Rough chunk",
+   "size": "",
+   "weight": "",
+   "description": "Natural rough Kentucky agate chunk with sharp, well-defined banding in purple, red, and yellow. Sold exactly as found — no polish, no treatment — for the collector who wants Kentucky material in its natural state, or as lapidary rough for cutting.\n\nThe banding is exposed and visible as shown. A strong display piece as-is. You will receive the exact chunk pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168668395314/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168668395314/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168668395314/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168668395314/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168668395314/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168668395314/06.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168668395314/07.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168668395314/08.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168668395314/09.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168668395314/10.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168668395314/11.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168668395314/12.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168668395314",
+   "etsy_url": "https://www.etsy.com/listing/4591559806",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-13T00:00:00Z",
+   "updated": "2026-10-13T00:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168662408210",
+   "title": "Ohio Flint Knapping Lot 10 Lb Heat Treated Rainbow Flint Ridge 3-9 In",
+   "price": 79.0,
+   "status": "available",
+   "section": "rough-rock",
+   "locality": "Flint Ridge, Ohio, USA",
+   "material": "Ohio flint",
+   "form": "Knapping lot, 10 lb",
+   "size": "",
+   "weight": "",
+   "description": "10 lb select lot of heat-treated Ohio rainbow flint, hand-selected from a much larger batch gathered at the Nethers farm in Flint Ridge, Ohio. Solid chunks from 3 to around 8–9 inches, chosen for minimal visual fracturing plus color and shape. Heat treating brings out the red hues and makes the stone easier to work.\n\nFor knapping and lapidary. Chunk count per 10 lb lot varies slightly. You will receive a hand-selected 10 lb lot as described.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168662408210/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662408210/02.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662408210/03.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662408210/04.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662408210/05.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662408210/06.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662408210/07.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662408210/08.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662408210/09.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662408210/10.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662408210/11.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662408210/12.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662408210/13.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662408210/14.webp",
+     "w": 1600,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168662408210",
+   "etsy_url": "https://www.etsy.com/listing/4591698970",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-12T18:00:00Z",
+   "updated": "2026-10-12T18:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168662386451",
+   "title": "West Texas Agate Nodule 2 Lb Banded Fortification Rough Old Stock Rare",
+   "price": 79.0,
+   "status": "available",
+   "section": "rough-rock",
+   "locality": "West Texas, USA",
+   "material": "West Texas agate",
+   "form": "Rough nodule",
+   "size": "",
+   "weight": "",
+   "description": "Rare large West Texas banded agate fortification nodule — 2 lb of old-stock rough from a very old collection, with pieces dated as early as 1961. About 6.5 x 4.5 x 4 inches with a banded window on the front face. The side may be the converging point for cutting a full-pattern specimen — a fun cutter.\n\nSold as natural rough, unpolished, exactly as found. You will receive the exact nodule pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168662386451/01.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/06.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/07.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/08.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/09.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/10.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/11.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/12.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/13.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/14.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/15.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/16.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168662386451/17.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168662386451",
+   "etsy_url": "https://www.etsy.com/listing/4591659101",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-12T12:00:00Z",
+   "updated": "2026-10-12T12:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168654639923",
+   "title": "Kentucky Agate Pair 2 Lb 13 Oz Half Plus Slab Old Stock Mirror Polished XL",
+   "price": 299.0,
+   "status": "available",
+   "section": "kentucky-agate",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Polished half + slab pair",
+   "size": "",
+   "weight": "",
+   "description": "Killer old-stock Kentucky agate display pair at 2 lb 13.3 oz combined. The thicker half alone is a little over 2 lb; I cut the companion slab from the original piece specifically to make a matched mirrored pair. Both faces are mirror-polished and show exceptional old-stock color and contrast — rich mustard yellow, red, white, gray, brown, and lavender banding around sparkling crystalline pockets, with a bold central pattern that almost reads as a face. There are zones with a striking chromatography-like effect, where pigments separate and diffuse through adjacent bands.\n\nOne piece keeps its full natural husk. A genuinely large Kentucky centerpiece, most impressive displayed as the pair. You will receive the exact two pieces pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168654639923/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/02.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/06.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/07.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/08.webp",
+     "w": 1600,
+     "h": 1200
+    },
+    {
+     "src": "/photos/EB-168654639923/09.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/10.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/11.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/12.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/13.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/14.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/15.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/16.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168654639923/17.webp",
+     "w": 1600,
+     "h": 1200
+    },
+    {
+     "src": "/photos/EB-168654639923/18.webp",
+     "w": 1600,
+     "h": 1200
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168654639923",
+   "etsy_url": "https://www.etsy.com/listing/4591636481",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-12T06:00:00Z",
+   "updated": "2026-10-12T06:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168640345445",
+   "title": "Condor Agate Half Nodule 14 Oz Argentina Quartz Center Polished Specimen",
+   "price": 429.0,
+   "status": "available",
+   "section": "condor-agate",
+   "locality": "Patagonia, Argentina",
+   "material": "Condor agate",
+   "form": "Polished half nodule",
+   "size": "",
+   "weight": "",
+   "description": "14 oz (396 g) Condor agate half nodule from Argentina with vibrant multi-color banding — red, orange, lavender, and gray — wrapped around an exposed quartz center. Mirror-polished face, natural rind, classic fortification banding with a quartz core.\n\nShips securely packaged and insured. You get the exact specimen shown.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168640345445/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168640345445/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168640345445/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168640345445/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168640345445/05.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168640345445",
+   "etsy_url": "https://www.etsy.com/listing/4591656691",
+   "featured": true,
+   "notes": "",
+   "created": "2026-10-12T00:00:00Z",
+   "updated": "2026-10-12T00:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168632763004",
+   "title": "Kentucky Agate Pair 2.5 Lb Old Stock Mirror Polished Display Specimen XL",
+   "price": 629.0,
+   "status": "available",
+   "section": "kentucky-agate",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Polished pair",
+   "size": "",
+   "weight": "",
+   "description": "Large old-stock Kentucky agate matched pair at 2.5 lb, mirror-polished, with an exceptional amount of fine detail packed into it — intricate fortifications and patterning of a quality rarely seen in Kentucky agate.\n\nA phenomenal display pair for the serious Kentucky collector. You will receive the exact two pieces pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168632763004/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168632763004/02.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168632763004/03.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168632763004/04.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168632763004/05.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168632763004/06.webp",
+     "w": 736,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168632763004/07.webp",
+     "w": 736,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168632763004/08.webp",
+     "w": 736,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168632763004/09.webp",
+     "w": 736,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168632763004/10.webp",
+     "w": 736,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168632763004/11.webp",
+     "w": 736,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168632763004/12.webp",
+     "w": 736,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168632763004/13.webp",
+     "w": 736,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168632763004",
+   "etsy_url": "https://www.etsy.com/listing/4591660004",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-11T18:00:00Z",
+   "updated": "2026-10-11T18:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168632757745",
+   "title": "Kentucky Agate Pair Half Plus Slab 1 Lb 8 Oz Mirror Polished Stabilized",
+   "price": 99.0,
+   "status": "available",
+   "section": "kentucky-agate",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Half + slab pair",
+   "size": "",
+   "weight": "",
+   "description": "Kentucky agate matched pair — mirror-polished half plus companion slab, 1 lb 8 oz combined, with full-face banding. Equally at home on the shelf or trimmed for cabbing.\n\nDisclosure: professionally stabilized with museum-grade clear epoxy before polishing; fractures sit flush and take reflection. Ready for a new shelf — you get the exact two pieces pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168632757745/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168632757745/02.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168632757745/03.webp",
+     "w": 1600,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168632757745",
+   "etsy_url": "https://www.etsy.com/listing/4591647197",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-11T12:00:00Z",
+   "updated": "2026-10-11T12:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168631154815",
+   "title": "Ohio Flint Slab Rainbow 1 Lb 14 Oz Stabilized Flint Ridge Nethers Lapidary",
+   "price": 29.0,
+   "status": "available",
+   "section": "rough-rock",
+   "locality": "Flint Ridge, Ohio, USA",
+   "material": "Ohio flint",
+   "form": "Slab (lapidary)",
+   "size": "",
+   "weight": "",
+   "description": "XL Ohio Rainbow Flint slab at 1 lb 14 oz, professionally stabilized with museum-grade epoxy that dries like glass — it can be left as-is or ground and polished flat, and the epoxy takes a mirror finish. Cut for lapidary use or kept as a display slab.\n\nFlint Ridge, Ohio (Nethers) material. You will receive the exact slab pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168631154815/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168631154815/02.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168631154815/03.webp",
+     "w": 900,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168631154815",
+   "etsy_url": "https://www.etsy.com/listing/4591651574",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-11T06:00:00Z",
+   "updated": "2026-10-11T06:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168605006857",
+   "title": "Kentucky Agate Candy Dish Half Nodule Mirror Polished Old Stock Decor",
+   "price": 119.0,
+   "status": "available",
+   "section": "kentucky-agate",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Polished half nodule",
+   "size": "",
+   "weight": "",
+   "description": "Top-shelf candy dish carved from an old-stock Kentucky agate half nodule, finished to a mirror polish. Equal parts collectible and functional — shelf, desk, or actual use. Kentucky agate with this finish quality in a dish form doesn't come around often.\n\nYou will receive the exact piece pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168605006857/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168605006857/02.webp",
+     "w": 549,
+     "h": 543
+    },
+    {
+     "src": "/photos/EB-168605006857/03.webp",
+     "w": 884,
+     "h": 888
+    },
+    {
+     "src": "/photos/EB-168605006857/04.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168605006857/05.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168605006857/06.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168605006857/07.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168605006857/08.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168605006857/09.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168605006857/10.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168605006857/11.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168605006857/12.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168605006857/13.webp",
+     "w": 900,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168605006857",
+   "etsy_url": "https://www.etsy.com/listing/4591667370",
+   "featured": true,
+   "notes": "",
+   "created": "2026-10-11T00:00:00Z",
+   "updated": "2026-10-11T00:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168602204705",
+   "title": "Estill County Kentucky Agate Slab 8 In Yellow Black Grey Mirror Polished",
+   "price": 108.0,
+   "status": "available",
+   "section": "kentucky-agate",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Polished slab",
+   "size": "",
+   "weight": "",
+   "description": "XL 8-inch mirror-polished Kentucky agate slab in rare yellow, black, and grey — an unusual color suite for Kentucky material — from Estill County. Big, bold contrast across the full face.\n\nA standout display slab. You will receive the exact piece pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168602204705/01.webp",
+     "w": 824,
+     "h": 850
+    },
+    {
+     "src": "/photos/EB-168602204705/02.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168602204705/03.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168602204705/04.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168602204705/05.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168602204705/06.webp",
+     "w": 900,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168602204705",
+   "etsy_url": "https://www.etsy.com/listing/4591994117",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-10T18:00:00Z",
+   "updated": "2026-10-10T18:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168601809171",
+   "title": "Moroccan Agate Pair High Atlas Smoker Banded Polished Halves Morocco",
+   "price": 199.0,
+   "status": "available",
+   "section": "moroccan-agates",
+   "locality": "High Atlas, Morocco",
+   "material": "Moroccan agate",
+   "form": "Polished pair (halves)",
+   "size": "",
+   "weight": "",
+   "description": "A matched pair of banded Moroccan agate halves from the High Atlas Mountains — classic smoker material with dense desert banding, cut and polished for display.\n\nDisclosure, as listed: one half carries a resin polish and the other a true mirror polish. Both are shown clearly in the photos. You will receive the exact pair pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168601809171/01.webp",
+     "w": 1254,
+     "h": 831
+    },
+    {
+     "src": "/photos/EB-168601809171/02.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601809171/03.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601809171/04.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601809171/05.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601809171/06.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601809171/07.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601809171/08.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601809171/09.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601809171/10.webp",
+     "w": 1600,
+     "h": 1067
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168601809171",
+   "etsy_url": "https://www.etsy.com/listing/4591562054",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-10T12:00:00Z",
+   "updated": "2026-10-10T12:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168601785739",
+   "title": "Condor Agate Specimen | Mirror Polished Half Nodule From Argentina | Rare Colors",
+   "price": 199.0,
+   "status": "available",
+   "section": "condor-agate",
+   "locality": "Patagonia, Argentina",
+   "material": "Condor agate",
+   "form": "Polished half nodule",
+   "size": "",
+   "weight": "",
+   "description": "Mirror-polished Condor half nodule with full-face rare-colour banding for display. Condor agate is a well-known Argentine collector locality.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168601785739/01.webp",
+     "w": 613,
+     "h": 579
+    },
+    {
+     "src": "/photos/EB-168601785739/02.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601785739/03.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601785739/04.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601785739/05.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601785739/06.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601785739/07.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601785739/08.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601785739/09.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601785739/10.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "src": "/photos/EB-168601785739/11.webp",
+     "w": 1600,
+     "h": 1067
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168601785739",
+   "etsy_url": "https://www.etsy.com/listing/4591645545",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-10T06:00:00Z",
+   "updated": "2026-10-10T06:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168578107196",
+   "title": "Kentucky Agate Slab Intricate Fortifications Mirror Polished Large Display",
+   "price": 149.0,
+   "status": "available",
+   "section": "kentucky-agate",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Polished slab",
+   "size": "",
+   "weight": "",
+   "description": "Extremely rare medium-large Kentucky agate slab with dense, intricate fortifications across a mirror-polished face. Professional polish, top-shelf display quality.\n\nOne I'll be sorry to see go. You will receive the exact slab pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168578107196/01.webp",
+     "w": 1444,
+     "h": 1433
+    },
+    {
+     "src": "/photos/EB-168578107196/02.webp",
+     "w": 1183,
+     "h": 1183
+    },
+    {
+     "src": "/photos/EB-168578107196/03.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578107196/04.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578107196/05.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578107196/06.webp",
+     "w": 1060,
+     "h": 1007
+    },
+    {
+     "src": "/photos/EB-168578107196/07.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578107196/08.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578107196/09.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578107196/10.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578107196/11.webp",
+     "w": 1199,
+     "h": 1599
+    },
+    {
+     "src": "/photos/EB-168578107196/12.webp",
+     "w": 1199,
+     "h": 1599
+    },
+    {
+     "src": "/photos/EB-168578107196/13.webp",
+     "w": 1199,
+     "h": 1599
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168578107196",
+   "etsy_url": "https://www.etsy.com/listing/4591684539",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-10T00:00:00Z",
+   "updated": "2026-10-10T00:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168578099900",
+   "title": "Laguna Agate Slab Purple White High Parallax Mirror Polished Chihuahua Thin",
+   "price": 89.0,
+   "status": "available",
+   "section": "laguna-and-mexican-agates",
+   "locality": "Chihuahua, Mexico",
+   "material": "Laguna agate",
+   "form": "Polished slab",
+   "size": "",
+   "weight": "",
+   "description": "Thin mirror-polished Laguna agate slab from Chihuahua, Mexico in purple and white with strong parallax — the bands shift with real depth as the light moves across the face. The polish is phenomenal and the color contrast is sharp across the full face.\n\nNote: this is a thin slab, so it ships carefully packaged. Laguna material from Chihuahua is a premier collector locality. You will receive the exact slab pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168578099900/01.webp",
+     "w": 1320,
+     "h": 1352
+    },
+    {
+     "src": "/photos/EB-168578099900/02.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578099900/03.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578099900/04.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578099900/05.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578099900/06.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578099900/07.webp",
+     "w": 1600,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168578099900",
+   "etsy_url": "https://www.etsy.com/listing/4591637839",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-09T18:00:00Z",
+   "updated": "2026-10-09T18:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168578079515",
+   "title": "Mexican Blue Geode Full Husk Mirror Polished Banded Agate Display",
+   "price": 19.0,
+   "status": "available",
+   "section": "geodes",
+   "locality": "Mexico",
+   "material": "Mexican geode",
+   "form": "Polished full-husk geode",
+   "size": "",
+   "weight": "",
+   "description": "Mirror-polished blue banded geode from Mexico with full husk — unique blue banding through the crystal formations, finished to a mirror shine. A small, elegant display piece.\n\nYou will receive the exact geode pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168578079515/01.webp",
+     "w": 1287,
+     "h": 1282
+    },
+    {
+     "src": "/photos/EB-168578079515/02.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578079515/03.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578079515/04.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578079515/05.webp",
+     "w": 1600,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168578079515",
+   "etsy_url": "https://www.etsy.com/listing/4592200120",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-09T12:00:00Z",
+   "updated": "2026-10-09T12:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168578073052",
+   "title": "Flint Ridge Druzy Flint Specimen Rainbow Crystal Ohio Display Mineral",
+   "price": 14.0,
+   "status": "available",
+   "section": "ohio-flint-and-flint-ridge",
+   "locality": "Flint Ridge, Ohio, USA",
+   "material": "Ohio flint",
+   "form": "Crystal specimen",
+   "size": "",
+   "weight": "",
+   "description": "Flint Ridge, Ohio rainbow flint with sparkling crystal druzy — nice size, great color. A natural crystal display specimen from the classic Flint Ridge formation.\n\nYou will receive the exact specimen pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168578073052/01.webp",
+     "w": 1364,
+     "h": 1428
+    },
+    {
+     "src": "/photos/EB-168578073052/02.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578073052/03.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578073052/04.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578073052/05.webp",
+     "w": 1600,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168578073052",
+   "etsy_url": "https://www.etsy.com/listing/4592240154",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-09T06:00:00Z",
+   "updated": "2026-10-09T06:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168578068401",
+   "title": "Laguna Agate Specimen Tight Banding Shadow Parallax Mirror Polished Mexico",
+   "price": 69.0,
+   "status": "available",
+   "section": "laguna-and-mexican-agates",
+   "locality": "Chihuahua, Mexico",
+   "material": "Laguna agate",
+   "form": "Polished specimen",
+   "size": "",
+   "weight": "",
+   "description": "Polished Laguna agate specimen from Mexico with exceptionally tight full-face banding and deep shadow banding — the parallax effect gives the face real three-dimensional depth. Intricate pattern and strong color throughout.\n\nLaguna material from Chihuahua, Mexico. You will receive the exact specimen pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168578068401/01.webp",
+     "w": 1394,
+     "h": 1402
+    },
+    {
+     "src": "/photos/EB-168578068401/02.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578068401/03.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578068401/04.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578068401/05.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578068401/06.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578068401/07.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578068401/08.webp",
+     "w": 1600,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168578068401",
+   "etsy_url": "https://www.etsy.com/listing/4591646333",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-09T00:00:00Z",
+   "updated": "2026-10-09T00:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168578051959",
+   "title": "Crazy Parallax Agate From Mexico Mirror Polished Calandria Or Picacho Full Husk",
+   "price": 29.0,
+   "status": "available",
+   "section": "laguna-and-mexican-agates",
+   "locality": "Mexico",
+   "material": "Mexican agate (Calandria / Picacho)",
+   "form": "Polished full-husk specimen",
+   "size": "",
+   "weight": "",
+   "description": "\"Crazy parallax\" Mexican agate — listed as Calandria or Picacho area material — mirror-polished with a full husk and intense three-dimensional depth across the face. A distinctive collector piece showcasing the beauty of the region's geology.\n\nYou will receive the exact specimen pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168578051959/01.webp",
+     "w": 1252,
+     "h": 1254
+    },
+    {
+     "src": "/photos/EB-168578051959/02.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578051959/03.webp",
+     "w": 1600,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168578051959",
+   "etsy_url": "https://www.etsy.com/listing/4591694138",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-08T18:00:00Z",
+   "updated": "2026-10-08T18:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168578015041",
+   "title": "Kentucky Agate Slab XL Mirror Polished Collector Display Specimen Large",
+   "price": 39.0,
+   "status": "available",
+   "section": "kentucky-agate",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Polished slab",
+   "size": "",
+   "weight": "",
+   "description": "Extra-large mirror-polished Kentucky slab with full-face banding at an accessible size for display. Kentucky agate is a classic Estill County locality.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168578015041/01.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578015041/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578015041/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578015041/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168578015041/05.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168578015041",
+   "etsy_url": "https://www.etsy.com/listing/4591700056",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-08T12:00:00Z",
+   "updated": "2026-10-08T12:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168526394408",
+   "title": "Kentucky Agate Half Nodule Tight Banding Old Stock Polished Collector",
+   "price": 99.0,
+   "status": "available",
+   "section": "kentucky-agate",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Polished half nodule",
+   "size": "",
+   "weight": "",
+   "description": "Mirror-polished old-stock Kentucky agate half nodule with intricate, tight banding in yellow, pink, orange, gray, and black. Deep, slightly windowed natural husk.\n\nDisclosure: some natural fracturing, not very noticeable in person. Old-stock Kentucky material with this color range is getting harder to find. You will receive the exact piece pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168526394408/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168526394408/02.webp",
+     "w": 1200,
+     "h": 1153
+    },
+    {
+     "src": "/photos/EB-168526394408/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168526394408/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168526394408/05.webp",
+     "w": 727,
+     "h": 831
+    },
+    {
+     "src": "/photos/EB-168526394408/06.webp",
+     "w": 735,
+     "h": 918
+    },
+    {
+     "src": "/photos/EB-168526394408/07.webp",
+     "w": 726,
+     "h": 823
+    },
+    {
+     "src": "/photos/EB-168526394408/08.webp",
+     "w": 723,
+     "h": 607
+    },
+    {
+     "src": "/photos/EB-168526394408/09.webp",
+     "w": 602,
+     "h": 749
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168526394408",
+   "etsy_url": "https://www.etsy.com/listing/4591656726",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-08T06:00:00Z",
+   "updated": "2026-10-08T06:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168520143133",
+   "title": "Kentucky Agate Slab Thick Banded Large Polished Lapidary Cab Rough",
+   "price": 28.0,
+   "status": "available",
+   "section": "kentucky-agate",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Thick polished slab",
+   "size": "",
+   "weight": "",
+   "description": "Large, thick banded Kentucky agate slab with color you don't often see in Kentucky material.\n\nDisclosure: finished with a high-quality resin polish rather than a true mirror polish. Priced to sell — a lot of stone for the money. You will receive the exact slab pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168520143133/01.webp",
+     "w": 1199,
+     "h": 1208
+    },
+    {
+     "src": "/photos/EB-168520143133/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168520143133/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168520143133/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168520143133/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168520143133/06.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168520143133/07.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168520143133/08.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168520143133",
+   "etsy_url": "https://www.etsy.com/listing/4591991077",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-08T00:00:00Z",
+   "updated": "2026-10-08T00:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168516656428",
+   "title": "Laguna Agate Half Parallax Mirror Polished Mexico Collector Colorful",
+   "price": 26.0,
+   "status": "available",
+   "section": "laguna-and-mexican-agates",
+   "locality": "Chihuahua, Mexico",
+   "material": "Laguna agate",
+   "form": "Polished half",
+   "size": "",
+   "weight": "",
+   "description": "Mirror-polished Laguna agate half from Mexico with strong color and deep parallax across the face. A compact polished display piece from Chihuahua.\n\nYou will receive the exact half pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168516656428/01.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168516656428/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168516656428/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168516656428/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168516656428/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168516656428/06.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168516656428",
+   "etsy_url": "https://www.etsy.com/listing/4592009862",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-07T18:00:00Z",
+   "updated": "2026-10-07T18:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168402483823",
+   "title": "Brazilian Agate Geodes Set of 6 Mirror Polished Crystal 2 Lb Display",
+   "price": 52.0,
+   "status": "available",
+   "section": "geodes",
+   "locality": "Brazil",
+   "material": "Brazilian agate",
+   "form": "Geode set of 6",
+   "size": "",
+   "weight": "",
+   "description": "Set of six mirror-polished Brazilian agate geodes, 2+ lb combined, with a variety of colors and druzy crystal centers. A+ quality display pieces, sold as one six-piece set exactly as shown.\n\nDisclosure: one or two of the faces may not be perfectly flat, as shown in the photos. Priced for the set.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168402483823/01.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168402483823/02.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168402483823",
+   "etsy_url": "https://www.etsy.com/listing/4591669438",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-07T12:00:00Z",
+   "updated": "2026-10-07T12:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168398336888",
+   "title": "Estill County Kentucky Agate Half Red Yellow Blue Mirror Polished",
+   "price": 79.0,
+   "status": "available",
+   "section": "kentucky-agate",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Polished half",
+   "size": "",
+   "weight": "",
+   "description": "Mirror-polished Kentucky agate half from Estill County with red, yellow, and blue banding. Classic Kentucky color zoning on a clean polished face.\n\nYou will receive the exact half pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168398336888/01.webp",
+     "w": 959,
+     "h": 1031
+    },
+    {
+     "src": "/photos/EB-168398336888/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168398336888/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168398336888/04.webp",
+     "w": 1200,
+     "h": 1101
+    },
+    {
+     "src": "/photos/EB-168398336888/05.webp",
+     "w": 1182,
+     "h": 1185
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168398336888",
+   "etsy_url": "https://www.etsy.com/listing/4592182963",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-07T06:00:00Z",
+   "updated": "2026-10-07T06:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168374198931",
+   "title": "Kentucky Agate Fire 1 Lb 12 Oz Fracture Lines High Contrast Polished Nodule",
+   "price": 499.0,
+   "status": "available",
+   "section": "kentucky-agate",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Polished specimen",
+   "size": "",
+   "weight": "",
+   "description": "Large, bold Kentucky agate half nodule at 1 lb 12 oz — heavily fractured interior with vivid color-changing fortifications wrapping shattered cream and gray zones. Wild internal structure with brilliant contrast.\n\nDisclosure: professionally stabilized with museum-grade epoxy before polishing, finished to a true mirror polish on a reciprocating lap. The dark fracture lines are part of the piece's character. A display-worthy statement stone, and the exact piece pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168374198931/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168374198931/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168374198931/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168374198931/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168374198931/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168374198931/06.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168374198931/07.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168374198931/08.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168374198931/09.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168374198931/10.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168374198931/11.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168374198931",
+   "etsy_url": "https://www.etsy.com/listing/4591643937",
+   "featured": true,
+   "notes": "",
+   "created": "2026-10-07T00:00:00Z",
+   "updated": "2026-10-07T00:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168355423324",
+   "title": "Imperial Kentucky Agate Specimen USA Red White And Blue Half Nodule Polished",
+   "price": 199.0,
+   "status": "available",
+   "section": "kentucky-agate",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Polished half",
+   "size": "",
+   "weight": "",
+   "description": "Polished Imperial Kentucky agate half nodule with vivid red, white, and blue fortification banding and strong internal detail.\n\nTwo disclosures, both visible in the photos: the surface carries a high-quality UV resin finish that is nearly indistinguishable from a true mirror polish, and there is a small minor chip on the upper left edge that doesn't distract from the overall piece. Priced with both in mind. You will receive the exact half pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168355423324/01.webp",
+     "w": 1449,
+     "h": 1449
+    },
+    {
+     "src": "/photos/EB-168355423324/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168355423324/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168355423324/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168355423324/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168355423324/06.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168355423324/07.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168355423324/08.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168355423324/09.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168355423324/10.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168355423324/11.webp",
+     "w": 1199,
+     "h": 1599
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168355423324",
+   "etsy_url": "https://www.etsy.com/listing/4591682937",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-06T18:00:00Z",
+   "updated": "2026-10-06T18:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168324300437",
+   "title": "Estill County Kentucky Agate Floating Fortification Blue Orange Grey Polished",
+   "price": 97.0,
+   "status": "available",
+   "section": "kentucky-agate",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Polished slab",
+   "size": "",
+   "weight": "",
+   "description": "Rare Estill County, Kentucky agate — mirror-polished, with blue, orange, and grey fortifications appearing to float in a sea of foggy translucent quartz. A polished full-husk half nodule, and a genuinely unusual piece.\n\nVery rare material. You will receive the exact specimen pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168324300437/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168324300437/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168324300437/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168324300437/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168324300437/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168324300437/06.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168324300437",
+   "etsy_url": "https://www.etsy.com/listing/4592201538",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-06T12:00:00Z",
+   "updated": "2026-10-06T12:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168086037552",
+   "title": "Thunder Egg Agate Picture Mountains Lake Polished Scenic Full Husk",
+   "price": 46.0,
+   "status": "available",
+   "section": "thunder-eggs",
+   "locality": "Not specified in listing",
+   "material": "Picture agate (thunder egg)",
+   "form": "Polished full-husk specimen",
+   "size": "",
+   "weight": "",
+   "description": "\"Mountains Over Lake\" — a thunder egg agate with a full, unusual husk and a polished face showing a scenic picture pattern like mountains over a lake. From an old collection; locality unknown, and these are hard to come by. The nodules from this lot were all over the place — jasper-type banding, wild variation — and cutting them produced some killer one-off pieces like this.\n\nSold as a one-off picture-agate display piece. You will receive the exact stone pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168086037552/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168086037552/02.webp",
+     "w": 1179,
+     "h": 1213
+    },
+    {
+     "src": "/photos/EB-168086037552/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168086037552/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168086037552/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168086037552/06.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168086037552",
+   "etsy_url": "https://www.etsy.com/listing/4592222757",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-06T06:00:00Z",
+   "updated": "2026-10-06T06:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-168051240349",
+   "title": "Laguna Agate Threshold One Of A Kind Specimen Chihuahua Mexico Polished",
+   "price": 62.0,
+   "status": "available",
+   "section": "laguna-and-mexican-agates",
+   "locality": "Chihuahua, Mexico",
+   "material": "Laguna agate",
+   "form": "Polished specimen",
+   "size": "",
+   "weight": "",
+   "description": "A genuinely one-of-a-kind Laguna specimen from Chihuahua, Mexico — the pattern reads like a threshold opening onto a field with a lake.\n\nHonest note: the polish could use some work to bring it to its best. Priced accordingly for a unique Laguna face. You will receive the exact specimen pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-168051240349/01.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-168051240349/02.webp",
+     "w": 1600,
+     "h": 1200
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/168051240349",
+   "etsy_url": "https://www.etsy.com/listing/4592006504",
+   "featured": true,
+   "notes": "",
+   "created": "2026-10-06T00:00:00Z",
+   "updated": "2026-10-06T00:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-167976678500",
+   "title": "Ohio Agate Rough Flint Ridge Druzy Crystal Mineral Specimen Rare",
+   "price": 56.0,
+   "status": "available",
+   "section": "rough-rock",
+   "locality": "Flint Ridge, Ohio, USA",
+   "material": "Ohio flint / agate",
+   "form": "Rough specimen",
+   "size": "",
+   "weight": "",
+   "description": "Rare Ohio agate specimen from Flint Ridge — natural rough with crystal druzy in three different crystal colors and strong patterning throughout. There are a few obvious banded agate spots I noticed after photographing.\n\nSold as natural rough, unpolished. You will receive the exact specimen pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-167976678500/01.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167976678500/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167976678500/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167976678500/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167976678500/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167976678500/06.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167976678500/07.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167976678500/08.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/167976678500",
+   "etsy_url": "https://www.etsy.com/listing/4592241140",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-05T18:00:00Z",
+   "updated": "2026-10-05T18:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-167939547470",
+   "title": "Brazilian Agate Geode Half 2 Lb Mirror Polished Natural Crystal Display",
+   "price": 69.0,
+   "status": "available",
+   "section": "geodes",
+   "locality": "Brazil",
+   "material": "Brazilian agate",
+   "form": "Polished geode half",
+   "size": "",
+   "weight": "",
+   "description": "Large Brazilian agate geode half, around 2 pounds, with vibrant color and a mirror-polished face. Natural crystal center. A great addition to any collection.\n\nYou will receive the exact piece pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-167939547470/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167939547470/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167939547470/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167939547470/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167939547470/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167939547470/06.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167939547470/07.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/167939547470",
+   "etsy_url": "https://www.etsy.com/listing/4592197520",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-05T12:00:00Z",
+   "updated": "2026-10-05T12:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-167909603086",
+   "title": "Estill County Kentucky Agate Rough Half Nodule Full Husk Fine Banding",
+   "price": 39.0,
+   "status": "available",
+   "section": "rough-rock",
+   "locality": "Estill County, Kentucky, USA",
+   "material": "Kentucky agate",
+   "form": "Rough half nodule",
+   "size": "",
+   "weight": "",
+   "description": "Clean-cut Kentucky agate rough half nodule with full husk and fine banding. Photographed wet to show the color — this one needs a final polish to finish, priced accordingly for the lapidary buyer.\n\nSold as natural rough, unpolished. Kentucky agate, USA. You will receive the exact half pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-167909603086/01.webp",
+     "w": 1194,
+     "h": 1194
+    },
+    {
+     "src": "/photos/EB-167909603086/02.webp",
+     "w": 900,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167909603086/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167909603086/04.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167909603086/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167909603086/06.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167909603086/07.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167909603086/08.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/167909603086",
+   "etsy_url": "https://www.etsy.com/listing/4591661843",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-05T06:00:00Z",
+   "updated": "2026-10-05T06:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-167783569767",
+   "title": "Laguna Agate Rough Slab High Contrast | One Side Fracture Superglue Stabilized",
+   "price": 35.0,
+   "status": "available",
+   "section": "rough-rock",
+   "locality": "Chihuahua, Mexico",
+   "material": "Laguna agate",
+   "form": "Rough slab",
+   "size": "",
+   "weight": "",
+   "description": "High-contrast Laguna agate rough slab from Mexico with bold full-face color — strong cabbing or display potential.\n\nFull disclosure: there are a few larger fractures on the top. They're solid, and the bottom one is only on one side. I stabilized both sides with superglue; it'll need to be ground off in finishing. Priced for the condition — see the photos. You will receive the exact slab pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-167783569767/01.webp",
+     "w": 852,
+     "h": 873
+    },
+    {
+     "src": "/photos/EB-167783569767/02.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167783569767/03.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167783569767/04.webp",
+     "w": 1074,
+     "h": 1152
+    },
+    {
+     "src": "/photos/EB-167783569767/05.webp",
+     "w": 1200,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167783569767/06.webp",
+     "w": 1156,
+     "h": 1136
+    },
+    {
+     "src": "/photos/EB-167783569767/07.webp",
+     "w": 1200,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/167783569767",
+   "etsy_url": "https://www.etsy.com/listing/4591987949",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-05T00:00:00Z",
+   "updated": "2026-10-05T00:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-167685689499",
+   "title": "Brazilian Agate Half 330g Colorful Polished Display Geode Stone",
+   "price": 23.0,
+   "status": "available",
+   "section": "geodes",
+   "locality": "Brazil",
+   "material": "Brazilian agate",
+   "form": "Polished half",
+   "size": "",
+   "weight": "",
+   "description": "Large colorful polished Brazilian agate half at 330 g (11.4 oz). A very dark specimen, but the intricate banding and color come through on close look.\n\nHonest note: the polish could use some work. Priced accordingly. You will receive the exact half pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-167685689499/01.webp",
+     "w": 718,
+     "h": 880
+    },
+    {
+     "src": "/photos/EB-167685689499/02.webp",
+     "w": 1290,
+     "h": 1290
+    },
+    {
+     "src": "/photos/EB-167685689499/03.webp",
+     "w": 738,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167685689499/04.webp",
+     "w": 738,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167685689499/05.webp",
+     "w": 738,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167685689499/06.webp",
+     "w": 738,
+     "h": 978
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/167685689499",
+   "etsy_url": "https://www.etsy.com/listing/4592226097",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-04T18:00:00Z",
+   "updated": "2026-10-04T18:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-167660297601",
+   "title": "Ethiopian Opal 140 Ct Hydrophane Stabilized Specimen 28g Collector",
+   "price": 139.0,
+   "status": "available",
+   "section": "minerals-and-crystals",
+   "locality": "Ethiopia",
+   "material": "Ethiopian opal",
+   "form": "Specimen",
+   "size": "",
+   "weight": "",
+   "description": "140-carat (28 g) Ethiopian hydrophane opal specimen — huge, with play-of-color across every color of the rainbow. I slow-dried this one over the course of a year, and remarkably the color stayed true; it's been completely dry for months now.\n\nDisclosures, plainly: there are visible cracks, and as a stabilized hydrophane opal it needs to stay dry — handle as directed and don't soak it. An awesome display specimen for the opal collector who understands the material. You will receive the exact specimen pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-167660297601/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167660297601/02.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167660297601/03.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167660297601/04.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167660297601/05.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167660297601/06.webp",
+     "w": 1600,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/167660297601",
+   "etsy_url": "https://www.etsy.com/listing/4592185977",
+   "featured": true,
+   "notes": "",
+   "created": "2026-10-04T12:00:00Z",
+   "updated": "2026-10-04T12:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-167646044851",
+   "title": "Laguna Agate Half 3.5 In Mirror Polished Mexico Collector Nodule Vibrant",
+   "price": 43.0,
+   "status": "available",
+   "section": "laguna-and-mexican-agates",
+   "locality": "Chihuahua, Mexico",
+   "material": "Laguna agate",
+   "form": "Polished half nodule",
+   "size": "",
+   "weight": "",
+   "description": "Medium Laguna agate half from Mexico, about 3.5 by 2.5 inches, with a fine mirror polish and full husk. The color is very vibrant; the fine banding is beautiful though it doesn't show parallax — priced for what it is. A clean collector half nodule.\n\nYou will receive the exact piece pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-167646044851/01.webp",
+     "w": 793,
+     "h": 738
+    },
+    {
+     "src": "/photos/EB-167646044851/02.webp",
+     "w": 1600,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/167646044851",
+   "etsy_url": "https://www.etsy.com/listing/4591697858",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-04T06:00:00Z",
+   "updated": "2026-10-04T06:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-167607142860",
+   "title": "Fluorite Cluster Light Blue 1 Lb Natural Crystal Specimen Display",
+   "price": 40.0,
+   "status": "available",
+   "section": "minerals-and-crystals",
+   "locality": "Not specified in listing",
+   "material": "Fluorite",
+   "form": "Crystal cluster",
+   "size": "",
+   "weight": "",
+   "description": "1+ pound fluorite cluster with interesting light blue crystals — clean, with full points all around. A really nice natural crystal specimen for the mineral cabinet.\n\nYou will receive the exact cluster pictured.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-167607142860/01.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167607142860/02.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167607142860/03.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167607142860/04.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167607142860/05.webp",
+     "w": 1600,
+     "h": 1600
+    },
+    {
+     "src": "/photos/EB-167607142860/06.webp",
+     "w": 1600,
+     "h": 1600
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/167607142860",
+   "etsy_url": "https://www.etsy.com/listing/4592204180",
+   "featured": true,
+   "notes": "",
+   "created": "2026-10-04T00:00:00Z",
+   "updated": "2026-10-04T00:00:00Z",
+   "sold_at": null
+  },
+  {
+   "id": "eb-167303978800",
+   "title": "Condor Agate Argentina Polished Oval Specimen Collector Display Stone",
+   "price": 79.99,
+   "status": "available",
+   "section": "condor-agate",
+   "locality": "Patagonia, Argentina",
+   "material": "Condor agate",
+   "form": "Polished oval specimen",
+   "size": "",
+   "weight": "",
+   "description": "Polished Condor specimen from Argentina with concentric banding around a crystal centre, offered as a collector display piece. Condor agate is a well-known Argentine locality.",
+   "disclosure": "",
+   "photos": [
+    {
+     "src": "/photos/EB-167303978800/01.webp",
+     "w": 1254,
+     "h": 1254
+    },
+    {
+     "src": "/photos/EB-167303978800/02.webp",
+     "w": 1535,
+     "h": 1535
+    },
+    {
+     "src": "/photos/EB-167303978800/03.webp",
+     "w": 1113,
+     "h": 1150
+    }
+   ],
+   "ebay_url": "https://www.ebay.com/itm/167303978800",
+   "etsy_url": "https://www.etsy.com/listing/4592237268",
+   "featured": false,
+   "notes": "",
+   "created": "2026-10-03T18:00:00Z",
+   "updated": "2026-10-03T18:00:00Z",
+   "sold_at": null
+  }
+ ],
+ "museum": [],
+ "builds": []
+}
