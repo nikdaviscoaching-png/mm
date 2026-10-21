@@ -1,0 +1,11 @@
+Stacker bundles these third-party components under vendor/.
+
+piexifjs 1.0.6 — MIT License, Copyright (c) 2014, 2015 hMatoba. Full text: vendor/LICENSE.txt.
+
+exifr — MIT License, Copyright (c) 2020 Mike Kovařík, Mutiny.cz. Full text: vendor/exifr/LICENSE.
+
+LibRaw (compiled to WebAssembly: vendor/libraw/libraw.wasm, libraw.js, worker.js, index.js, via the libraw-wasm wrapper) —
+LibRaw is Copyright (C) 2008-2024 LibRaw LLC and is available under the GNU LGPL 2.1 or the CDDL 1.0 (see https://www.libraw.org/ ).
+The wasm module is a separate, replaceable file loaded at run time, so you can substitute your own build of LibRaw.
+NOTE: the licence files for LibRaw and the libraw-wasm wrapper were not included in the package this build started from.
+Before public distribution please add them (from https://github.com/LibRaw/LibRaw and the libraw-wasm package) next to the files above and confirm the terms.
