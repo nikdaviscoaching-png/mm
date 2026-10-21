@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>com.mineralmurals.local-media</string>
+<key>CFBundleName</key><string>Mineral Murals local media</string>
+<key>CFBundleDisplayName</key><string>Mineral Murals Local Speech</string>
+<key>CFBundleExecutable</key><string>mm-media</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleVersion</key><string>1</string>
+<key>CFBundleShortVersionString</key><string>1.0</string>
+<key>LSUIElement</key><true/>
+<key>NSSpeechRecognitionUsageDescription</key><string>Transcribe your specimen narration on this Mac. Mineral Murals requires on-device recognition and does not send audio to a cloud service.</string>
+</dict></plist>

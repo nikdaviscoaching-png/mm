@@ -1,0 +1,1 @@
+Extends Mineral Murals Seller OS commit 9c29db2. Original local project and inventory remain preserved beside this hosted migration. Public interface and factual media pipeline are reused. No existing production site is replaced.
