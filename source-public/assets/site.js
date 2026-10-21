@@ -152,8 +152,64 @@
     sort.addEventListener('change', () => { st.sort = sort.value; render(); });
     sold.addEventListener('change', () => { st.sold = sold.checked; render(); });
     render();
+    shopTrays();
   }
 
+
+  // ---------- tray videos: one recording of many rocks; scrub the bar to see (and buy) each piece
+  function trayGroups() {
+    const groups = {};
+    for (const l of C.listings) if (l.video?.batch) (groups[l.video.batch] ||= { clip: l.video.clip, pieces: [] }).pieces.push(l);
+    return Object.entries(groups).map(([id, g]) => ({ id, ...g, pieces: g.pieces.sort((a, b) => a.video.start - b.video.start) }));
+  }
+  function tray(g, focusId = '') {
+    const el = document.createElement('section'); el.className = 'tray';
+    const first = g.pieces[0].video.start, last = g.pieces[g.pieces.length - 1].video.end, span = Math.max(.1, last - first);
+    const focus = g.pieces.find((l) => l.id === focusId) || g.pieces.find((l) => l.status === 'available') || g.pieces[0];
+    el.innerHTML = `<div class="tray-player"><video playsinline muted preload="metadata" src="${esc(g.clip)}#t=${focus.video.start}"></video><button class="tray-play" type="button" aria-label="Play">▶</button></div>
+<div class="tray-bar" role="slider" tabindex="0" aria-label="Scrub through the tray" aria-valuemin="0" aria-valuemax="${g.pieces.length}">${g.pieces.map((l) => `<span class="tray-seg${l.status === 'sold' ? ' sold' : ''}" style="flex:${(l.video.end - l.video.start).toFixed(2)}" data-id="${esc(l.id)}">${l.photos[0] ? `<img src="${esc(img(l.photos[0].src, 160))}" data-orig="${esc(l.photos[0].src)}" alt="" loading="lazy">` : ''}</span>`).join('')}<i class="tray-head"></i><div class="tray-peek" hidden></div></div>
+<div class="tray-now" aria-live="polite"></div>`;
+    const video = $('video', el), bar = $('.tray-bar', el), head = $('.tray-head', el), peek = $('.tray-peek', el), now = $('.tray-now', el), play = $('.tray-play', el);
+    const at = (t) => g.pieces.find((l) => t >= l.video.start && t < l.video.end) || (t >= last ? g.pieces[g.pieces.length - 1] : null);
+    const timeAtX = (x) => { const r = bar.getBoundingClientRect(); return first + clamp((x - r.left) / r.width, 0, .999) * span; };
+    let shown = null;
+    const showNow = (l) => {
+      if (!l || l === shown) return; shown = l;
+      $$('.tray-seg', el).forEach((s) => s.classList.toggle('on', s.dataset.id === l.id));
+      const can = C.checkout && l.status === 'available';
+      now.innerHTML = `${pic(l.photos[0], 256, l.title)}<div><a href="/p/${encodeURIComponent(l.id)}"><b>${esc(l.title)}</b></a><div class="p">${l.status === 'sold' ? 'Sold' : l.status === 'pending' ? 'On hold' : money(l.price)}</div></div>${can ? `<button class="btn primary" type="button" data-add="${esc(l.id)}">${cart.has(l.id) ? 'In your cart' : 'Add to cart'}</button>` : `<a class="btn" href="/p/${encodeURIComponent(l.id)}">View piece</a>`}`;
+      const add = $('[data-add]', now); if (add) add.addEventListener('click', () => { if (!cart.has(l.id)) { cart.add(l.id); toast('Added to your cart'); } add.textContent = 'In your cart'; });
+    };
+    const paintHead = () => { head.style.left = `${clamp((video.currentTime - first) / span, 0, 1) * 100}%`; };
+    video.addEventListener('timeupdate', () => { paintHead(); const l = at(video.currentTime); if (l) showNow(l); if (video.currentTime >= last) video.pause(); });
+    video.addEventListener('play', () => { play.hidden = true; }); video.addEventListener('pause', () => { play.hidden = false; });
+    play.addEventListener('click', () => { if (video.currentTime >= last - .1) video.currentTime = first; video.play().catch(() => {}); });
+    video.addEventListener('click', () => (video.paused ? play.click() : video.pause()));
+    let dragging = false;
+    const preview = (x) => {
+      const t = timeAtX(x), l = at(t), r = bar.getBoundingClientRect(); if (!l) return;
+      peek.hidden = false; peek.style.left = `${clamp(x - r.left, 60, r.width - 60)}px`;
+      peek.innerHTML = `${pic(l.photos[0], 256, '')}<b>${esc(l.title)}</b><span>${l.status === 'sold' ? 'Sold' : money(l.price)}</span>`;
+      return { t, l };
+    };
+    bar.addEventListener('pointermove', (e) => { const hit = preview(e.clientX); if (dragging && hit) { video.currentTime = hit.t; showNow(hit.l); paintHead(); } });
+    bar.addEventListener('pointerdown', (e) => { dragging = true; bar.setPointerCapture(e.pointerId); const hit = preview(e.clientX); if (hit) { video.pause(); video.currentTime = hit.t; showNow(hit.l); paintHead(); } });
+    bar.addEventListener('pointerup', () => { dragging = false; if (matchMedia('(hover: none)').matches) peek.hidden = true; });
+    bar.addEventListener('pointerleave', () => { if (!dragging) peek.hidden = true; });
+    bar.addEventListener('keydown', (e) => {
+      const i = g.pieces.indexOf(shown || focus), next = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : -1;
+      if (next < 0 || next >= g.pieces.length) return; e.preventDefault(); const l = g.pieces[next]; video.currentTime = l.video.start + .05; showNow(l); paintHead();
+    });
+    showNow(focus); video.addEventListener('loadedmetadata', paintHead, { once: true });
+    return el;
+  }
+  function shopTrays() {
+    const target = $('#trays'); if (!target) return;
+    const groups = trayGroups().filter((g) => g.pieces.some((l) => l.status !== 'sold'));
+    target.hidden = !groups.length; if (!groups.length) return;
+    target.innerHTML = '<div class="band-title"><h2>Watch the tray</h2><span class="muted">Drag along the bar to see each stone. Tap one to add it to your cart.</span></div>';
+    groups.slice(0, 4).forEach((g) => target.append(tray(g)));
+  }
   // ---------- full-resolution inspection: pointer loupe + touch/keyboard photo viewer
   const zoomIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5M10.5 7.5v6M7.5 10.5h6" stroke-linecap="round"/></svg>';
   const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -390,6 +446,10 @@
         e.currentTarget.textContent = 'In your cart';
       });
       $$('.elsewhere a', box).forEach((a) => { a.textContent = a.textContent.replace('Buy on', 'Also on'); });
+    }
+    if (l?.video?.batch) {
+      const g = trayGroups().find((x) => x.id === l.video.batch), old = $('.public-video', main);
+      if (g && old) { const note = old.nextElementSibling; const wrap = document.createElement('div'); wrap.innerHTML = `<p class="eyebrow tray-label">This stone on the tray · drag to see the others</p>`; wrap.append(tray(g, id)); old.replaceWith(wrap); if (note?.tagName === 'P') note.remove(); }
     }
     if (l) {
       const rel = live().filter((x) => x.id !== id && x.section === l.section).slice(0, 8);

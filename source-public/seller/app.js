@@ -5,7 +5,7 @@ const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money = n => n == null ? 'Price needed' : new Intl.NumberFormat('en-US', {style:'currency',currency:'USD'}).format(n / 100);
 const photoAccept = 'image/*,.heic,.heif,.arw,.dng,.nef,.cr2,.cr3,.raf,.orf,.rw2,.tif,.tiff';
-const titles = {home:'The bench',quick:'Add one rock',video:'Capture video',inventory:'Your inventory',connections:'Store connections',ai:'AI & settings',orders:'Orders & shipments'};
+const titles = {home:'The bench',quick:'Add one rock',video:'Capture video',tap:'Tap & list a tray',inventory:'Your inventory',connections:'Store connections',ai:'AI & settings',orders:'Orders & shipments'};
 const channelNames = {website:'Your website',etsy:'Etsy',ebay:'eBay',stripe:'Stripe',paypal:'PayPal'};
 const discoveries = {};
 let csrf = '', view = 'home', items = [], jobs = [], prefs = {}, connectionState = {}, serverStatus = {};
@@ -42,7 +42,7 @@ async function saveCapture() {
  await savePromise;
  if(captureDirty) return saveCapture();
 }
-async function refresh() {[items,jobs,prefs] = await Promise.all([api('items'),api('jobs'),api('settings')]);}
+async function refresh() {[items,jobs,prefs] = await Promise.all([api('items'),api('jobs'),api('settings')]); try {connectionState = await api('connections');} catch (_) {}}
 function showLogin() {csrf = ''; $('#login').hidden = false; $('#app').hidden = true; stopAudio();}
 async function boot() {
  try {
@@ -94,7 +94,8 @@ function render() {
  pageDirty = false;
  $('#heading').textContent = titles[view]; document.title = titles[view] + ' · Mineral Murals Seller Hub'; $('#back').hidden = view === 'home';
  $$('#nav button').forEach(button => {const active = button.dataset.view === view; button.classList.toggle('active',active); if(active) button.setAttribute('aria-current','page'); else button.removeAttribute('aria-current');});
- ({home,quick,video,inventory,connections,ai,orders}[view])();
+ if(view !== 'tap') tapStopCamera();
+ ({home,quick,video,tap:tapView,inventory,connections,ai,orders}[view])();
 }
 function recordHTML(record, check = false) {
  const photo = record.photos?.[0]?.src;
@@ -107,7 +108,7 @@ function bindRecords(root = $('#content')) {
 function home() {
  const drafts = items.filter(item => item.status === 'draft'), imports = items.filter(item => item.status === 'imported');
  const running = jobs.filter(job => ['waiting_worker','queued','processing'].includes(job.status));
- $('#content').innerHTML = `<section class="welcome"><div><p class="eyebrow">YOUR COLLECTION. ONE INVENTORY.</p><h2>Show it. Say it. List it.</h2><p class="lead">Film your specimens or add a few photos. Your personal listing assistant makes a draft for you to check.</p></div><img src="/assets/logo-mark.png" alt="Mineral Murals agate mark"></section><div class="actions-grid primary-actions"><button class="action" data-go="video"><span class="glyph" aria-hidden="true">▷</span><p class="step">A WHOLE BATCH</p><h3>Capture video</h3><p>One recording → separate specimens, photos and listing drafts.</p></button><button class="action" data-go="quick"><span class="glyph" aria-hidden="true">＋</span><p class="step">ONE SPECIMEN</p><h3>Add one rock</h3><p>Add photos. Speak or type three simple facts. Review.</p></button></div>${capture.transcript || capture.photos.length ? '<div class="resume-card"><div><b>You have an unfinished capture.</b><p>Your photos and notes are saved for you.</p></div><button data-go="quick">Continue →</button></div>' : ''}${running.length ? `<div class="resume-card"><div><b>${running.length} ${running.length === 1 ? 'recording is' : 'recordings are'} processing.</b><p>Your recording is saved online. Your Mac worker processes it when available.</p></div><button data-go="video">View progress →</button></div>` : ''}<div class="stats"><div><b>${items.filter(r=>r.status !== 'archived').length}</b><small>inventory records</small></div><div><b>${drafts.length}</b><small>drafts to review</small></div><div><b>${items.filter(r=>r.status === 'published').length}</b><small>published records</small></div></div><div class="panel compact"><div class="section-title"><div><p class="step">CONNECT ONCE</p><h3>Your website + Etsy + eBay</h3></div><button data-go="connections">Connections →</button></div><p class="muted">Choose your shop defaults once. Reviewed listings use those defaults. Each channel shows its actual publishing and stock sync status.</p></div>${imports.length ? `<p class="notice">${imports.length} recovered catalog records are preserved. Confirm which specimens you still own before publishing.</p>` : ''}<div class="section-title"><h2>Ready for a look</h2><button class="quiet" data-go="inventory">All inventory →</button></div><div class="records">${drafts.slice(-5).reverse().map(record => recordHTML(record)).join('') || '<div class="empty">No drafts waiting. Your next specimen starts above.</div>'}</div><div class="toolbar"><button data-go="orders">Orders & shipments</button><button data-go="ai">AI & settings</button></div>`;
+ $('#content').innerHTML = `<section class="welcome"><div><p class="eyebrow">YOUR COLLECTION. ONE INVENTORY.</p><h2>Show it. Say it. List it.</h2><p class="lead">Film your specimens or add a few photos. Your personal listing assistant makes a draft for you to check.</p></div><img src="/assets/logo-mark.png" alt="Mineral Murals agate mark"></section><div class="actions-grid primary-actions"><button class="action featured" data-go="tap"><span class="glyph" aria-hidden="true">◉</span><p class="step">FASTEST · A WHOLE TRAY</p><h3>Tap &amp; list</h3><p>Record the tray and tap once per rock. You get a cropped cover photo and a draft for each one.</p></button><button class="action" data-go="video"><span class="glyph" aria-hidden="true">▷</span><p class="step">A WHOLE BATCH</p><h3>Capture video</h3><p>Hands-free: your Mac splits the video wherever the frame goes empty.</p></button><button class="action" data-go="quick"><span class="glyph" aria-hidden="true">＋</span><p class="step">ONE SPECIMEN</p><h3>Add one rock</h3><p>Add photos. Speak or type three simple facts. Review.</p></button></div>${capture.transcript || capture.photos.length ? '<div class="resume-card"><div><b>You have an unfinished capture.</b><p>Your photos and notes are saved for you.</p></div><button data-go="quick">Continue →</button></div>' : ''}${running.length ? `<div class="resume-card"><div><b>${running.length} ${running.length === 1 ? 'recording is' : 'recordings are'} processing.</b><p>Your recording is saved online. Your Mac worker processes it when available.</p></div><button data-go="video">View progress →</button></div>` : ''}<div class="stats"><div><b>${items.filter(r=>r.status !== 'archived').length}</b><small>inventory records</small></div><div><b>${drafts.length}</b><small>drafts to review</small></div><div><b>${items.filter(r=>r.status === 'published').length}</b><small>published records</small></div></div><div class="panel compact"><div class="section-title"><div><p class="step">CONNECT ONCE</p><h3>Your website + Etsy + eBay</h3></div><button data-go="connections">Connections →</button></div><p class="muted">Choose your shop defaults once. Reviewed listings use those defaults. Each channel shows its actual publishing and stock sync status.</p></div>${imports.length ? `<p class="notice">${imports.length} recovered catalog records are preserved. Confirm which specimens you still own before publishing.</p>` : ''}<div class="section-title"><h2>Ready for a look</h2><button class="quiet" data-go="inventory">All inventory →</button></div><div class="records">${drafts.slice(-5).reverse().map(record => recordHTML(record)).join('') || '<div class="empty">No drafts waiting. Your next specimen starts above.</div>'}</div><div class="toolbar"><button data-go="orders">Orders & shipments</button><button data-go="ai">AI & settings</button></div>${syncBoard()}`;
  $$('[data-go]').forEach(button => button.onclick = () => go(button.dataset.go)); bindRecords();
 }
 function photoHTML(list) {
@@ -416,7 +417,7 @@ function showChannel(channel) {
  const draft = editing.listings?.[channel], target = $('#channel-draft');
  $$('[data-channel]',$('#editor')).forEach(button => {button.classList.toggle('active',button.dataset.channel === channel); button.setAttribute('aria-pressed',String(button.dataset.channel === channel));});
  if(!draft){target.innerHTML = '<p class="muted">Save your facts to generate this store’s draft.</p>';return;}
- target.innerHTML = `<h3>${esc(draft.title || editing.title)}</h3><p class="preview-price">${money(draft.price_cents ?? editing.price_cents)}</p><div class="description-preview">${esc(draft.description || editing.description || 'Save the facts to generate a description.')}</div>${draft.tags?.length ? `<p class="roi-note">Tags: ${esc(draft.tags.join(', '))}</p>` : ''}${draft.warnings?.length ? `<p class="notice">${esc(draft.warnings.join(' · '))}</p>` : ''}<details><summary>Store-specific details</summary><pre class="listing-pre">${esc(JSON.stringify(draft,null,2))}</pre></details>`;
+ target.innerHTML = `<h3>${esc(draft.title || editing.title)}</h3><p class="preview-price">${money(draft.price_cents ?? editing.price_cents)}</p><div class="description-preview">${esc(draft.description || editing.description || 'Save the facts to generate a description.')}</div>${draft.tags?.length ? `<p class="roi-note">Tags: ${esc(draft.tags.join(', '))}</p>` : ''}${draft.why?.length ? `<details class="why" open><summary>Why it’s written this way</summary><ul>${draft.why.map(line => `<li>${esc(line)}</li>`).join('')}</ul></details>` : ''}${draft.warnings?.length ? `<p class="notice">${esc(draft.warnings.join(' · '))}</p>` : ''}<details><summary>Store-specific details</summary><pre class="listing-pre">${esc(JSON.stringify(draft,null,2))}</pre></details>`;
 }
 async function publishDialog(ids,channels = null,immediate = false) {
  const records = ids.map(id => items.find(record => record.id === id)).filter(Boolean);
@@ -518,6 +519,173 @@ async function loadPaymentSettings() {
   $('#payment-form').onsubmit=event=>{event.preventDefault();const form=event.currentTarget,values=new FormData(form),payload={mode:values.get('mode'),shipping_cents:Math.round(Number(values.get('shipping'))*100),shipping_label:values.get('shipping_label'),countries:values.get('countries').split(',').map(c=>c.trim().toUpperCase()).filter(Boolean),shipping_reviewed:values.has('shipping_reviewed'),tax_reviewed:values.has('tax_reviewed'),stripe:{secret_key:values.get('stripe_key'),webhook_secret:values.get('stripe_webhook')},paypal:{client_id:values.get('paypal_id'),client_secret:values.get('paypal_secret')}};busy($('button[type=submit]',form),async()=>{await api('payments',payload);pageDirty=false;await loadPaymentSettings();toast('Payment settings saved privately.');},'Saving securely…');};
   $('#reconcile-payments').onclick=event=>busy(event.target,async()=>{const result=await api('payments/reconcile',{});$('#payment-save-status').textContent=result.results.length?'Pending payment statuses checked. See Orders for confirmed payments.':'No pending payments to check.';},'Checking providers…');
  } catch(e){panel.innerHTML='<h2>Website payments · Stripe</h2><p role="alert">'+esc(e.message)+'</p>';}
+}
+
+// ---------- Tap & list: record one tray video, tap between rocks, get one draft per rock.
+// Everything here runs in the browser, so it needs no Mac worker and costs nothing.
+let tap = {blob:null,url:null,name:'',marks:[],duration:0,segments:[],mode:null};
+let tapStream = null, tapRecorder = null, tapChunks = [], tapStarted = 0, tapTick = null;
+function tapStopCamera() {if(tapRecorder?.state === 'recording') tapRecorder.stop(); tapStream?.getTracks().forEach(track => track.stop()); tapStream = null; clearInterval(tapTick);}
+function tapReset() {tapStopCamera(); if(tap.url) URL.revokeObjectURL(tap.url); tap.segments.forEach(s => s.preview && URL.revokeObjectURL(s.preview)); tap = {blob:null,url:null,name:'',marks:[],duration:0,segments:[],mode:null}; pageDirty = false;}
+function tapView() {
+ if(tap.segments.length) return tapReview();
+ $('#content').innerHTML = `<p class="lead">Film a whole tray. Every time you pick up the next rock, tap <b>Next rock</b>. Each tap becomes its own listing draft, with a cropped cover photo and its own slice of the video.</p><section class="panel"><p class="step">HOW IT WORKS</p><ol class="capture-steps"><li><b>Prop the phone up.</b><span>Use a plain, light background if you can. The auto-crop looks for whatever stands out from the edges of the frame.</span></li><li><b>Tap at each rock.</b><span>Tap the big button, or anywhere on the picture, the moment a new rock is in place. You can say the price out loud too. The audio is kept with the video.</span></li><li><b>Check the covers.</b><span>You’ll see a cropped photo of each rock. Fix any crop or price, then create the drafts.</span></li></ol></section><div class="split-layout"><section class="panel"><p class="step">1 · RECORD HERE</p><div class="tap-stage" id="tap-stage"><video id="tap-live" playsinline muted autoplay></video><div class="tap-flash" id="tap-flash" hidden></div><div class="tap-hud" id="tap-hud" hidden><span class="rec-dot"></span><b id="tap-time">0:00</b><span id="tap-count">No rocks marked yet</span></div></div><div class="toolbar tap-controls"><button class="primary" id="tap-camera">Open camera</button><button id="tap-record" hidden>● Start recording</button><button class="tap-next" id="tap-next" hidden>Next rock ▸</button><button id="tap-undo" hidden>Undo last tap</button><button id="tap-stop" hidden>■ Finish</button></div><p class="muted" id="tap-state" role="status">Works in Safari and Chrome on your phone. Keep this screen open while you record.</p></section><section class="panel"><p class="step">OR · USE A VIDEO YOU ALREADY SHOT</p><label class="upload"><b>Choose a video</b>Play it back and tap <b>Next rock</b> as each one comes on screen.<input id="tap-file" type="file" accept="video/*"></label><div id="tap-file-player"></div></section></div>`;
+ const live = $('#tap-live'), state = $('#tap-state');
+ const mark = () => {
+  const t = tap.mode === 'file' ? $('#tap-playback').currentTime : (Date.now() - tapStarted) / 1000;
+  if(tap.marks.length && t - tap.marks[tap.marks.length-1] < .7) return;
+  tap.marks.push(Math.round(t*10)/10); pageDirty = true;
+  const flash = $('#tap-flash'); if(flash){flash.hidden = false; flash.textContent = 'Rock ' + tap.marks.length; setTimeout(() => flash.hidden = true,550);}
+  navigator.vibrate?.(30); $('#tap-undo').hidden = false;
+  const label = tap.marks.length + (tap.marks.length === 1 ? ' rock marked' : ' rocks marked'); if($('#tap-count')) $('#tap-count').textContent = label; state.textContent = label + '. Tap again when the next rock is in place.';
+ };
+ $('#tap-undo').onclick = () => {tap.marks.pop(); state.textContent = tap.marks.length + ' marked.'; if($('#tap-count')) $('#tap-count').textContent = tap.marks.length + ' marked';};
+ $('#tap-camera').onclick = event => busy(event.target,async () => {
+  if(!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) throw Error('This browser can’t record here. Use “Choose a video” instead.');
+  tapStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:true});
+  live.srcObject = tapStream; tap.mode = 'camera'; event.target.hidden = true; $('#tap-record').hidden = false; state.textContent = 'Frame the tray, then start recording.';
+ },'Opening camera…');
+ $('#tap-record').onclick = () => {
+  const type = ['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9,opus','video/webm'].find(t => MediaRecorder.isTypeSupported?.(t)) || '';
+  tapChunks = []; tapRecorder = new MediaRecorder(tapStream,{...(type ? {mimeType:type} : {}),videoBitsPerSecond:6000000});
+  tapRecorder.ondataavailable = event => event.data.size && tapChunks.push(event.data);
+  tapRecorder.onstop = () => {const mime = (tapRecorder.mimeType || type || 'video/webm').split(';')[0]; tap.blob = new Blob(tapChunks,{type:mime}); tap.name = 'tray-' + new Date().toISOString().slice(0,16).replace(/[:T]/g,'-') + (mime.includes('mp4') ? '.mp4' : '.webm'); tap.duration = (Date.now() - tapStarted) / 1000; tapStopCamera(); tapBuild();};
+  tapRecorder.start(1000); tapStarted = Date.now(); tap.marks = []; pageDirty = true;
+  $('#tap-record').hidden = true; $('#tap-next').hidden = false; $('#tap-stop').hidden = false; $('#tap-hud').hidden = false;
+  tapTick = setInterval(() => $('#tap-time') && ($('#tap-time').textContent = formatTime((Date.now() - tapStarted) / 1000)),250);
+  mark(); state.textContent = 'Recording. Rock 1 is marked. Tap Next rock for each new one.';
+ };
+ $('#tap-next').onclick = mark; $('#tap-stage').onclick = () => {if(tapRecorder?.state === 'recording') mark();};
+ $('#tap-stop').onclick = () => {if(tapRecorder?.state === 'recording') tapRecorder.stop();};
+ $('#tap-file').onchange = event => {
+  const file = event.target.files[0]; if(!file) return; tapStopCamera(); tap.mode = 'file'; tap.blob = file; tap.name = file.name; tap.marks = []; if(tap.url) URL.revokeObjectURL(tap.url); tap.url = URL.createObjectURL(file);
+  $('#tap-file-player').innerHTML = `<video id="tap-playback" class="video-preview" src="${tap.url}" controls playsinline></video><div class="toolbar"><button class="tap-next" id="tap-file-next">Next rock ▸ (mark here)</button><button id="tap-file-undo">Undo</button><button class="primary" id="tap-file-done">Done marking →</button></div><p class="muted" id="tap-file-state">Press play. Tap “Next rock” as each new rock settles in front of the camera. Pause or scrub any time.</p>`;
+  $('#tap-file-next').onclick = () => {mark(); $('#tap-file-state').textContent = tap.marks.length + ' marked · last at ' + formatTime(tap.marks[tap.marks.length-1]);};
+  $('#tap-file-undo').onclick = () => {tap.marks.pop(); $('#tap-file-state').textContent = tap.marks.length + ' marked.';};
+  $('#tap-file-done').onclick = () => {tap.duration = $('#tap-playback').duration || 0; $('#tap-playback').pause(); tapBuild();};
+ };
+}
+function tapSeek(video,time) {return new Promise((resolve,reject) => {const done = () => {video.removeEventListener('seeked',done); resolve();}; video.addEventListener('seeked',done); video.onerror = () => reject(Error('This video format can’t be read in this browser.')); video.currentTime = Math.max(0,Math.min(time,(video.duration || time + 1) - .05));});}
+// Find the rock: compare each pixel to the average colour of the frame border, then box whatever stands out.
+function tapAutoCrop(canvas) {
+ const w = 160, h = Math.max(1,Math.round(canvas.height / canvas.width * w)), small = document.createElement('canvas'); small.width = w; small.height = h;
+ const g = small.getContext('2d',{willReadFrequently:true}); g.drawImage(canvas,0,0,w,h); const d = g.getImageData(0,0,w,h).data;
+ const px = (x,y) => {const i = (y*w+x)*4; return [d[i],d[i+1],d[i+2]];}; const border = [];
+ for(let x = 0; x < w; x++){border.push(px(x,0),px(x,h-1));} for(let y = 0; y < h; y++){border.push(px(0,y),px(w-1,y));}
+ const median = k => border.map(c => c[k]).sort((a,b) => a-b)[border.length >> 1], bg = [median(0),median(1),median(2)];
+ const spread = border.reduce((n,c) => n + Math.hypot(c[0]-bg[0],c[1]-bg[1],c[2]-bg[2]),0) / border.length, limit = Math.max(38,spread * 2.2);
+ const rows = new Array(h).fill(0), cols = new Array(w).fill(0);
+ for(let y = 0; y < h; y++) for(let x = 0; x < w; x++){const c = px(x,y); if(Math.hypot(c[0]-bg[0],c[1]-bg[1],c[2]-bg[2]) > limit){rows[y]++; cols[x]++;}}
+ const span = (list,min) => {let a = list.findIndex(n => n >= min), b = list.length - 1 - [...list].reverse().findIndex(n => n >= min); return a < 0 ? null : [a,b];};
+ const ys = span(rows,Math.max(2,w*.04)), xs = span(cols,Math.max(2,h*.04));
+ if(!ys || !xs) return [.12,.08,.88,.92];
+ let box = [xs[0]/w,ys[0]/h,(xs[1]+1)/w,(ys[1]+1)/h]; const area = (box[2]-box[0])*(box[3]-box[1]);
+ if(area < .02 || area > .97) return [.12,.08,.88,.92];
+ const padX = (box[2]-box[0])*.1 + .02, padY = (box[3]-box[1])*.1 + .02;
+ return [Math.max(0,box[0]-padX),Math.max(0,box[1]-padY),Math.min(1,box[2]+padX),Math.min(1,box[3]+padY)];
+}
+function tapSharpness(canvas,box) {
+ const w = 120, h = 120, c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d',{willReadFrequently:true});
+ g.drawImage(canvas,box[0]*canvas.width,box[1]*canvas.height,(box[2]-box[0])*canvas.width,(box[3]-box[1])*canvas.height,0,0,w,h); const d = g.getImageData(0,0,w,h).data;
+ const lum = i => d[i]*.3 + d[i+1]*.59 + d[i+2]*.11; let sum = 0;
+ for(let y = 1; y < h-1; y++) for(let x = 1; x < w-1; x++){const i = (y*w+x)*4; const v = 4*lum(i) - lum(i-4) - lum(i+4) - lum(i-w*4) - lum(i+w*4); sum += v*v;}
+ return sum;
+}
+async function tapGrab(video,time) {
+ await tapSeek(video,time); const canvas = document.createElement('canvas'), scale = Math.min(1,2400 / Math.max(video.videoWidth,video.videoHeight));
+ canvas.width = Math.round(video.videoWidth*scale); canvas.height = Math.round(video.videoHeight*scale); canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height); return canvas;
+}
+function tapCropBlob(canvas,box) {
+ const c = document.createElement('canvas'); c.width = Math.max(1,Math.round((box[2]-box[0])*canvas.width)); c.height = Math.max(1,Math.round((box[3]-box[1])*canvas.height));
+ c.getContext('2d').drawImage(canvas,Math.round(box[0]*canvas.width),Math.round(box[1]*canvas.height),c.width,c.height,0,0,c.width,c.height);
+ return new Promise(resolve => c.toBlob(blob => resolve({blob,w:c.width,h:c.height}),'image/jpeg',.92));
+}
+// Try a few moments inside the segment and keep the sharpest one (least motion blur).
+async function tapBestFrame(video,segment) {
+ const length = segment.end - segment.start, picks = [.25,.4,.55,.7].map(f => segment.start + Math.min(length*f,length - .1));
+ let best = null;
+ for(const time of picks){const canvas = await tapGrab(video,time), box = tapAutoCrop(canvas), score = tapSharpness(canvas,box); if(!best || score > best.score) best = {canvas,box,score,time};}
+ return best;
+}
+async function tapBuild() {
+ if(!tap.marks.length){toast('Tap “Next rock” at least once to mark a rock.'); return tapView();}
+ if(!tap.url) tap.url = URL.createObjectURL(tap.blob);
+ $('#content').innerHTML = '<section class="panel"><p class="step">FINDING EACH ROCK</p><h3 id="tap-progress">Pulling cover photos…</h3><progress id="tap-bar" max="100" value="0"></progress></section>';
+ const video = document.createElement('video'); video.muted = true; video.playsInline = true; video.preload = 'auto'; video.src = tap.url;
+ await new Promise((resolve,reject) => {video.onloadeddata = resolve; video.onerror = () => reject(Error('This browser can’t read that video. Try recording in the Hub, or export it as MP4.'));}).catch(fail);
+ if(!video.videoWidth) return;
+ if(!Number.isFinite(video.duration)){video.currentTime = 1e9; await new Promise(r => video.ontimeupdate = r); video.ontimeupdate = null;}
+ const duration = Number.isFinite(video.duration) ? video.duration : tap.duration; tap.duration = duration;
+ const marks = [...new Set(tap.marks)].sort((a,b) => a-b).filter(t => t < duration - .3);
+ tap.segments = marks.map((start,i) => ({start,end:Math.min(duration,marks[i+1] ?? duration),price:'',material:'',note:''})).filter(s => s.end - s.start >= .3);
+ for(const [i,segment] of tap.segments.entries()){
+  $('#tap-progress').textContent = `Rock ${i+1} of ${tap.segments.length}…`; $('#tap-bar').value = Math.round(i / tap.segments.length * 100);
+  const best = await tapBestFrame(video,segment); Object.assign(segment,{canvas:best.canvas,box:best.box,cover_time:best.time}); await tapPreview(segment);
+ }
+ tap.video = video; pageDirty = true; tapReview();
+}
+async function tapPreview(segment) {const {blob} = await tapCropBlob(segment.canvas,segment.box); if(segment.preview) URL.revokeObjectURL(segment.preview); segment.preview = URL.createObjectURL(blob);}
+function tapReview() {
+ const total = tap.segments.length;
+ $('#content').innerHTML = `<p class="lead">${total} ${total === 1 ? 'rock' : 'rocks'} found. Check each cover photo. Price and material are optional here, and you can fill them in later on each draft.</p><div class="toolbar"><button class="primary" id="tap-create">Create ${total} ${total === 1 ? 'draft' : 'drafts'} →</button><button id="tap-start-over" class="quiet">Start over</button></div><p id="tap-upload-state" class="muted" role="status"></p><div class="tap-grid">${tap.segments.map((s,i) => `<article class="tap-card" data-i="${i}"><img src="${s.preview}" alt="Cover crop for rock ${i+1}"><div class="tap-meta"><b>Rock ${i+1}</b><span class="muted">${formatTime(s.start)}–${formatTime(s.end)}</span></div><label>Price · USD<input data-f="price" inputmode="decimal" type="number" min="0.01" step="0.01" value="${esc(s.price)}" placeholder="45"></label><label>Material<input data-f="material" value="${esc(s.material)}" placeholder="Kentucky agate" list="tap-materials"></label><label>Quick note<input data-f="note" value="${esc(s.note)}" placeholder="Small chip on back. Polished face."></label><div class="toolbar"><button data-act="crop">Adjust crop</button><button data-act="frame">Different moment</button>${i ? '<button data-act="merge" class="quiet">Merge with previous</button>' : ''}<button data-act="drop" class="quiet">Remove</button></div></article>`).join('')}</div><datalist id="tap-materials">${['Kentucky agate','Laguna agate','Condor agate','Lake Superior agate','Geode','Jasper','Quartz','Fluorite','Amethyst','Petrified wood','Rough agate'].map(m => `<option value="${m}">`).join('')}</datalist>`;
+ $$('.tap-card').forEach(card => {
+  const s = tap.segments[+card.dataset.i];
+  $$('[data-f]',card).forEach(input => input.oninput = () => {s[input.dataset.f] = input.value;});
+  $('[data-act=crop]',card).onclick = () => tapCropDialog(s);
+  $('[data-act=frame]',card).onclick = () => tapFrameDialog(s);
+  $('[data-act=drop]',card).onclick = () => {tap.segments.splice(+card.dataset.i,1); tap.segments.length ? tapReview() : (tapReset(), tapView());};
+  const merge = $('[data-act=merge]',card); if(merge) merge.onclick = () => {const i = +card.dataset.i; tap.segments[i-1].end = s.end; tap.segments.splice(i,1); tapReview();};
+ });
+ $('#tap-start-over').onclick = () => {if(confirm('Discard this recording and its marks?')){tapReset(); tapView();}};
+ $('#tap-create').onclick = event => busy(event.target,tapCreate,'Uploading…');
+}
+async function tapCreate() {
+ const say = text => $('#tap-upload-state').textContent = text;
+ const prices = tap.segments.map(s => s.price === '' ? null : Math.round(Number(s.price)*100));
+ if(prices.some(p => p !== null && !(p > 0))) throw Error('Check the prices. Each one must be a positive number, or left blank.');
+ if(!tap.clip){const mime = tap.blob.type && tap.blob.type.startsWith('video/') ? tap.blob.type : 'video/mp4'; tap.clip = await upload(new File([tap.blob],tap.name || 'tray.mp4',{type:mime}),p => say('Uploading tray video · ' + p + '%'),{role:'clip'});}
+ const segments = [];
+ for(const [i,s] of tap.segments.entries()){
+  say(`Saving cover photo ${i+1} of ${tap.segments.length}…`);
+  if(!s.photo){const crop = await tapCropBlob(s.canvas,s.box); s.photo = await upload(new File([crop.blob],`rock-${i+1}.jpg`,{type:'image/jpeg'}),null,{role:'display',original:tap.clip.original,w:crop.w,h:crop.h});}
+  segments.push({start:s.start,end:s.end,cover_time:s.cover_time,photos:[s.photo],price_cents:prices[i],material:s.material.trim(),note:s.note.trim()});
+ }
+ say('Creating drafts…'); const result = await api('tap-batch',{media:tap.clip.src,segments});
+ tapReset(); await refresh(); filter = 'batch:' + result.batch; search = ''; toast(result.item_ids.length + ' drafts created. Open each one to finish and approve it.'); go('inventory');
+}
+function tapCropDialog(segment) {
+ const dialog = document.createElement('dialog'); dialog.className = 'crop-dialog'; dialog.setAttribute('aria-label','Adjust cover crop');
+ const frame = segment.canvas.toDataURL('image/jpeg',.85);
+ dialog.innerHTML = `<div class="modal-head"><h2>Adjust cover crop</h2><button data-close class="icon-button" aria-label="Close">×</button></div><p>Drag a box around the rock, leaving a little margin.</p><div class="cropper selecting"><img src="${frame}" alt="Video frame" draggable="false"><div class="crop-box"></div></div><div class="toolbar"><button class="primary" data-save>Use this crop</button><button data-auto>Auto-detect again</button><button data-cancel>Cancel</button></div>`;
+ document.body.append(dialog); dialog.showModal(); dialog.onclose = () => dialog.remove(); $('[data-close]',dialog).onclick = $('[data-cancel]',dialog).onclick = () => dialog.close();
+ let box = [...segment.box], start = null; const wrap = $('.cropper',dialog), boxEl = $('.crop-box',dialog); $('img',dialog).onload = () => paintBox(boxEl,box);
+ wrap.onpointerdown = event => {const r = wrap.getBoundingClientRect(); start = [(event.clientX-r.left)/r.width,(event.clientY-r.top)/r.height]; wrap.setPointerCapture(event.pointerId); event.preventDefault();};
+ wrap.onpointermove = event => {if(!start) return; const r = wrap.getBoundingClientRect(), end = [Math.max(0,Math.min(1,(event.clientX-r.left)/r.width)),Math.max(0,Math.min(1,(event.clientY-r.top)/r.height))]; box = [Math.min(start[0],end[0]),Math.min(start[1],end[1]),Math.max(start[0],end[0]),Math.max(start[1],end[1])]; paintBox(boxEl,box);};
+ wrap.onpointerup = wrap.onpointercancel = () => start = null;
+ $('[data-auto]',dialog).onclick = () => {box = tapAutoCrop(segment.canvas); paintBox(boxEl,box);};
+ $('[data-save]',dialog).onclick = async () => {if(box[2]-box[0] < .03 || box[3]-box[1] < .03){toast('Draw a bigger box around the rock.'); return;} segment.box = box; segment.photo = null; await tapPreview(segment); dialog.close(); tapReview();};
+}
+function tapFrameDialog(segment) {
+ const dialog = document.createElement('dialog'); dialog.className = 'crop-dialog'; dialog.setAttribute('aria-label','Pick a different moment');
+ dialog.innerHTML = `<div class="modal-head"><h2>Pick the best moment</h2><button data-close class="icon-button" aria-label="Close">×</button></div><video class="video-preview" src="${tap.url}#t=${segment.cover_time}" playsinline muted preload="auto"></video><label>Moment <output>${formatTime(segment.cover_time)}</output><input type="range" min="${segment.start}" max="${segment.end}" step="0.1" value="${segment.cover_time}"></label><div class="toolbar"><button class="primary" data-save>Use this moment</button><button data-cancel>Cancel</button></div>`;
+ document.body.append(dialog); dialog.showModal(); dialog.onclose = () => dialog.remove(); $('[data-close]',dialog).onclick = $('[data-cancel]',dialog).onclick = () => dialog.close();
+ const player = $('video',dialog), slider = $('input',dialog); slider.oninput = () => {player.currentTime = +slider.value; $('output',dialog).textContent = formatTime(+slider.value);};
+ $('[data-save]',dialog).onclick = event => busy(event.target,async () => {const canvas = await tapGrab(tap.video,+slider.value); Object.assign(segment,{canvas,box:tapAutoCrop(canvas),cover_time:+slider.value,photo:null}); await tapPreview(segment); dialog.close(); tapReview();},'Grabbing frame…');
+}
+// ---------- Stock sync board: every live piece and where it is listed.
+function syncBoard() {
+ const links = connectionState.links || [], jobsList = connectionState.jobs || [];
+ const live = items.filter(r => ['published','approved','reserved','sold'].includes(r.status));
+ if(!live.length) return '';
+ const cell = (r,p) => {
+  if(p === 'website') return r.status === 'published' ? '<span class="dot on" title="Live on your website">●</span>' : r.status === 'sold' ? '<span class="dot sold" title="Sold">✓</span>' : '<span class="dot" title="Not live">○</span>';
+  const link = links.find(l => l.item_id === r.id && l.provider === p), job = jobsList.find(j => j.item_id === r.id && j.provider === p && !['done','completed','succeeded'].includes(j.status));
+  if(job) return `<span class="dot wait" title="${esc(job.action || 'sync')} ${esc(job.status)}${job.message ? ': ' + esc(job.message) : ''}">◐</span>`;
+  if(!link) return '<span class="dot" title="Not listed">○</span>';
+  return r.status === 'sold' ? '<span class="dot sold" title="Removed after sale">✓</span>' : `<span class="dot on" title="Linked listing ${esc(link.listing_id || link.sku || '')}">●</span>`;
+ };
+ const problems = jobsList.filter(j => ['failed','needs_review','blocked'].includes(j.status));
+ return `<section class="panel sync-board"><div class="section-title"><div><p class="step">ONE STOCK COUNT · THREE STORES</p><h3>Where each piece is listed</h3></div><button data-go="connections" class="quiet">Connections →</button></div><p class="muted">When a piece sells anywhere, it’s marked sold here and taken down from the other stores automatically. ● live · ◐ syncing · ✓ sold &amp; removed · ○ not listed</p>${problems.length ? `<p class="notice">${problems.length} sync ${problems.length === 1 ? 'job needs' : 'jobs need'} you. Open Connections to fix ${problems.length === 1 ? 'it' : 'them'}.</p>` : ''}<table class="sync-table"><thead><tr><th>Piece</th><th>Site</th><th>Etsy</th><th>eBay</th></tr></thead><tbody>${live.slice(-12).reverse().map(r => `<tr><td><button class="linkish" data-edit="${esc(r.id)}">${esc(r.title || r.material || r.id)}</button><small>${esc(r.status)}${r.sale_platform ? ' · sold on ' + esc(channelNames[r.sale_platform] || r.sale_platform) : ''}</small></td><td>${cell(r,'website')}</td><td>${cell(r,'etsy')}</td><td>${cell(r,'ebay')}</td></tr>`).join('')}</tbody></table>${live.length > 12 ? '<p class="roi-note">Showing the 12 most recent. Inventory has them all.</p>' : ''}</section>`;
 }
 
 })();

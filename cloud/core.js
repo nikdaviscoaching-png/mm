@@ -1,4 +1,4 @@
-import {APIError,json,now,uid,stmt,config,setConfig,owner,worker,items,item,saveItem,validPhotos,requireReady,jobs,enqueue,claim,assertLease,publicCatalog} from './store.js';
+import {APIError,json,now,uid,stmt,config,setConfig,owner,worker,items,item,saveItem,validPhotos,requireReady,jobs,enqueue,claim,assertLease,publicCatalog,mediaMeta} from './store.js';
 import {paymentStatus} from './payments.js';
 import {generateRecord,extractFacts,generateListings} from './facts.js';
 const defaults={corrections:{},categories:['Agates','Geodes','Mineral Specimens','Rough & Lapidary'],default_etsy_eligibility:'seller_made_altered'};
@@ -25,12 +25,31 @@ async function route(req,env,ctx){const url=new URL(req.url),path=url.pathname,m
  if(op==='generate'){const photos=await validPhotos(env,b.photos||[]),id=b.capture_id?'capture-'+String(b.capture_id).replace(/[^a-zA-Z0-9-]/g,'').slice(0,80):uid('specimen');try{return json(await item(env,id));}catch(e){if(e.status!==404)throw e;}const r={...await generateRecord(String(b.transcript||''),photos,await settings(env)),id};const saved=await saveItem(env,r);if(b.capture_id)await stmt(env,'DELETE FROM captures WHERE id=?',b.capture_id).run();return json(saved);}
  if(op==='jobs'){if(!['video','audio','image'].includes(b.kind))throw new APIError('Choose audio or video processing.');const key=String(b.media||'').slice(7),m=await stmt(env,'SELECT data FROM media WHERE key=?',key).first();if(!String(b.media).startsWith('/media/')||!m)throw new APIError('Upload the original recording first.');return json(await enqueue(env,{kind:b.kind,media:b.media,options:b.options||{}}),202);}
  if(op==='retry'){const row=await stmt(env,'SELECT data FROM jobs WHERE id=?',b.id).first();if(!row)throw new APIError('Job not found.',404);const j=JSON.parse(row.data);if(j.status!=='failed')throw new APIError('Only failed jobs need retry.');j.status='waiting_worker';j.progress=0;j.message='Waiting for your Mac worker.';await stmt(env,"UPDATE jobs SET data=?,status='waiting_worker',claimed_by=NULL,lease_until=NULL WHERE id=? AND status='failed'",JSON.stringify(j),j.id).run();return json(j);}
+ if(op==='tap-batch')return json(await tapBatch(env,b));
  if(op==='items')return json(await editRecord(env,b));
  if(op==='approve-batch'){if(!Array.isArray(b.ids)||!b.ids.length||b.ids.length>200||new Set(b.ids).size!==b.ids.length)throw new APIError('Select up to 200 distinct drafts.');const selected=await Promise.all(b.ids.map(id=>item(env,id)));for(const r of selected){if(!['draft','imported','approved'].includes(r.status))throw new APIError('Only unpublished drafts can be approved.');requireReady(r);}const q=selected.map(r=>stmt(env,"UPDATE items SET data=json_set(data,'$.status','approved','$.version',version+1,'$.updated_at',?),version=version+1 WHERE id=? AND version=? AND NOT EXISTS(SELECT 1 FROM holds WHERE item_id=items.id)",now(),r.id,r.version));const results=await env.DB.batch(q);return json({approved:results.reduce((n,r)=>n+r.meta.changes,0)});}
  if(op==='import'){if(await config(env,'seed_imported'))return json({imported:0,already_imported:true});if(!Array.isArray(b.listings)||b.listings.length>500)throw new APIError('Import requires catalog listings.');const q=b.listings.map(old=>{const r={...old,legacy:old,specimen_number:old.id,price_cents:Math.round(old.price*100),finish:old.form||'',condition:old.disclosure||'',status:'imported',stock_verified:false,reviewed:false,source:'existing_catalog',created_at:old.created||now(),updated_at:now(),warnings:['Imported archive: confirm availability before publishing.'],version:1,quantity:1,listings:{},video:null};return stmt(env,'INSERT OR IGNORE INTO items VALUES(?,?,1)',r.id,JSON.stringify(r));});q.push(stmt(env,"INSERT OR IGNORE INTO config(key,value) VALUES('seed_imported',?)",JSON.stringify(now())));await env.DB.batch(q);await setConfig(env,'storefront',Object.fromEntries(['settings','sections','museum','builds'].map(k=>[k,b[k]||[]])));return json({imported:b.listings.length});}
  return null;
 }
 
+// Tap-marked video: the browser records one video, the seller taps between rocks,
+// and the browser uploads one cover crop per segment. No Mac worker is needed.
+async function tapBatch(env,b){
+ const clip=String(b.media||''),meta=await mediaMeta(env,clip);if(!meta||JSON.parse(meta).role!=='clip')throw new APIError('Upload the tray video first.');
+ if(!Array.isArray(b.segments)||!b.segments.length||b.segments.length>100)throw new APIError('Mark between 1 and 100 rocks.');
+ const batch=uid('tap'),prefs=await settings(env),created=[],q=[];
+ for(const [index,s] of b.segments.entries()){
+  const start=Number(s.start),end=Number(s.end);if(!(start>=0&&end>start+.2&&end<86400))throw new APIError('Rock '+(index+1)+' needs a start before its end.');
+  const note=String(s.note||'').slice(0,4000),r={...generateRecord(note,await validPhotos(env,s.photos||[]),prefs),id:batch+'-specimen-'+(index+1),source:'tap_video'};
+  if(String(s.material||'').trim())r.material=String(s.material).trim().slice(0,120);
+  if(s.price_cents!=null&&s.price_cents!==''){if(!Number.isInteger(s.price_cents)||s.price_cents<=0||s.price_cents>100000000)throw new APIError('Rock '+(index+1)+' needs a positive price.');r.price_cents=s.price_cents;r.warnings=r.warnings.filter(w=>!/price/i.test(w));}
+  if(r.material)r.warnings=r.warnings.filter(w=>!/^Material/.test(w));
+  r.video={job_id:batch,original:clip,clip,start:Math.round(start*10)/10,end:Math.round(end*10)/10,cover_time:Number(s.cover_time)||start,index:index+1,source:'tap'};
+  r.listings=generateListings(r,prefs);r.title=r.listings.website.title;r.description=r.listings.website.description;r.version=1;
+  q.push(stmt(env,'INSERT INTO items(id,data,version) VALUES(?,?,1)',r.id,JSON.stringify(r)));created.push(r.id);
+ }
+ await env.DB.batch(q);return {batch,item_ids:created};
+}
 async function editRecord(env,b){
  const old=await item(env,b.id);if(old.version!==b.version)throw new APIError('This specimen changed. Reload before saving.',409);
  const r={...old},prefs=await settings(env);
