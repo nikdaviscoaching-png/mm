@@ -44,6 +44,7 @@ async function tapBatch(env,b){
   if(String(s.material||'').trim())r.material=String(s.material).trim().slice(0,120);
   if(s.price_cents!=null&&s.price_cents!==''){if(!Number.isInteger(s.price_cents)||s.price_cents<=0||s.price_cents>100000000)throw new APIError('Rock '+(index+1)+' needs a positive price.');r.price_cents=s.price_cents;r.warnings=r.warnings.filter(w=>!/price/i.test(w));}
   if(r.material)r.warnings=r.warnings.filter(w=>!/^Material/.test(w));
+  if(!r.specimen_number)r.specimen_number=batch.slice(-4).toUpperCase()+'-'+(index+1);
   r.video={job_id:batch,original:clip,clip,start:Math.round(start*10)/10,end:Math.round(end*10)/10,cover_time:Number(s.cover_time)||start,index:index+1,source:'tap'};
   r.listings=generateListings(r,prefs);r.title=r.listings.website.title;r.description=r.listings.website.description;r.version=1;
   q.push(stmt(env,'INSERT INTO items(id,data,version) VALUES(?,?,1)',r.id,JSON.stringify(r)));created.push(r.id);

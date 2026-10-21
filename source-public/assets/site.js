@@ -39,7 +39,7 @@
     try {
       const r = await fetch('/api/catalog', { cache: 'no-cache' });
       if (!r.ok) throw new Error(r.status);
-      const c = await r.json(); IMGOPT = !!c.imgopt; return c;
+      const c = await r.json(); IMGOPT = !!c.imgopt; c.sections ||= []; c.listings ||= []; return c;
     } catch {
       const r = await fetch('/data/catalog.seed.json');   // static hosting fallback
       const c = await r.json();
